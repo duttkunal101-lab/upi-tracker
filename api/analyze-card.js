@@ -71,6 +71,7 @@ before or after. The JSON must match this exact shape:
   "name": "Exact official card name",
   "issuer": "Issuing bank/brand",
   "network": "Visa | Mastercard | RuPay | American Express | Diners Club",
+  "imageUrl": "https direct link to the OFFICIAL card-art image if you find one, else omit this field",
   "annualFee": <number, rupees, 0 if lifetime free>,
   "feeNote": "Short fee note incl. waiver, e.g. '₹500 (waived above ₹2L/yr spend)'",
   "rewardUnit": "Cashback | Reward Points | NeuCoins | EDGE Miles | Membership Rewards | ...",
@@ -97,6 +98,10 @@ CRITICAL RULES:
   "merchant" only when the card singles out that specific merchant; otherwise use "category".
 - Omit merchants/categories the card doesn't reward specially — don't pad with the base rate.
 - If you genuinely cannot identify the card, return {"error":"Could not identify this card. Please check the name."} instead.
+- "imageUrl": include ONLY if, during your search, you found the official card-art image for
+  THIS exact card as a direct https image link (e.g. on the issuer's site, ending in
+  .png/.jpg/.webp). If you are not confident it is the right card's image, omit the field —
+  never invent or guess an image URL.
 - Output ONLY the JSON object.`;
 
 /* Pull the JSON object out of the model's final text, defensively. */
@@ -141,11 +146,16 @@ function normalizeCard(raw, fallbackName) {
   const base = Number(raw?.rewards?.base);
   const arr = (v) => Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 6) : [];
 
+  // Only accept a real https image link (no mixed-content, no data/SVG payloads).
+  const rawImg = String(raw.imageUrl || '').trim();
+  const image = /^https:\/\/[^\s"'<>]+$/i.test(rawImg) && rawImg.length <= 500 ? rawImg : '';
+
   return {
     id: `ai-${slug}`,
     name: String(raw.name || fallbackName).slice(0, 80),
     issuer: String(raw.issuer || 'Unknown issuer').slice(0, 60),
     network: String(raw.network || '').slice(0, 40),
+    image,
     annualFee: Number.isFinite(Number(raw.annualFee)) ? Number(raw.annualFee) : 0,
     feeNote: String(raw.feeNote || '').slice(0, 120) || '—',
     rewardUnit: String(raw.rewardUnit || 'Reward').slice(0, 40),

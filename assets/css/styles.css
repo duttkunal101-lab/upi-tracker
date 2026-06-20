@@ -242,6 +242,13 @@ body {
   width: 30px; height: 22px; border-radius: 5px;
   background: linear-gradient(135deg, #ffe7a0, #d4a437);
 }
+/* Real card art (when found). Covers the gradient + text; the chip, badge and
+ * info button stay above it. If it fails to load, onerror removes it and the
+ * gradient placeholder shows through. */
+.cardlet__img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 2; background: rgba(0,0,0,0.2);
+}
 .cardlet__body { padding: 0.85rem 1rem 1rem; }
 .cardlet__cvp { font-size: 0.85rem; color: var(--muted); min-height: 2.4em; }
 .cardlet__meta { display: flex; align-items: center; justify-content: space-between; margin-top: 0.7rem; }
@@ -259,7 +266,7 @@ body {
 .cardlet.is-selected .cardlet__check { display: grid; }
 
 .cardlet__info {
-  position: absolute; bottom: 0.85rem; right: 1rem; z-index: 2;
+  position: absolute; bottom: 0.85rem; right: 1rem; z-index: 3;
   width: 22px; height: 22px; border-radius: 50%;
   border: 1px solid var(--border-2); background: rgba(0,0,0,0.3);
   color: var(--muted); font-size: 0.75rem; font-weight: 700;
@@ -388,13 +395,15 @@ body {
 @keyframes pop { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: none; } }
 .modal__visual { height: 140px; padding: 1.2rem 1.4rem; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
 .modal__visual::after { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,0.16), transparent 45%); }
+.modal__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
 .modal__close {
   position: absolute; top: 1rem; right: 1rem; z-index: 3;
   width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
   background: rgba(0,0,0,0.4); color: #fff; font-size: 1.1rem;
 }
-.modal__issuer { color: #fff; font-weight: 600; opacity: 0.9; position: relative; z-index: 1; }
-.modal__name { color: #fff; font-weight: 800; font-size: 1.4rem; position: relative; z-index: 1; }
+.modal__head { margin-bottom: 0.9rem; }
+.modal__issuer { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+.modal__name { color: var(--text); font-weight: 800; font-size: 1.4rem; line-height: 1.15; margin-top: 0.15rem; }
 .modal__body { padding: 1.4rem; }
 .modal__cvp { font-size: 1rem; color: var(--text); margin-bottom: 1rem; }
 .modal__row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
@@ -431,7 +440,7 @@ body {
 
 /* ------------------------- AI: badge, CTA, toast ------------------------- */
 .cardlet__ai {
-  position: absolute; top: 0.85rem; right: 3.2rem; z-index: 2;
+  position: absolute; top: 0.85rem; right: 3.2rem; z-index: 3;
   font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em;
   padding: 0.15rem 0.4rem; border-radius: 6px;
   background: linear-gradient(100deg, var(--primary), var(--accent));

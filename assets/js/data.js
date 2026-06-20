@@ -445,7 +445,7 @@ function registerCard(card) {
   if (!card || !card.id) return null;
   const gradient = card.gradient || AI_GRADIENTS[hashString(card.id) % AI_GRADIENTS.length];
   const stored = {
-    bestFor: [], notes: [], tips: [], sources: [],
+    bestFor: [], notes: [], tips: [], sources: [], image: '',
     ...card,
     gradient,
     rewards: {

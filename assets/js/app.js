@@ -81,6 +81,7 @@
           <div class="cardlet__check">✓</div>
           <div class="cardlet__visual" style="background:${c.gradient}">
             <div class="cardlet__chip"></div>
+            ${c.image ? `<img class="cardlet__img" src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)} card" loading="lazy" onerror="this.remove()" />` : ''}
             ${c.source === 'ai' ? '<span class="cardlet__ai" title="Researched with AI + live web data">AI</span>' : ''}
             <div class="cardlet__issuer">${escapeHtml(c.issuer)}</div>
             <div class="cardlet__name">${escapeHtml(c.name)}</div>
@@ -344,11 +345,14 @@
       <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
       <div class="modal__visual" style="background:${c.gradient}">
         <div class="cardlet__chip"></div>
+        ${c.image ? `<img class="modal__img" src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)} card" onerror="this.remove()" />` : ''}
         ${c.source === 'ai' ? '<span class="cardlet__ai">AI</span>' : ''}
-        <div class="modal__issuer">${escapeHtml(c.issuer)}${c.network ? ' · ' + escapeHtml(c.network) : ''}</div>
-        <div class="modal__name">${escapeHtml(c.name)}</div>
       </div>
       <div class="modal__body">
+        <div class="modal__head">
+          <div class="modal__issuer">${escapeHtml(c.issuer)}${c.network ? ' · ' + escapeHtml(c.network) : ''}</div>
+          <h3 class="modal__name">${escapeHtml(c.name)}</h3>
+        </div>
         <p class="modal__cvp">${escapeHtml(c.cvp || '')}</p>
         ${(c.bestFor && c.bestFor.length) ? `<div class="modal__tags">${c.bestFor.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
         <div class="modal__row"><span>Reward currency</span><span>${escapeHtml(c.rewardUnit || '—')}</span></div>
