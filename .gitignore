@@ -11,5 +11,13 @@ Thumbs.db
 .idea/
 *.swp
 
+# Secrets & local env — NEVER commit your API key
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
 # Logs
 *.log
