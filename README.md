@@ -23,8 +23,9 @@ the reasoning, an annual-rewards projection, and tips to manage each card better
 1. **Add any card** — pick from the built-in list, or type a card name and hit **Analyze
    with AI**. The card's CVP, reward rates (mapped to the optimizer's taxonomy), fees, caps,
    management tips and the **official card image** (when one is found) are fetched live, with
-   source links and an "as of" month. If no image is found it gracefully falls back to a
-   styled card.
+   source links and an "as of" month. The image is **verified server-side** (it must resolve
+   to a real image) and the AI is told to use only the issuer's official art for that exact
+   card — so a wrong/broken image is dropped and the styled card is shown instead.
 2. **Pick your merchants** — choose where you spend and set a rough monthly amount.
 3. **Get your strategy** — for every merchant: the best card, the effective reward %, the
    reasoning, runner-ups, and ₹/year. Plus a wallet cheat-sheet, **"Manage your cards
@@ -32,6 +33,17 @@ the reasoning, an annual-rewards projection, and tips to manage each card better
 
 Your selected cards and spends stay in your browser (`localStorage`). Only the **card name**
 you ask about is sent to the backend for analysis.
+
+**Friendly & compliant:** the AI writes the value proposition and tips in a warm, human voice
+but stays compliant — it's framed as guidance (not financial advice), avoids guarantees/hype,
+and nudges you to confirm current terms. A friendly compliance note and a **Terms & Privacy**
+dialog are surfaced in-app.
+
+**Search retention (disclosed in Terms):** when the datastore is configured, the **card name**
+each person searches is logged anonymously (name + timestamp + a random browser id; no personal
+data) so you can see demand. This is disclosed in the in-app Terms and a consent note by the
+search box. View it in the Upstash console → Data Browser: `cardwise:searches` (a sorted set —
+most-searched cards) and `cardwise:searchlog` (the recent log).
 
 **Public-CVP grounding:** the AI is instructed to base every reward rate strictly on the
 card's **publicly available** CVP found via web search (issuer site first, then reputable

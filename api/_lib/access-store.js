@@ -120,6 +120,26 @@ export async function getStats() {
   return computeStats(count, launchAt != null ? Number(launchAt) : null, parseTimeline(zrange));
 }
 
+/**
+ * Retain which card a customer searched for (disclosed in the platform Terms).
+ * Stores only the card name + timestamp + an anonymous browser id — no personal
+ * data. Powers a demand ranking (most-searched cards) and a recent-search log.
+ * Best-effort: never throws into the request path.
+ */
+export async function recordSearch(name, clientId) {
+  if (!kvConfigured() || !name) return;
+  const clean = String(name).trim().slice(0, 80);
+  if (!clean) return;
+  const entry = JSON.stringify({ name: clean, at: Date.now(), client: String(clientId || '').slice(0, 40) });
+  try {
+    await redis('ZINCRBY', 'cardwise:searches', 1, clean.toLowerCase());
+    await redis('LPUSH', 'cardwise:searchlog', entry);
+    await redis('LTRIM', 'cardwise:searchlog', 0, 999); // keep the last 1000
+  } catch (e) {
+    console.error('recordSearch failed (non-fatal):', e?.message || e);
+  }
+}
+
 export async function claimSpot(clientId) {
   if (!kvConfigured()) return { configured: false, cap: CAP, granted: true, already: false, full: false, spot: null };
   const now = Date.now();

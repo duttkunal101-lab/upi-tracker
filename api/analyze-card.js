@@ -13,7 +13,26 @@
  * helpers below can be unit-tested without the dependency installed.
  * ========================================================================== */
 
-import { kvConfigured, claimSpot } from './_lib/access-store.js';
+import { kvConfigured, claimSpot, recordSearch } from './_lib/access-store.js';
+
+/* Verify an image URL actually resolves to an image before we show it — this is
+ * what stops broken / wrong / placeholder links from rendering. We'd rather
+ * show the clean fallback card than the wrong image. */
+async function verifyImage(url) {
+  if (!url) return false;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal,
+      headers: { 'User-Agent': 'CardWise/1.0 (+https://github.com/duttkunal101-lab/upi-tracker)' } });
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    return res.ok && ct.startsWith('image/');
+  } catch (_) {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /* The optimizer's fixed taxonomy. The model must map rewards onto these ids. */
 const MERCHANT_IDS = [
@@ -63,6 +82,14 @@ Every reward rate you output must be supported by a public source you found. Put
 source URLs you used in "sources" (at least one). If you cannot find public information for
 this exact card, return {"error":"..."} — never guess.
 
+TONE & COMPLIANCE: write "cvp", "tips" and "notes" in a warm, friendly, human voice — like a
+knowledgeable friend helping someone, not a sales brochure. Be encouraging and conversational
+so the person enjoys exploring. But stay COMPLIANT: this is guidance, not financial advice.
+Never promise or guarantee rewards, returns, savings, approval or eligibility; use measured
+words ("can", "typically", "usually", "subject to the bank's terms"); avoid hype and absolute
+superlatives ("best card ever", "guaranteed"); and add a gentle "do confirm current terms"
+nudge where it helps. Keep each tip to one friendly sentence.
+
 Then return your answer as a SINGLE JSON object and NOTHING else — no markdown fences, no prose
 before or after. The JSON must match this exact shape:
 
@@ -98,10 +125,12 @@ CRITICAL RULES:
   "merchant" only when the card singles out that specific merchant; otherwise use "category".
 - Omit merchants/categories the card doesn't reward specially — don't pad with the base rate.
 - If you genuinely cannot identify the card, return {"error":"Could not identify this card. Please check the name."} instead.
-- "imageUrl": include ONLY if, during your search, you found the official card-art image for
-  THIS exact card as a direct https image link (e.g. on the issuer's site, ending in
-  .png/.jpg/.webp). If you are not confident it is the right card's image, omit the field —
-  never invent or guess an image URL.
+- "imageUrl": include ONLY if you found the official card-art image for THIS EXACT card as a
+  direct https image link, strongly preferably on the ISSUER'S OWN official website domain
+  (e.g. hdfcbank.com, sbicard.com), ending in .png/.jpg/.jpeg/.webp. Do NOT use blog,
+  aggregator, marketplace or stock-photo images, and do NOT use a different card's image. If
+  you are not fully confident it is the correct card's official image, OMIT the field — we
+  would rather show no image than the wrong one.
 - Output ONLY the JSON object.`;
 
 /* Pull the JSON object out of the model's final text, defensively. */
@@ -215,6 +244,9 @@ export default async function handler(req, res) {
     }
   }
 
+  // Retain which card was searched (anonymous; disclosed in the platform Terms).
+  await recordSearch(name, clientId);
+
   const key = name.toLowerCase().replace(/\s+/g, ' ');
   const cached = CACHE.get(key);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
@@ -270,6 +302,10 @@ export default async function handler(req, res) {
         error: 'Could not find publicly available CVP details for that card. CardWise only recommends based on public information.',
       });
     }
+
+    // Only show the image if it actually resolves to an image — otherwise drop
+    // it so we never render a broken or wrong picture (fallback card is used).
+    if (card.image && !(await verifyImage(card.image))) card.image = '';
 
     CACHE.set(key, { card, at: Date.now() });
     return res.status(200).json({ card, cached: false, access });
