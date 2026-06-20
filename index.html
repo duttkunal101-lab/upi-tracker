@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#6d5efc" />
+  <meta name="description" content="CardWise — a credit card optimizer agent that tells you which of your cards to use at every merchant to maximise rewards and cashback." />
+  <title>CardWise · Credit Card Optimizer Agent</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <!-- ===================== Top navigation ===================== -->
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="#" data-action="home">
+        <span class="brand__mark">💳</span>
+        <span class="brand__name">Card<span>Wise</span></span>
+      </a>
+      <nav class="nav__links">
+        <button class="btn btn--ghost" data-action="restart" hidden id="navRestart">Start over</button>
+        <a class="btn btn--ghost" href="https://github.com/duttkunal101-lab/upi-tracker" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- ===================== Landing ===================== -->
+    <section class="view view--landing is-active" data-view="landing">
+      <div class="hero">
+        <div class="hero__glow"></div>
+        <div class="hero__content">
+          <span class="pill">Your AI-powered wallet strategist</span>
+          <h1 class="hero__title">Swipe the <span class="grad-text">right card</span>,<br />every single time.</h1>
+          <p class="hero__sub">
+            Tell CardWise which credit cards you own and where you spend. It reads each card's
+            value proposition and reward program, then tells you exactly which card to use at every
+            merchant — so you never leave cashback on the table.
+          </p>
+          <div class="hero__cta">
+            <button class="btn btn--primary btn--lg" data-action="start">Optimize my wallet →</button>
+            <span class="hero__note">Free · No sign-up · Runs entirely in your browser</span>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><strong id="statCards">16</strong><span>cards analysed</span></div>
+            <div class="stat"><strong id="statMerchants">27</strong><span>merchants</span></div>
+            <div class="stat"><strong>100%</strong><span>private</span></div>
+          </div>
+        </div>
+
+        <div class="hero__cards" aria-hidden="true">
+          <div class="float-card fc1"></div>
+          <div class="float-card fc2"></div>
+          <div class="float-card fc3"></div>
+        </div>
+      </div>
+
+      <div class="how">
+        <h2 class="section-title">How it works</h2>
+        <div class="how__grid">
+          <div class="how__step">
+            <span class="how__num">1</span>
+            <h3>Add your cards</h3>
+            <p>Pick the credit cards in your wallet. CardWise loads each card's CVP, reward rates, caps and exclusions.</p>
+          </div>
+          <div class="how__step">
+            <span class="how__num">2</span>
+            <h3>Pick your merchants</h3>
+            <p>Choose where you spend the most and set a rough monthly amount for a personalised projection.</p>
+          </div>
+          <div class="how__step">
+            <span class="how__num">3</span>
+            <h3>Get your strategy</h3>
+            <p>See the single best card for each merchant, the reasoning, and your estimated annual rewards.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Wizard (steps) ===================== -->
+    <section class="view" data-view="wizard">
+      <!-- progress -->
+      <div class="steps" id="steps">
+        <div class="steps__item is-active" data-step="cards"><span>1</span>Your cards</div>
+        <div class="steps__line"></div>
+        <div class="steps__item" data-step="merchants"><span>2</span>Your merchants</div>
+        <div class="steps__line"></div>
+        <div class="steps__item" data-step="results"><span>3</span>Your strategy</div>
+      </div>
+
+      <!-- Step 1: cards -->
+      <div class="step is-active" data-step="cards">
+        <div class="step__head">
+          <h2>Which credit cards do you own?</h2>
+          <p>Select all the cards in your wallet. Tap a card to view its value proposition.</p>
+        </div>
+        <input type="search" class="search" id="cardSearch" placeholder="Search cards, e.g. HDFC, Amazon, travel…" autocomplete="off" />
+        <div class="card-grid" id="cardGrid"></div>
+        <div class="step__footer">
+          <span class="muted" id="cardCount">0 cards selected</span>
+          <button class="btn btn--primary" data-action="toMerchants" disabled id="toMerchants">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: merchants -->
+      <div class="step" data-step="merchants">
+        <div class="step__head">
+          <h2>Where do you spend the most?</h2>
+          <p>Pick your top merchants and set a rough monthly spend to personalise the projection.</p>
+        </div>
+        <div class="merchant-wrap" id="merchantWrap"></div>
+        <div class="step__footer">
+          <button class="btn btn--ghost" data-action="toCards">← Back</button>
+          <div class="step__footer-right">
+            <span class="muted" id="merchantCount">0 merchants selected</span>
+            <button class="btn btn--primary" data-action="optimize" disabled id="optimizeBtn">See my strategy →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: results -->
+      <div class="step" data-step="results">
+        <div id="resultsRoot"></div>
+        <div class="step__footer">
+          <button class="btn btn--ghost" data-action="toMerchants">← Edit merchants</button>
+          <button class="btn btn--primary" data-action="restart">Start over</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      <strong>CardWise</strong> · Reward rates are indicative and based on publicly published programs.
+      Issuers revise rewards, caps &amp; exclusions frequently — always confirm current terms with your bank.
+      This tool offers guidance, not financial advice.
+    </p>
+  </footer>
+
+  <!-- ===================== Card detail modal ===================== -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal__backdrop" data-action="closeModal"></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" id="modalPanel"></div>
+  </div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/optimizer.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

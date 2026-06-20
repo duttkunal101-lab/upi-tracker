@@ -1,0 +1,15 @@
+# Dependencies (this project has none — it's a zero-build static site —
+# but ignore these in case you run tooling locally)
+node_modules/
+package-lock.json
+.npm/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log

@@ -1,0 +1,44 @@
+# Deploys the CardWise static site to GitHub Pages.
+# After the first run, your site is live at:
+#   https://<your-username>.github.io/upi-tracker/
+#
+# One-time setup: Repo → Settings → Pages → "Build and deployment" →
+# Source: "GitHub Actions". Then push to main (or run this workflow manually).
+name: Deploy CardWise to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # lets you trigger a deploy by hand from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress production deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.' # the site is plain static files at the repo root — no build step
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
