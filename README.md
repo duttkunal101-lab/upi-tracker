@@ -111,9 +111,11 @@ Add a free shared datastore:
 2. In Vercel → your project → **Settings → Environment Variables**, add:
    - `UPSTASH_REDIS_REST_URL` = the REST URL
    - `UPSTASH_REDIS_REST_TOKEN` = the REST token
-3. **Redeploy.** The counter (`X / 100 spots claimed`) now appears, spots are consumed as
-   people use the AI lookup, and once 100 is reached the feature closes and shows how long it
-   took. To **reset** the round, delete the keys `cardwise:*` in the Upstash console (Data
+   - *(optional)* `CARDWISE_CAP` = how many people get access (defaults to `100`; set it to
+     `2` to quickly test the "closed" state, or any number for a bigger round)
+3. **Redeploy.** The counter (`X / <cap> spots claimed`) now appears, spots are consumed as
+   people use the AI lookup, and once the cap is reached the feature closes and shows how long
+   it took. To **reset** the round, delete the keys `cardwise:*` in the Upstash console (Data
    Browser).
 
 > Leave these two vars blank to keep the gate **off** — the app works the same, just without

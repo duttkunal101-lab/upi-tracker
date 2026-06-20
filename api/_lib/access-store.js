@@ -20,7 +20,12 @@
  *   cardwise:launchAt  STR   timestamp (ms) of the first claim
  * ========================================================================== */
 
-export const CAP = 100;
+/* The early-access limit. Override with the CARDWISE_CAP env var (e.g. set it
+ * to 2 for quick testing, 500 for a bigger round); defaults to 100. */
+export const CAP = (() => {
+  const n = parseInt(process.env.CARDWISE_CAP, 10);
+  return Number.isFinite(n) && n > 0 ? n : 100;
+})();
 
 const URL = process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
