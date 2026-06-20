@@ -62,6 +62,32 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  /* ----------------------- card visual building blocks ------------------- */
+  const CONTACTLESS = '<svg class="cv-wifi" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.82)" stroke-width="2" stroke-linecap="round"><path d="M5 9.5a5 5 0 0 1 0 5"/><path d="M9 6.5a9.5 9.5 0 0 1 0 11"/><path d="M13 3.5a14 14 0 0 1 0 17"/></svg>';
+
+  // Pick the card's payment network from its (possibly multi-) network string.
+  function networkOf(card) {
+    const s = String(card.network || '').toLowerCase();
+    const keys = [['mastercard', 'mc'], ['rupay', 'rupay'], ['visa', 'visa'], ['american express', 'amex'], ['amex', 'amex'], ['diners', 'diners']];
+    let best = '', bestIdx = Infinity;
+    for (const [kw, key] of keys) {
+      const i = s.indexOf(kw);
+      if (i >= 0 && i < bestIdx) { bestIdx = i; best = key; }
+    }
+    return best;
+  }
+
+  function networkMark(card) {
+    switch (networkOf(card)) {
+      case 'visa':   return '<span class="net net--visa">VISA</span>';
+      case 'mc':     return '<span class="net net--mc"><span></span><span></span></span>';
+      case 'rupay':  return '<span class="net net--rupay">RuPay</span>';
+      case 'amex':   return '<span class="net net--amex">AMEX</span>';
+      case 'diners': return '<span class="net net--diners">DINERS</span>';
+      default:       return '';
+    }
+  }
+
   /* ============================ STEP 1: CARDS =========================== */
   function renderCards() {
     const grid = $('#cardGrid');
@@ -80,11 +106,12 @@
         <article class="cardlet ${selected ? 'is-selected' : ''}" data-card="${c.id}">
           <div class="cardlet__check">✓</div>
           <div class="cardlet__visual" style="background:${c.gradient}">
-            <div class="cardlet__chip"></div>
-            ${c.image ? `<img class="cardlet__img" src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)} card" loading="lazy" onerror="this.remove()" />` : ''}
-            ${c.source === 'ai' ? '<span class="cardlet__ai" title="Researched with AI + live web data">AI</span>' : ''}
             <div class="cardlet__issuer">${escapeHtml(c.issuer)}</div>
+            <div class="cardlet__chip"></div>
+            ${CONTACTLESS}
+            ${networkMark(c)}
             <div class="cardlet__name">${escapeHtml(c.name)}</div>
+            ${c.source === 'ai' ? '<span class="cardlet__ai" title="Researched with AI + live web data">AI</span>' : ''}
             <button class="cardlet__info" data-info="${c.id}" title="View details" aria-label="View details">i</button>
           </div>
           <div class="cardlet__body">
@@ -355,7 +382,9 @@
       <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
       <div class="modal__visual" style="background:${c.gradient}">
         <div class="cardlet__chip"></div>
-        ${c.image ? `<img class="modal__img" src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)} card" onerror="this.remove()" />` : ''}
+        ${CONTACTLESS}
+        <div class="cv-number">•••• •••• •••• ••••</div>
+        ${networkMark(c)}
         ${c.source === 'ai' ? '<span class="cardlet__ai">AI</span>' : ''}
       </div>
       <div class="modal__body">

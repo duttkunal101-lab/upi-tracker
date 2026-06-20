@@ -22,10 +22,10 @@ the reasoning, an annual-rewards projection, and tips to manage each card better
 
 1. **Add any card** — pick from the built-in list, or type a card name and hit **Analyze
    with AI**. The card's CVP, reward rates (mapped to the optimizer's taxonomy), fees, caps,
-   management tips and the **official card image** (when one is found) are fetched live, with
-   source links and an "as of" month. The image is **verified server-side** (it must resolve
-   to a real image) and the AI is told to use only the issuer's official art for that exact
-   card — so a wrong/broken image is dropped and the styled card is shown instead.
+   management tips are fetched live, with source links and an "as of" month. Each card renders
+   as a clean, **on-brand visual** built from the card's real colours + issuer palette + the
+   correct **payment-network logo** (Visa/Mastercard/RuPay/Amex/Diners) — always accurate and
+   consistent, with no unreliable fetched photos.
 2. **Pick your merchants** — choose where you spend and set a rough monthly amount.
 3. **Get your strategy** — for every merchant: the best card, the effective reward %, the
    reasoning, runner-ups, and ₹/year. Plus a wallet cheat-sheet, **"Manage your cards
@@ -178,9 +178,9 @@ python3 -m http.server 8000              # http://localhost:8000
   tool. You can switch to `claude-sonnet-4-6` or `claude-haiku-4-5` to trade some quality
   for lower cost (edit the `model` field).
 - **Built-in cards:** add/edit a card object in `assets/js/data.js` (documented inline). Use
-  the same `rewards: { merchant, category, base }` shape — rates are effective % return. Add
-  an optional `image: 'https://…'` field to show that card's real art (it renders over the
-  gradient, with the gradient as the fallback if the image fails to load).
+  the same `rewards: { merchant, category, base }` shape — rates are effective % return. The
+  card visual comes from its `gradient` (or `colors`) + `network`; issuer brand palettes in
+  `data.js` provide an accurate default if none is given.
 - **Merchants / categories:** defined at the top of `assets/js/data.js`. If you add new ones,
   also add their ids to the `MERCHANT_IDS` / `CATEGORY_IDS` lists in `api/analyze-card.js`
   so the AI maps rewards onto them.

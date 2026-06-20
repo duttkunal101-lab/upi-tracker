@@ -436,6 +436,54 @@ function hashString(str) {
   return Math.abs(h);
 }
 
+/* Issuer brand palettes — give every card an accurate, on-brand visual even
+ * when the AI doesn't supply colours. Matched as a substring of the issuer. */
+const ISSUER_BRANDS = {
+  'hdfc': ['#004c8f', '#01233f'],
+  'sbi': ['#22409a', '#4b1f6e'],
+  'icici': ['#ad2b30', '#f0651f'],
+  'axis': ['#97144d', '#4f0a29'],
+  'american express': ['#016fd0', '#013c72'],
+  'amex': ['#016fd0', '#013c72'],
+  'kotak': ['#d51c29', '#6e0d14'],
+  'hsbc': ['#db0011', '#7a0009'],
+  'idfc': ['#9a1f40', '#45091d'],
+  'standard chartered': ['#0a9b8e', '#0473ea'],
+  'rbl': ['#9c1d26', '#4a0d12'],
+  'indusind': ['#8a1538', '#45091d'],
+  'au ': ['#5b2a86', '#a01f5b'],
+  'yes bank': ['#0a3d91', '#011a52'],
+  'citi': ['#003a70', '#1666a8'],
+  'federal': ['#00694e', '#01382a'],
+  'onecard': ['#141414', '#2e2e2e'],
+  'amazon': ['#232f3e', '#0f1722'],
+};
+const DEFAULT_BRAND = ['#34344a', '#1c1c2a'];
+
+function darken(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.round(r * (1 - amt)); g = Math.round(g * (1 - amt)); b = Math.round(b * (1 - amt));
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function brandFor(issuer) {
+  const s = String(issuer || '').toLowerCase();
+  for (const [k, v] of Object.entries(ISSUER_BRANDS)) if (s.includes(k)) return v;
+  return DEFAULT_BRAND;
+}
+
+/* Build an on-brand gradient: prefer the card's real colours, then the issuer
+ * brand palette, then a neutral default. */
+function gradientFor(card) {
+  const cols = (Array.isArray(card.colors) ? card.colors : [])
+    .filter((c) => /^#[0-9a-f]{6}$/i.test(c));
+  if (cols.length >= 2) return `linear-gradient(135deg, ${cols[0]} 0%, ${cols[1]} 100%)`;
+  if (cols.length === 1) return `linear-gradient(135deg, ${cols[0]} 0%, ${darken(cols[0], 0.5)} 100%)`;
+  const [c1, c2] = brandFor(card.issuer);
+  return `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
+}
+
 /**
  * Register a card discovered at runtime (e.g. from the AI backend) so it flows
  * through the same optimizer and UI as the built-in cards. Idempotent by id.
@@ -443,9 +491,9 @@ function hashString(str) {
  */
 function registerCard(card) {
   if (!card || !card.id) return null;
-  const gradient = card.gradient || AI_GRADIENTS[hashString(card.id) % AI_GRADIENTS.length];
+  const gradient = card.gradient || gradientFor(card);
   const stored = {
-    bestFor: [], notes: [], tips: [], sources: [], image: '',
+    bestFor: [], notes: [], tips: [], sources: [], colors: [], network: '',
     ...card,
     gradient,
     rewards: {

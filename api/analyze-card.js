@@ -15,25 +15,6 @@
 
 import { kvConfigured, claimSpot, recordSearch } from './_lib/access-store.js';
 
-/* Verify an image URL actually resolves to an image before we show it — this is
- * what stops broken / wrong / placeholder links from rendering. We'd rather
- * show the clean fallback card than the wrong image. */
-async function verifyImage(url) {
-  if (!url) return false;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 4000);
-  try {
-    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal,
-      headers: { 'User-Agent': 'CardWise/1.0 (+https://github.com/duttkunal101-lab/upi-tracker)' } });
-    const ct = (res.headers.get('content-type') || '').toLowerCase();
-    return res.ok && ct.startsWith('image/');
-  } catch (_) {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /* The optimizer's fixed taxonomy. The model must map rewards onto these ids. */
 const MERCHANT_IDS = [
   'amazon', 'flipkart', 'myntra', 'nykaa', 'ajio', 'tatacliq', 'tataneu',
@@ -98,7 +79,7 @@ before or after. The JSON must match this exact shape:
   "name": "Exact official card name",
   "issuer": "Issuing bank/brand",
   "network": "Visa | Mastercard | RuPay | American Express | Diners Club",
-  "imageUrl": "https direct link to the OFFICIAL card-art image if you find one, else omit this field",
+  "colors": ["#0a3d91", "#13294e"],
   "annualFee": <number, rupees, 0 if lifetime free>,
   "feeNote": "Short fee note incl. waiver, e.g. '₹500 (waived above ₹2L/yr spend)'",
   "rewardUnit": "Cashback | Reward Points | NeuCoins | EDGE Miles | Membership Rewards | ...",
@@ -125,12 +106,10 @@ CRITICAL RULES:
   "merchant" only when the card singles out that specific merchant; otherwise use "category".
 - Omit merchants/categories the card doesn't reward specially — don't pad with the base rate.
 - If you genuinely cannot identify the card, return {"error":"Could not identify this card. Please check the name."} instead.
-- "imageUrl": include ONLY if you found the official card-art image for THIS EXACT card as a
-  direct https image link, strongly preferably on the ISSUER'S OWN official website domain
-  (e.g. hdfcbank.com, sbicard.com), ending in .png/.jpg/.jpeg/.webp. Do NOT use blog,
-  aggregator, marketplace or stock-photo images, and do NOT use a different card's image. If
-  you are not fully confident it is the correct card's official image, OMIT the field — we
-  would rather show no image than the wrong one.
+- "colors": give 1–2 hex colours that match the card's ACTUAL physical colour scheme so we can
+  render an on-brand card visual (e.g. a black metal card -> ["#111111","#2b2b2b"]; a deep-blue
+  card -> ["#0a3d91","#13294e"]; a teal card -> ["#0f766e","#0b4f4a"]). Best-effort and optional
+  — omit if you're unsure. Do NOT return any image URLs.
 - Output ONLY the JSON object.`;
 
 /* Pull the JSON object out of the model's final text, defensively. */
@@ -175,16 +154,19 @@ function normalizeCard(raw, fallbackName) {
   const base = Number(raw?.rewards?.base);
   const arr = (v) => Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 6) : [];
 
-  // Only accept a real https image link (no mixed-content, no data/SVG payloads).
-  const rawImg = String(raw.imageUrl || '').trim();
-  const image = /^https:\/\/[^\s"'<>]+$/i.test(rawImg) && rawImg.length <= 500 ? rawImg : '';
+  // 1–2 brand colours for an on-brand card visual (no fetched photos).
+  const colors = (Array.isArray(raw.colors) ? raw.colors : [])
+    .map((c) => String(c).trim())
+    .map((c) => (c.startsWith('#') ? c : '#' + c))
+    .filter((c) => /^#[0-9a-fA-F]{6}$/.test(c))
+    .slice(0, 2);
 
   return {
     id: `ai-${slug}`,
     name: String(raw.name || fallbackName).slice(0, 80),
     issuer: String(raw.issuer || 'Unknown issuer').slice(0, 60),
     network: String(raw.network || '').slice(0, 40),
-    image,
+    colors,
     annualFee: Number.isFinite(Number(raw.annualFee)) ? Number(raw.annualFee) : 0,
     feeNote: String(raw.feeNote || '').slice(0, 120) || '—',
     rewardUnit: String(raw.rewardUnit || 'Reward').slice(0, 40),
@@ -302,10 +284,6 @@ export default async function handler(req, res) {
         error: 'Could not find publicly available CVP details for that card. CardWise only recommends based on public information.',
       });
     }
-
-    // Only show the image if it actually resolves to an image — otherwise drop
-    // it so we never render a broken or wrong picture (fallback card is used).
-    if (card.image && !(await verifyImage(card.image))) card.image = '';
 
     CACHE.set(key, { card, at: Date.now() });
     return res.status(200).json({ card, cached: false, access });
