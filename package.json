@@ -1,0 +1,17 @@
+{
+  "name": "cardwise",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CardWise — AI-powered credit card optimizer agent. Static frontend + a serverless function that analyzes any Indian card with Claude + live web search.",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0"
+  }
+}

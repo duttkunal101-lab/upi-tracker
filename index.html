@@ -36,19 +36,19 @@
           <span class="pill">Your AI-powered wallet strategist</span>
           <h1 class="hero__title">Swipe the <span class="grad-text">right card</span>,<br />every single time.</h1>
           <p class="hero__sub">
-            Tell CardWise which credit cards you own and where you spend. It reads each card's
-            value proposition and reward program, then tells you exactly which card to use at every
-            merchant — so you never leave cashback on the table.
+            Add <strong>any</strong> credit card issued in India and where you spend. CardWise uses AI
+            with live web data to read each card's latest value proposition and reward program, then
+            tells you exactly which card to use at every merchant — so you never leave rewards behind.
           </p>
           <div class="hero__cta">
             <button class="btn btn--primary btn--lg" data-action="start">Optimize my wallet →</button>
-            <span class="hero__note">Free · No sign-up · Runs entirely in your browser</span>
+            <span class="hero__note">Free · No sign-up · Your spends never leave your browser</span>
           </div>
 
           <div class="stats">
-            <div class="stat"><strong id="statCards">16</strong><span>cards analysed</span></div>
+            <div class="stat"><strong>∞</strong><span>cards via AI</span></div>
             <div class="stat"><strong id="statMerchants">27</strong><span>merchants</span></div>
-            <div class="stat"><strong>100%</strong><span>private</span></div>
+            <div class="stat"><strong id="statCards">16</strong><span>built-in instantly</span></div>
           </div>
         </div>
 
@@ -64,8 +64,8 @@
         <div class="how__grid">
           <div class="how__step">
             <span class="how__num">1</span>
-            <h3>Add your cards</h3>
-            <p>Pick the credit cards in your wallet. CardWise loads each card's CVP, reward rates, caps and exclusions.</p>
+            <h3>Add any card</h3>
+            <p>Pick from popular cards, or type any Indian card — AI researches its latest CVP, reward rates, caps and exclusions live.</p>
           </div>
           <div class="how__step">
             <span class="how__num">2</span>
@@ -96,9 +96,9 @@
       <div class="step is-active" data-step="cards">
         <div class="step__head">
           <h2>Which credit cards do you own?</h2>
-          <p>Select all the cards in your wallet. Tap a card to view its value proposition.</p>
+          <p>Select from popular cards below, or type <strong>any</strong> Indian card and let AI analyze it live.</p>
         </div>
-        <input type="search" class="search" id="cardSearch" placeholder="Search cards, e.g. HDFC, Amazon, travel…" autocomplete="off" />
+        <input type="search" class="search" id="cardSearch" placeholder="Search or type any card, e.g. HDFC Diners Black, Axis Atlas, IDFC…" autocomplete="off" />
         <div class="card-grid" id="cardGrid"></div>
         <div class="step__footer">
           <span class="muted" id="cardCount">0 cards selected</span>
@@ -135,9 +135,9 @@
 
   <footer class="footer">
     <p>
-      <strong>CardWise</strong> · Reward rates are indicative and based on publicly published programs.
-      Issuers revise rewards, caps &amp; exclusions frequently — always confirm current terms with your bank.
-      This tool offers guidance, not financial advice.
+      <strong>CardWise</strong> · Reward rates are indicative — built-in cards are curated, and any card you add is
+      researched by AI from public web sources and may contain errors. Issuers revise rewards, caps &amp; exclusions
+      frequently — always confirm current terms with your bank. This tool offers guidance, not financial advice.
     </p>
   </footer>
 
@@ -149,6 +149,7 @@
 
   <script src="assets/js/data.js"></script>
   <script src="assets/js/optimizer.js"></script>
+  <script src="assets/js/ai.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
 </html>

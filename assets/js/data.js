@@ -412,9 +412,53 @@ const CARDS = [
   },
 ];
 
+/* Tag the curated cards so the UI can distinguish them from AI-researched ones. */
+CARDS.forEach((c) => { c.source = 'builtin'; });
+
 /* Quick lookup maps */
 const MERCHANT_BY_ID = Object.fromEntries(MERCHANTS.map((m) => [m.id, m]));
 const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c]));
 
+/* A palette of gradients for AI-researched cards (which arrive without one),
+ * picked deterministically from the card id so the same card looks consistent. */
+const AI_GRADIENTS = [
+  'linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)',
+  'linear-gradient(135deg, #0f766e 0%, #115e59 100%)',
+  'linear-gradient(135deg, #b45309 0%, #7c2d12 100%)',
+  'linear-gradient(135deg, #be123c 0%, #4c0519 100%)',
+  'linear-gradient(135deg, #1d4ed8 0%, #1e1b4b 100%)',
+  'linear-gradient(135deg, #475569 0%, #1e293b 100%)',
+];
+
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/**
+ * Register a card discovered at runtime (e.g. from the AI backend) so it flows
+ * through the same optimizer and UI as the built-in cards. Idempotent by id.
+ * Returns the stored card object.
+ */
+function registerCard(card) {
+  if (!card || !card.id) return null;
+  const gradient = card.gradient || AI_GRADIENTS[hashString(card.id) % AI_GRADIENTS.length];
+  const stored = {
+    bestFor: [], notes: [], tips: [], sources: [],
+    ...card,
+    gradient,
+    rewards: {
+      merchant: (card.rewards && card.rewards.merchant) || {},
+      category: (card.rewards && card.rewards.category) || {},
+      base: (card.rewards && typeof card.rewards.base === 'number') ? card.rewards.base : 0.5,
+    },
+    source: card.source || 'ai',
+  };
+  if (!CARD_BY_ID[stored.id]) CARDS.push(stored);
+  CARD_BY_ID[stored.id] = stored;
+  return stored;
+}
+
 /* Expose globally (no module bundler needed) */
-window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID };
+window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID, registerCard };

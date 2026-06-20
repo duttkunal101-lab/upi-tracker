@@ -1,58 +1,54 @@
-# 💳 CardWise — Credit Card Optimizer Agent
+# 💳 CardWise — AI Credit Card Optimizer Agent
 
 **Swipe the right card, every single time.**
 
-CardWise is a web app that tells you **which of your credit cards to use at every
-merchant** to maximise rewards. You add the cards in your wallet and the
-merchants you spend at; CardWise reads each card's value proposition (CVP) and
-reward program, then computes the single best card for each merchant — with the
-reward rate, the reasoning, and an estimated annual-rewards projection.
+CardWise tells you **which of your credit cards to use at every merchant** to maximise
+rewards. Add **any** credit card issued in India — CardWise uses **Claude (Opus 4.8) with
+live web search** to read that card's *latest* value proposition (CVP), reward program,
+fees and caps, then computes the single best card for each merchant, with the reward rate,
+the reasoning, an annual-rewards projection, and tips to manage each card better.
 
-It's a **zero-build static web app** (HTML + CSS + vanilla JS, no dependencies),
-so it runs entirely in the browser, keeps all your data on your device, and
-deploys publicly in a couple of clicks.
+- **16 popular cards built in** — instant, free, offline.
+- **Any other card → researched on demand by AI** with current, web-sourced terms.
+- A tiny **serverless backend** keeps your Anthropic API key private; results are cached so
+  repeat lookups are instant and cheap.
 
-> Built for the Indian credit-card market (HDFC, SBI, ICICI, Axis, Amex, Kotak,
-> HSBC, IDFC FIRST, Standard Chartered & co.).
+> Built for the Indian credit-card market (HDFC, SBI, ICICI, Axis, Amex, Kotak, HSBC,
+> IDFC FIRST, Standard Chartered, Diners, RuPay, and anything else you type).
 
 ---
 
 ## ✨ What it does
 
-- **Add your cards** — pick from a curated database of 16 popular cards. Tap any
-  card to see its CVP, reward rates, annual fee, caps and exclusions.
-- **Pick your merchants** — choose where you spend (Amazon, Swiggy, fuel, bills,
-  travel…) and set a rough monthly amount for a personalised projection.
-- **Get your strategy** — for every merchant you get:
-  - the **single best card** to use, with the effective reward %,
-  - a plain-English **reason** ("5% cashback on Amazon", "category bonus", …),
-  - the **runner-up cards**, and
-  - an estimated **₹/year** you'll earn.
-- **Wallet summary** — a simplified "use this card for these merchants" cheat sheet.
-- **Smart upgrade ideas** — surfaces cards you *don't* own that would beat your
-  current best at a merchant, and how much extra you'd earn per year.
-- **Private & persistent** — everything runs client-side; selections are saved to
-  `localStorage`, nothing is sent anywhere.
+1. **Add any card** — pick from the built-in list, or type a card name and hit **Analyze
+   with AI**. The card's CVP, reward rates (mapped to the optimizer's taxonomy), fees, caps
+   and management tips are fetched live, with source links and an "as of" month.
+2. **Pick your merchants** — choose where you spend and set a rough monthly amount.
+3. **Get your strategy** — for every merchant: the best card, the effective reward %, the
+   reasoning, runner-ups, and ₹/year. Plus a wallet cheat-sheet, **"Manage your cards
+   better"** tips, and **smart upgrade ideas**.
+
+Your selected cards and spends stay in your browser (`localStorage`). Only the **card name**
+you ask about is sent to the backend for analysis.
 
 ---
 
-## 🧠 How the optimization works
+## 🧠 Architecture
 
-Each card stores its rewards as an **effective return %** (reward points and miles
-are pre-converted to rupee value), so every card is compared apples-to-apples.
+```
+Browser (static, GitHub-Pages-able)                Serverless (Vercel/Netlify/Cloudflare)
+┌─────────────────────────────────────┐            ┌──────────────────────────────────────┐
+│ index.html + assets/js/*            │            │ /api/analyze-card.js                  │
+│  • optimizer engine (merchant>cat>  │  POST {name}│  • Claude Opus 4.8 + web_search       │
+│    base, effective % return)        │ ─────────► │  • returns a structured card profile  │
+│  • built-in 16-card database        │ ◄───────── │  • validates → optimizer taxonomy     │
+│  • AI client + localStorage cache   │   {card}   │  • caches + rate-limits (best-effort) │
+└─────────────────────────────────────┘            └──────────────────────────────────────┘
+```
 
-For a given card at a given merchant, the engine resolves the rate by priority:
-
-1. **Merchant override** — co-branded / accelerated rate (e.g. Swiggy HDFC → 10% on Swiggy)
-2. **Category bonus** — e.g. HSBC Live+ → 10% on the *Dining* category
-3. **Base rate** — the "everything else" rate
-
-It then ranks every owned card per merchant (highest reward wins; ties break
-toward the lower annual fee), multiplies by your monthly spend for the projection,
-and aggregates everything into your wallet strategy.
-
-See [`assets/js/optimizer.js`](assets/js/optimizer.js) for the full engine and
-[`assets/js/data.js`](assets/js/data.js) for the card/merchant database.
+The model returns rewards as **effective % return** (points/miles pre-converted to rupee
+value) mapped onto the app's fixed merchant/category ids, so AI-researched cards drop
+straight into the same optimizer as the built-in ones.
 
 ---
 
@@ -60,118 +56,97 @@ See [`assets/js/optimizer.js`](assets/js/optimizer.js) for the full engine and
 
 ```
 upi-tracker/
-├── index.html                  # App shell + all screens (landing, wizard, results)
+├── index.html                  # App shell + all screens
 ├── assets/
 │   ├── css/styles.css          # All styling (hand-written, no framework)
 │   └── js/
-│       ├── data.js             # Card + merchant database (edit this to add cards)
+│       ├── data.js             # Built-in card/merchant DB + runtime card registry
 │       ├── optimizer.js        # Pure optimization engine
-│       └── app.js              # UI controller (navigation, rendering, persistence)
-└── .github/workflows/deploy.yml  # One-click GitHub Pages deployment
+│       ├── ai.js               # Frontend AI client (calls the backend, caches results)
+│       └── app.js              # UI controller
+├── api/
+│   └── analyze-card.js         # Serverless function: Claude + web search → card profile
+├── package.json                # Backend dependency (@anthropic-ai/sdk)
+├── vercel.json                 # Function config (60s timeout for web search)
+└── .github/workflows/deploy.yml  # Optional GitHub Pages deploy (built-in cards only)
 ```
+
+---
+
+## 🚀 Deploy it publicly (recommended: Vercel)
+
+The AI feature needs a server to keep your API key private, so deploy to a host that runs
+serverless functions. **Vercel** is the simplest:
+
+1. Create a free account at [vercel.com](https://vercel.com) and **Import** this GitHub repo
+   (or run `npx vercel` from the project folder).
+2. Framework preset: **Other**. No build command needed — Vercel serves the static files and
+   auto-detects `/api/*` as serverless functions.
+3. Add an **Environment Variable**:
+   - **Name:** `ANTHROPIC_API_KEY`
+   - **Value:** your key from [console.anthropic.com](https://console.anthropic.com) → API Keys
+4. **Deploy.** You get a public `https://<project>.vercel.app` URL where *any card* works.
+
+> **Netlify / Cloudflare Pages** work too — put the function under their Functions directory
+> and set the same `ANTHROPIC_API_KEY` env var. The frontend calls `/api/analyze-card`
+> relative to its own origin.
+
+### ⚠️ Before you go live — protect your API key (important)
+
+`/api/analyze-card` is **public once deployed**, and each call spends your Anthropic credits.
+
+- **Set a monthly spend limit** on the key in the Anthropic Console (Billing → Limits).
+- The function already does best-effort **input validation, caching, and per-IP rate
+  limiting** — but serverless instances are ephemeral, so for real traffic add a durable
+  rate limiter / KV cache and a WAF (e.g. Cloudflare in front).
+- Built-in card lookups and the whole optimizer are **free** (no API call) — only the
+  "Analyze with AI" path costs tokens, and cached cards are free on repeat.
 
 ---
 
 ## ▶️ Run it locally
 
-It's just static files — no build, no `npm install`. Any static server works:
+**Full app (with AI):** use the Vercel CLI so the `/api` function runs locally.
 
 ```bash
-# Option A — Python (preinstalled on most machines)
-python3 -m http.server 8000
-
-# Option B — Node
-npx serve .
+npm install
+export ANTHROPIC_API_KEY="sk-ant-..."   # Windows: set ANTHROPIC_API_KEY=...
+npx vercel dev                           # serves the site + /api on http://localhost:3000
 ```
 
-Then open **http://localhost:8000**. (You can also just double-click
-`index.html`, though a local server is recommended.)
+**Static only (built-in 16 cards, no AI):** any static server works — the "Analyze with AI"
+button will simply report that the backend isn't available.
+
+```bash
+python3 -m http.server 8000              # http://localhost:8000
+```
 
 ---
 
-## 🚀 Launch it publicly (so anyone can use it)
+## 🔧 Configuration & customisation
 
-### Option 1 — GitHub Pages (recommended, free, included)
-
-This repo ships a deploy workflow at `.github/workflows/deploy.yml`.
-
-1. Push this code to the **`main`** branch of your GitHub repo.
-2. Go to **Settings → Pages → Build and deployment** and set
-   **Source = "GitHub Actions"**.
-3. The workflow runs automatically (or trigger it from the **Actions** tab →
-   *Deploy CardWise to GitHub Pages* → *Run workflow*).
-4. Your site goes live at:
-
-   ```
-   https://<your-username>.github.io/upi-tracker/
-   ```
-
-   For this repo that's **https://duttkunal101-lab.github.io/upi-tracker/**.
-
-> Prefer no workflow? You can instead pick **Source = "Deploy from a branch"**,
-> choose your branch and the `/ (root)` folder — it works because the site is
-> static files at the repo root.
-
-### Option 2 — Netlify
-
-1. [app.netlify.com](https://app.netlify.com) → **Add new site → Import from Git**
-   (or drag-and-drop the project folder onto the dashboard).
-2. **Build command:** *(leave empty)* · **Publish directory:** `.`
-3. Deploy → you get a public `*.netlify.app` URL instantly.
-
-### Option 3 — Vercel
-
-1. [vercel.com/new](https://vercel.com/new) → import the repo.
-2. Framework preset: **Other** · no build command · output dir: `.`
-3. Deploy → public `*.vercel.app` URL.
-
-### Option 4 — Cloudflare Pages
-
-1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**.
-2. No build command · output dir `/`. Deploy.
-
-> Want a custom domain (e.g. `cardwise.app`)? All four hosts let you add one for
-> free under their domain settings once the site is live.
-
----
-
-## 🔧 Customising the card database
-
-Adding a card is a single object in [`assets/js/data.js`](assets/js/data.js):
-
-```js
-{
-  id: 'my-card',
-  name: 'My Card',
-  issuer: 'Some Bank',
-  network: 'Visa',
-  annualFee: 999,
-  feeNote: '₹999 (waived above ₹2L/yr spend)',
-  rewardUnit: 'Cashback',
-  gradient: 'linear-gradient(135deg, #123 0%, #456 100%)', // the card visual
-  cvp: 'One-line value proposition shown on the card.',
-  bestFor: ['Tag 1', 'Tag 2'],
-  rewards: {
-    merchant: { amazon: 5, swiggy: 4 }, // accelerated, by merchant id
-    category: { 'food-delivery': 5 },   // category bonus, by category id
-    base: 1,                            // everything-else rate
-  },
-  caps: 'Short note on monthly caps / exclusions.',
-  notes: ['Anything worth flagging in the detail modal.'],
-}
-```
-
-Merchant and category ids must match those defined at the top of `data.js`.
+- **Model:** `api/analyze-card.js` uses `claude-opus-4-8` with the `web_search_20260209`
+  tool. You can switch to `claude-sonnet-4-6` or `claude-haiku-4-5` to trade some quality
+  for lower cost (edit the `model` field).
+- **Built-in cards:** add/edit a card object in `assets/js/data.js` (documented inline). Use
+  the same `rewards: { merchant, category, base }` shape — rates are effective % return.
+- **Merchants / categories:** defined at the top of `assets/js/data.js`. If you add new ones,
+  also add their ids to the `MERCHANT_IDS` / `CATEGORY_IDS` lists in `api/analyze-card.js`
+  so the AI maps rewards onto them.
+- **Caching:** AI cards are cached in the browser (`localStorage`) and in the function's
+  in-memory map. For a shared, durable cache across users, plug in a KV store (Vercel KV /
+  Upstash) in `api/analyze-card.js`.
 
 ---
 
 ## ⚠️ Disclaimer
 
-Reward rates are **indicative**, based on publicly published programs, and meant
-for guidance only. Banks revise rewards, caps and exclusions frequently — always
-confirm current terms with your issuer. This tool offers guidance, **not financial
-advice**.
+Reward rates are **indicative**. Built-in cards are curated; any card you add is **researched
+by AI from public web sources and may contain errors or be out of date**. Issuers revise
+rewards, caps and exclusions frequently — always confirm current terms with your bank. This
+tool offers guidance, **not financial advice**.
 
 ---
 
-Made with vanilla HTML/CSS/JS. No tracking, no backend, no dependencies.
+Made with vanilla HTML/CSS/JS on the frontend and one small serverless function on the back.
+No tracking, no accounts.
