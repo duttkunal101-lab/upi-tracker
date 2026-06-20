@@ -28,6 +28,10 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* The `hidden` attribute must always win, even over class-based display rules
+ * like `.modal { display: grid }` or `.btn { display: inline-flex }`. */
+[hidden] { display: none !important; }
+
 html { scroll-behavior: smooth; }
 
 body {
