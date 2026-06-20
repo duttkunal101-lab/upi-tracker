@@ -498,6 +498,21 @@ body {
 .toast--success { border-color: rgba(40,224,168,0.5); }
 .toast--error { border-color: rgba(255,107,138,0.5); }
 
+/* early-access counter + time tracker */
+.ea-banner {
+  background: linear-gradient(135deg, rgba(255,209,102,0.10), rgba(109,94,252,0.10));
+  border: 1px solid rgba(255,209,102,0.28); border-radius: var(--radius);
+  padding: 0.85rem 1.1rem; margin-bottom: 1.2rem;
+}
+.ea-banner--full { background: linear-gradient(135deg, rgba(255,107,138,0.10), rgba(109,94,252,0.08)); border-color: rgba(255,107,138,0.30); }
+.ea-banner__row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.ea-banner__main { font-weight: 700; font-size: 0.95rem; }
+.ea-banner__main strong { color: var(--gold); }
+.ea-banner__sub { font-size: 0.82rem; color: var(--muted); }
+.ea-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); margin-top: 0.6rem; overflow: hidden; }
+.ea-bar__fill { height: 100%; border-radius: 999px; background: linear-gradient(100deg, var(--gold), var(--primary-2)); transition: width 0.5s var(--ease); }
+.ea-banner--full .ea-bar__fill { background: linear-gradient(100deg, var(--danger), var(--primary-2)); }
+
 /* reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

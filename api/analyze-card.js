@@ -13,6 +13,8 @@
  * helpers below can be unit-tested without the dependency installed.
  * ========================================================================== */
 
+import { kvConfigured, claimSpot } from './_lib/access-store.js';
+
 /* The optimizer's fixed taxonomy. The model must map rewards onto these ids. */
 const MERCHANT_IDS = [
   'amazon', 'flipkart', 'myntra', 'nykaa', 'ajio', 'tatacliq', 'tataneu',
@@ -52,6 +54,14 @@ Given a credit card name, use the web_search tool to find the LATEST, currently-
 reward program, customer value proposition (CVP), annual fee, caps and exclusions for that
 specific card from reliable sources (the issuing bank's site, reputable card-comparison sites).
 Prefer the most recent information; reward programs change often.
+
+GROUNDING (non-negotiable): Base every part of the profile STRICTLY on the card's publicly
+available CVP and reward terms that you actually find via web_search on authoritative public
+sources — the issuer's official website first, then reputable public card-information sites.
+Do NOT rely on memory, do NOT assume, and do NOT include undocumented or "rumoured" perks.
+Every reward rate you output must be supported by a public source you found. Put the real
+source URLs you used in "sources" (at least one). If you cannot find public information for
+this exact card, return {"error":"..."} — never guess.
 
 Then return your answer as a SINGLE JSON object and NOTHING else — no markdown fences, no prose
 before or after. The JSON must match this exact shape:
@@ -171,10 +181,34 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Please enter a valid card name (2–80 characters).' });
   }
 
+  // ---- Early-access gate ("first 100 people"): claim a spot before serving --
+  // A spot is consumed the moment someone uses the AI feature (cached or not),
+  // deduped per browser via clientId. Disabled (open) when KV isn't configured.
+  const clientId = (body.clientId || '').toString().slice(0, 100);
+  let access = { configured: false };
+  if (kvConfigured()) {
+    if (!clientId) {
+      return res.status(400).json({ error: 'Missing client id.' });
+    }
+    try {
+      access = await claimSpot(clientId);
+      if (access.full && !access.already && !access.granted) {
+        return res.status(403).json({
+          error: `Early access is full — all ${access.cap || 100} spots have been claimed.`,
+          access,
+        });
+      }
+    } catch (e) {
+      // Fail open so a transient datastore error never blocks the feature.
+      console.error('KV claim failed (fail-open):', e?.message || e);
+      access = { configured: true, error: true };
+    }
+  }
+
   const key = name.toLowerCase().replace(/\s+/g, ' ');
   const cached = CACHE.get(key);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return res.status(200).json({ card: cached.card, cached: true });
+    return res.status(200).json({ card: cached.card, cached: true, access });
   }
 
   try {
@@ -220,9 +254,15 @@ export default async function handler(req, res) {
     if (!hasRewards) {
       return res.status(404).json({ error: 'Could not find reliable reward details for that card.' });
     }
+    // Enforce public grounding: a card with no public source is not recommended.
+    if (!card.sources.length) {
+      return res.status(404).json({
+        error: 'Could not find publicly available CVP details for that card. CardWise only recommends based on public information.',
+      });
+    }
 
     CACHE.set(key, { card, at: Date.now() });
-    return res.status(200).json({ card, cached: false });
+    return res.status(200).json({ card, cached: false, access });
   } catch (err) {
     const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
     const msg = status === 429

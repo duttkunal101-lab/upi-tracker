@@ -119,6 +119,10 @@
     const name = (query || '').trim();
     if (!name || state.analyzing) return;
     if (!window.CW_AI) { toast('AI lookup is unavailable here.', 'error'); return; }
+    if (window.CW_ACCESS && window.CW_ACCESS.isFull()) {
+      toast('All early-access spots are taken — the AI lookup is closed.', 'error');
+      return;
+    }
 
     state.analyzing = name;
     renderCards();
@@ -438,6 +442,7 @@
         break;
       case 'start':
         showView('wizard'); showStep('cards'); renderCards(); updateCardFooter();
+        if (window.CW_ACCESS) window.CW_ACCESS.refresh();
         break;
       case 'toCards':   showStep('cards'); break;
       case 'toMerchants':

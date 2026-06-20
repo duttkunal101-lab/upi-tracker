@@ -31,6 +31,17 @@ the reasoning, an annual-rewards projection, and tips to manage each card better
 Your selected cards and spends stay in your browser (`localStorage`). Only the **card name**
 you ask about is sent to the backend for analysis.
 
+**Public-CVP grounding:** the AI is instructed to base every reward rate strictly on the
+card's **publicly available** CVP found via web search (issuer site first, then reputable
+public card-info sites), to cite its sources, and to **refuse rather than guess** — a card
+with no public source is not recommended.
+
+**Early access — "first 100 people" (optional):** you can cap the AI feature to the first 100
+testers. A shared counter shows live progress (`X / 100 spots claimed`) and a **time tracker**
+(when it opened, and once full, how long it took to reach 100). This needs a small free
+datastore — see *Optional: early-access gate* below. With it unconfigured, the gate is off and
+the app stays fully usable.
+
 ---
 
 ## 🧠 Architecture
@@ -63,9 +74,12 @@ upi-tracker/
 │       ├── data.js             # Built-in card/merchant DB + runtime card registry
 │       ├── optimizer.js        # Pure optimization engine
 │       ├── ai.js               # Frontend AI client (calls the backend, caches results)
+│       ├── access.js           # Early-access counter + time tracker + spot gate (client)
 │       └── app.js              # UI controller
 ├── api/
-│   └── analyze-card.js         # Serverless function: Claude + web search → card profile
+│   ├── analyze-card.js         # Serverless: Claude + web search → card profile (+ spot gate)
+│   ├── early-access.js         # Serverless: live early-access stats (GET)
+│   └── _lib/access-store.js    # Shared "first 100" store (Upstash Redis) + stats math
 ├── package.json                # Backend dependency (@anthropic-ai/sdk)
 ├── vercel.json                 # Function config (60s timeout for web search)
 └── .github/workflows/deploy.yml  # Optional GitHub Pages deploy (built-in cards only)
@@ -86,6 +100,25 @@ serverless functions. **Vercel** is the simplest:
    - **Name:** `ANTHROPIC_API_KEY`
    - **Value:** your key from [console.anthropic.com](https://console.anthropic.com) → API Keys
 4. **Deploy.** You get a public `https://<project>.vercel.app` URL where *any card* works.
+
+### Optional: enable the early-access gate ("first 100 people")
+
+Want the AI feature limited to the first 100 testers, with a live counter and time tracker?
+Add a free shared datastore:
+
+1. Create a free database at [console.upstash.com](https://console.upstash.com) → **Create
+   Database** (Redis) → open it → copy the **REST URL** and **REST Token**.
+2. In Vercel → your project → **Settings → Environment Variables**, add:
+   - `UPSTASH_REDIS_REST_URL` = the REST URL
+   - `UPSTASH_REDIS_REST_TOKEN` = the REST token
+3. **Redeploy.** The counter (`X / 100 spots claimed`) now appears, spots are consumed as
+   people use the AI lookup, and once 100 is reached the feature closes and shows how long it
+   took. To **reset** the round, delete the keys `cardwise:*` in the Upstash console (Data
+   Browser).
+
+> Leave these two vars blank to keep the gate **off** — the app works the same, just without
+> the counter/cap. The cap is **per browser** (deduped by a random client id in
+> `localStorage`), which is the practical proxy for "people" without forcing logins.
 
 > **Netlify / Cloudflare Pages** work too — put the function under their Functions directory
 > and set the same `ANTHROPIC_API_KEY` env var. The frontend calls `/api/analyze-card`
