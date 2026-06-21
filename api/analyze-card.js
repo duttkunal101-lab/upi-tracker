@@ -278,10 +278,9 @@ export default async function handler(req, res) {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
-      thinking: { type: 'adaptive' },
-      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 2 }],
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 1 }],
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',

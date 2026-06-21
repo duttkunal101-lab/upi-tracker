@@ -196,9 +196,10 @@ python3 -m http.server 8000              # http://localhost:8000
 
 ## 🔧 Configuration & customisation
 
-- **Model:** `api/analyze-card.js` uses `claude-sonnet-4-6` with the `web_search_20260209`
-  tool (fast, reliable and cost-efficient). Switch to a larger model for more depth, or
-  `claude-haiku-4-5` for the lowest cost (edit the `model` field).
+- **Model:** `api/analyze-card.js` uses `claude-haiku-4-5-20251001` with the `web_search_20260209`
+  tool — the fastest option, chosen so the live lookup finishes inside the serverless timeout.
+  Switch to `claude-sonnet-4-6` for deeper analysis once the function has more time to run (e.g.
+  enable Vercel **Fluid Compute** so the `maxDuration: 60` takes effect). Edit the `model` field.
 - **Built-in cards:** add/edit a card object in `assets/js/data.js` (documented inline). Use
   the same `rewards: { merchant, category, base }` shape — rates are effective % return. The
   card visual comes from its `gradient` (or `colors`) + `network`; issuer brand palettes in
