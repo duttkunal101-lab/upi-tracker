@@ -78,20 +78,31 @@ function rateLimited(ip) {
 
 const SYSTEM_PROMPT = `You are CardWise's research engine — an expert on Indian credit cards.
 
-The user gives you a card name that may be MISSPELLED, abbreviated, or approximate. Using your
-knowledge of the Indian credit-card market, work out the SPECIFIC card they most likely mean and
-return its publicly-known value proposition (CVP), reward program, annual fee, caps and exclusions.
+The user gives you a credit-card name that may be misspelled or approximate. Using ONLY your
+knowledge of the REAL Indian credit-card market, classify the input and respond via "matchType":
 
-BE SMART & FORGIVING ABOUT THE INPUT:
-- Misspelled / approximate / abbreviated -> infer the most likely REAL Indian credit card and
-  analyse THAT, putting the correct official name in "name" (e.g. "hdfc millenia" -> "HDFC Bank
-  Millennia Credit Card"; "axis atlus" -> "Axis Bank Atlas Credit Card"; "au zetta" -> the closest
-  real AU Small Finance Bank card such as "AU Bank Zenith Credit Card").
-- If the input is NOT an Indian credit card — a card issued only outside India, a debit card, a
-  brand with no credit card, a random word or gibberish — do NOT invent one. Return EXACTLY this
-  and nothing else: {"error":"<one warm, helpful sentence asking for an Indian credit card, naming
-  two real examples like 'HDFC Millennia' or 'Axis Atlas'>"}.
-- Only return a card profile when you are reasonably confident the card exists in India.
+1. "exact" — the input clearly names a real Indian credit card (ignore case, spacing, and the
+   words "card"/"credit card"/bank short-forms). Set "resolvedName" to the official name and fill
+   in the full profile.
+
+2. "corrected" — the input is misspelled or partial, but you are confident it refers to ONE
+   specific real Indian credit card. Set "resolvedName" to that official name and fill in its full
+   profile. Choose the NEAREST real card by spelling — never jump to a differently-spelled card.
+   Examples: "hdfc millenia" -> "HDFC Bank Millennia Credit Card"; "au veta" -> "AU Bank Vetta
+   Credit Card"; "axis atlus" -> "Axis Bank Atlas Credit Card". (The app will ask the user to
+   confirm this before showing it.)
+
+3. "notfound" — you cannot confidently match it to any REAL Indian credit card. Set "matchType":
+   "notfound" and a short friendly "message". DO NOT invent, guess, or substitute a card.
+
+4. "notacard" — it's clearly not an Indian credit card (a card issued only outside India, a debit
+   card, a brand with no credit card, or a random word/gibberish). Set "matchType":"notacard" and
+   a warm "message" asking for an Indian credit card, naming two real examples.
+
+CRITICAL: be conservative and accurate. If you are not genuinely confident the card EXISTS in
+India, use "notfound" — never substitute a differently-spelled or invented card. Correct accuracy
+matters far more than always returning a card. (For "au veta", "AU Bank Vetta" is correct; do NOT
+return "AU Zetta" or "AU Zenith".)
 
 GROUNDING & FRESHNESS: base every reward rate on the card's publicly-known terms. Rates are
 INDICATIVE and change often, so set "asOf" to the month your knowledge reflects and gently remind
@@ -109,6 +120,9 @@ Then return your answer as a SINGLE JSON object and NOTHING else — no markdown
 before or after. The JSON must match this exact shape:
 
 {
+  "matchType": "exact | corrected | notfound | notacard",
+  "resolvedName": "the official card name (exact & corrected only)",
+  "message": "one warm, friendly sentence (notfound & notacard only)",
   "id": "kebab-case-unique-id",
   "name": "Exact official card name",
   "issuer": "Issuing bank/brand",
@@ -140,8 +154,8 @@ CRITICAL RULES:
 - Resolution priority the app uses: merchant override > category bonus > base. Put a rate in
   "merchant" only when the card singles out that specific merchant; otherwise use "category".
 - Omit merchants/categories the card doesn't reward specially — don't pad with the base rate.
-- Never invent a card that doesn't exist. If you're not confident it's a real Indian credit card,
-  use the {"error":"..."} form described above so the user can correct their input.
+- Never invent a card. If you're not confident it's a real Indian credit card, use "matchType":
+  "notfound" (or "notacard") with a "message" — do not output a card profile in that case.
 - "issuerDomain": the issuing bank/brand's official website domain only (e.g. "hdfcbank.com",
   "sbicard.com", "axisbank.com") — no path, no https. We use it to show the correct bank logo.
 - "colors": give 1–2 hex colours that match the card's ACTUAL physical colour scheme so we can
@@ -290,7 +304,7 @@ export default async function handler(req, res) {
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: `Identify and return the JSON profile for this Indian credit card: "${name}". If it's misspelled, infer the most likely real card; if it isn't an Indian credit card, return the {"error":"..."} prompt.`,
+        content: `Classify and (if real) profile this Indian credit card input: "${name}". Use matchType exact/corrected/notfound/notacard exactly as instructed — be accurate, never substitute a differently-spelled or invented card.`,
       }],
     });
 
@@ -306,29 +320,39 @@ export default async function handler(req, res) {
 
     const parsed = extractJson(text);
     if (!parsed) {
-      // Be forgiving: ask the user to confirm the name rather than showing a scary error.
       return res.status(200).json({ notice: 'Hmm, I couldn’t read that one. Try the card’s full name, e.g. “HDFC Millennia” or “Axis Atlas”.' });
     }
-    // The model returns {"error":"..."} for non-Indian / non-card / unclear input — surface it
-    // as a friendly prompt (a notice), not a failure.
-    if (parsed.error) {
-      return res.status(200).json({ notice: String(parsed.error).slice(0, 220) });
+
+    const matchType = String(parsed.matchType || (parsed.error ? 'notacard' : '')).toLowerCase();
+
+    // Not an Indian credit card → friendly prompt for a valid one.
+    if (matchType === 'notacard' || parsed.error) {
+      return res.status(200).json({ notice: String(parsed.message || parsed.error || 'That doesn’t look like an Indian credit card. Try one issued in India, e.g. “HDFC Millennia” or “Axis Atlas”.').slice(0, 220) });
+    }
+    // No real card matches → "card not found", ask them to check the spelling.
+    if (matchType === 'notfound') {
+      return res.status(200).json({ notice: String(parsed.message || `I couldn’t find an Indian credit card matching “${name}”. Please double-check the spelling and try again.`).slice(0, 220) });
     }
 
-    const card = normalizeCard(parsed, name);
-    // Need at least some reward signal to be useful — otherwise nudge for a clearer name.
+    const card = normalizeCard(parsed, parsed.resolvedName || name);
+    // Need at least some reward signal to be useful — otherwise treat as not found.
     const hasRewards =
       Object.keys(card.rewards.merchant).length ||
       Object.keys(card.rewards.category).length ||
       card.rewards.base > 0;
     if (!hasRewards) {
-      return res.status(200).json({ notice: 'I couldn’t pin down that card’s rewards. Try its full official name, e.g. “SBI Cashback” or “ICICI Amazon Pay”.' });
+      return res.status(200).json({ notice: `I couldn’t find reliable details for “${name}”. Please check the card’s full official name and try again.` });
     }
 
     // Best-effort: attach the card's photo from Google image search (if configured).
     card.image = await googleCardImage(card.name);
-
     CACHE.set(key, { card, at: Date.now() });
+
+    // Corrected spelling → don't show it yet; ask the user to confirm we got the right card.
+    if (matchType === 'corrected') {
+      return res.status(200).json({ suggestion: parsed.resolvedName || card.name, card, cached: false, access });
+    }
+    // Exact match → return the card directly.
     return res.status(200).json({ card, cached: false, access });
   } catch (err) {
     const status = err?.status && Number.isInteger(err.status) ? err.status : 500;

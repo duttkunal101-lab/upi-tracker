@@ -222,12 +222,54 @@
         if (needsNetworkChoice(card)) openNetworkPicker(card.id, showDetails);
         else showDetails();
       });
+    } else if (result.suggestion && result.card) {
+      // Corrected spelling — confirm with the user before adding anything.
+      agentComplete(() => openSuggestion(result.suggestion, result.card));
     } else if (result.notice) {
-      // Smart, friendly guidance (e.g. not an Indian card) — keep their text so they can tweak it.
+      // Smart, friendly guidance (not found / not an Indian card) — keep their text so they can tweak it.
       agentComplete(() => { renderCards(); toast(result.notice, 'info'); });
     } else {
       agentComplete(() => { renderCards(); toast(result.error, 'error'); });
     }
+  }
+
+  /* "Did you mean …?" — confirm a spelling correction before adding the card. */
+  let pendingSuggestion = null;
+  function openSuggestion(name, card) {
+    pendingSuggestion = card;
+    $('#modalPanel').innerHTML = `
+      <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
+      <div class="modal__visual modal__visual--fb"><div class="fb-hero">🤔 Did you mean…</div></div>
+      <div class="modal__body suggest">
+        <p class="suggest__lead">We couldn't find an exact match for what you typed, but this looks like the closest real card:</p>
+        <div class="suggest__name">${escapeHtml(name)}</div>
+        <p class="suggest__sub">Is this the card you meant?</p>
+        <div class="modal__actions">
+          <button class="btn btn--ghost" data-action="rejectSuggestion">No, let me retype</button>
+          <button class="btn btn--primary" data-action="confirmSuggestion">Yes, that's my card →</button>
+        </div>
+      </div>`;
+    $('#modal').hidden = false;
+  }
+
+  function confirmSuggestion() {
+    const card = pendingSuggestion; pendingSuggestion = null;
+    if (!card || !(window.CW_AI && window.CW_AI.confirmCard)) { closeModal(); return; }
+    const stored = window.CW_AI.confirmCard(card);
+    state.selectedCards.add(stored.id);
+    state.cardQuery = '';
+    const search = $('#cardSearch'); if (search) search.value = '';
+    persist(); renderCards(); updateCardFooter();
+    celebrate();
+    const showDetails = () => openModal(stored.id, { advance: true });
+    if (needsNetworkChoice(stored)) openNetworkPicker(stored.id, showDetails);
+    else showDetails();
+  }
+
+  function rejectSuggestion() {
+    pendingSuggestion = null;
+    closeModal();
+    const search = $('#cardSearch'); if (search) { search.focus(); search.select(); }
   }
 
   function updateCardFooter() {
@@ -869,6 +911,8 @@
       case 'terms': openTerms(); break;
       case 'feedback': openFeedback(); break;
       case 'submitFeedback': submitFeedback(); break;
+      case 'confirmSuggestion': confirmSuggestion(); break;
+      case 'rejectSuggestion': rejectSuggestion(); break;
       case 'closeModal': closeModal(); break;
     }
   }

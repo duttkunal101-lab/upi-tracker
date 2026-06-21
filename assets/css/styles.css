@@ -751,6 +751,15 @@ body {
   .fb-cta .btn { width: 100%; justify-content: center; }
 }
 
+/* ===================== "Did you mean" suggestion ===================== */
+.suggest__lead { color: var(--muted); font-size: 0.95rem; margin-bottom: 1rem; }
+.suggest__name {
+  font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; text-align: center;
+  padding: 0.95rem 1rem; border-radius: var(--radius-sm);
+  background: rgba(109,94,252,0.14); border: 1px solid var(--border-2);
+}
+.suggest__sub { color: var(--muted); font-size: 0.92rem; margin: 0.95rem 0 0.2rem; text-align: center; }
+
 /* reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

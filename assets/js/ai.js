@@ -77,6 +77,11 @@
       return { ok: false, notice: data.notice, access: data.access };
     }
 
+    // Spelling was corrected — hand back the candidate for the user to confirm; don't add it yet.
+    if (data.suggestion && data.card) {
+      return { ok: false, suggestion: data.suggestion, card: data.card, access: data.access };
+    }
+
     if (res.status === 403 && data.access && data.access.full) {
       return { ok: false, full: true, error: data.error || 'Early access is full.', access: data.access };
     }
@@ -89,6 +94,13 @@
     return { ok: true, card: stored, cached: !!data.cached, access: data.access };
   }
 
+  /* Register + cache a card the user has confirmed (after a "did you mean" prompt). */
+  function confirmCard(card) {
+    const stored = registerCard({ ...card, source: 'ai' });
+    cacheCard(stored);
+    return stored;
+  }
+
   loadCached();
-  window.CW_AI = { analyze };
+  window.CW_AI = { analyze, confirmCard };
 })();
