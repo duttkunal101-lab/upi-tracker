@@ -299,7 +299,25 @@
       ${cardUsageBlock(strategy.cardUsage)}
       ${manageBlock(strategy.cardUsage)}
       ${upgradeBlock(upgrades)}
+      ${feedbackBlock()}
     `;
+
+    // Now that they've completed everything, gently suggest feedback (once).
+    if (!feedbackPrompted && !feedbackSubmitted) {
+      feedbackPrompted = true;
+      setTimeout(() => { if (!feedbackSubmitted && $('#modal').hidden) openFeedback(); }, 3800);
+    }
+  }
+
+  function feedbackBlock() {
+    return `
+      <div class="fb-cta">
+        <div class="fb-cta__text">
+          <h3>🎉 You're all set — how did we do?</h3>
+          <p>You're one of our founding testers. Tell us how relevant your strategy was, what's working, and what we should build next.</p>
+        </div>
+        <button class="btn btn--primary" data-action="feedback">Share quick feedback 💬</button>
+      </div>`;
   }
 
   function complianceNote() {
@@ -665,6 +683,88 @@
     setTimeout(() => layer.remove(), 3200);
   }
 
+  /* ===================== FEEDBACK (gamified) ===================== */
+  let fbRating = 0, feedbackPrompted = false, feedbackSubmitted = false;
+  const FB_LIKES = ['Best-card picks', 'The AI analysis', 'Design & UX', 'Speed', 'Easy to use', 'The gamification'];
+  const FB_HINTS = ['', 'Not relevant', 'Somewhat relevant', 'Pretty good', 'Very relevant', 'Spot on! 🎯'];
+
+  function openFeedback() {
+    fbRating = 0;
+    $('#modalPanel').innerHTML = `
+      <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
+      <div class="modal__visual modal__visual--fb"><div class="fb-hero">💬 Help shape CardWise</div></div>
+      <div class="modal__body fb">
+        <p class="fb__lead">You're one of our first testers — thank you! 🙌 A few quick taps and you're done.</p>
+
+        <div class="fb__q">
+          <label>How relevant was your card strategy?</label>
+          <div class="fb-stars" id="fbStars">
+            ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="fb-star" data-fb-star="${n}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}
+          </div>
+          <div class="fb-stars__hint" id="fbStarsHint">Tap a star to rate</div>
+        </div>
+
+        <div class="fb__q">
+          <label>What's working well? <span class="fb__opt">(tap any)</span></label>
+          <div class="fb-chips">
+            ${FB_LIKES.map((l) => `<button type="button" class="fb-chip" data-fb-like="${escapeHtml(l)}">${escapeHtml(l)}</button>`).join('')}
+          </div>
+        </div>
+
+        <div class="fb__q">
+          <label for="fbImprove">What could be better?</label>
+          <textarea id="fbImprove" class="fb-text" rows="2" maxlength="600" placeholder="Anything confusing, missing, or a bit off?"></textarea>
+        </div>
+
+        <div class="fb__q">
+          <label for="fbFeature">A feature you'd love to see? ✨</label>
+          <textarea id="fbFeature" class="fb-text" rows="2" maxlength="600" placeholder="Your idea could be the next thing we build."></textarea>
+        </div>
+
+        <button class="btn btn--primary modal__cta" data-action="submitFeedback">Send feedback →</button>
+        <p class="fb__note">Anonymous — no personal data. It just helps us make CardWise better for everyone.</p>
+      </div>`;
+    $('#modal').hidden = false;
+  }
+
+  function setFbRating(n) {
+    fbRating = n;
+    $$('#fbStars .fb-star').forEach((s) => s.classList.toggle('is-on', Number(s.dataset.fbStar) <= n));
+    const hint = $('#fbStarsHint'); if (hint) hint.textContent = FB_HINTS[n] || 'Tap a star to rate';
+  }
+
+  async function submitFeedback() {
+    const likes = $$('.fb-chip.is-on').map((b) => b.dataset.fbLike);
+    const improve = ($('#fbImprove') ? $('#fbImprove').value : '').trim();
+    const feature = ($('#fbFeature') ? $('#fbFeature').value : '').trim();
+    if (!fbRating && likes.length === 0 && !improve && !feature) {
+      toast('Add a rating or a quick note 🙏', 'error');
+      return;
+    }
+    feedbackSubmitted = true;
+    showFeedbackThanks(); // optimistic — feedback should never feel slow
+    const clientId = (window.CW_ACCESS && window.CW_ACCESS.getClientId) ? window.CW_ACCESS.getClientId() : '';
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: fbRating, likes, improve, feature, clientId }),
+      });
+    } catch (_) { /* best-effort; the thank-you is already shown */ }
+  }
+
+  function showFeedbackThanks() {
+    celebrate();
+    $('#modalPanel').innerHTML = `
+      <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
+      <div class="modal__visual modal__visual--fb"><div class="fb-hero">🙌 Thank you!</div></div>
+      <div class="modal__body fb fb--thanks">
+        <h3>You just helped shape CardWise 💜</h3>
+        <p>Every bit of feedback from our founding testers goes straight into what we build next. You're a legend.</p>
+        <button class="btn btn--primary modal__cta" data-action="closeModal">Done</button>
+      </div>`;
+    $('#modal').hidden = false;
+  }
+
   /* ============================== EVENTS ============================= */
   function bindEvents() {
     // global action buttons (data-action)
@@ -683,6 +783,12 @@
       // network choice for a multi-network card
       const netEl = e.target.closest('[data-pick-network]');
       if (netEl) { chooseNetwork(netEl.dataset.pickNetwork, netEl.dataset.net || ''); return; }
+
+      // feedback: star rating + "what's working" chips
+      const starEl = e.target.closest('[data-fb-star]');
+      if (starEl) { setFbRating(Number(starEl.dataset.fbStar)); return; }
+      const likeEl = e.target.closest('[data-fb-like]');
+      if (likeEl) { likeEl.classList.toggle('is-on'); return; }
 
       // select/deselect a card
       const cardEl = e.target.closest('[data-card]');
@@ -758,6 +864,8 @@
         break;
       }
       case 'terms': openTerms(); break;
+      case 'feedback': openFeedback(); break;
+      case 'submitFeedback': submitFeedback(); break;
       case 'closeModal': closeModal(); break;
     }
   }

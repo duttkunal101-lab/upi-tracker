@@ -46,6 +46,12 @@ data) so you can see demand. This is disclosed in the in-app Terms and a consent
 search box. View it in the Upstash console → Data Browser: `cardwise:searches` (a sorted set —
 most-searched cards) and `cardwise:searchlog` (the recent log).
 
+**Feedback (gamified):** once people see their strategy, a friendly prompt invites them to rate
+how relevant it was (1–5 stars), tap what's working, and suggest improvements or new features.
+When the datastore is configured it's stored anonymously in `cardwise:feedback` (recent entries)
+and `cardwise:feedback:ratings` (a tally by star rating); otherwise it's written to the function
+logs. No personal data is collected.
+
 **Public-CVP grounding:** the AI is instructed to base every reward rate strictly on the
 card's **publicly available** CVP found via web search (issuer site first, then reputable
 public card-info sites), to cite its sources, and to **refuse rather than guess** — a card

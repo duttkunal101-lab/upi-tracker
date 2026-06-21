@@ -140,6 +140,37 @@ export async function recordSearch(name, clientId) {
   }
 }
 
+/**
+ * Store a piece of user feedback (a 1–5 relevance rating + free-text suggestions).
+ * Best-effort and never throws into the request path. No personal data — only
+ * what the user typed, plus an anonymous browser id. Powers a feedback log and a
+ * ratings tally you can read in the Upstash Data Browser:
+ *   cardwise:feedback          LIST  recent feedback entries (JSON)
+ *   cardwise:feedback:ratings  ZSET  rating value -> count
+ */
+export async function recordFeedback(fb) {
+  if (!kvConfigured() || !fb) return false;
+  const txt = (v) => String(v == null ? '' : v).slice(0, 600);
+  const entry = JSON.stringify({
+    rating: Number(fb.rating) || 0,
+    likes: Array.isArray(fb.likes) ? fb.likes.slice(0, 12).map((s) => String(s).slice(0, 40)) : [],
+    working: txt(fb.working),
+    improve: txt(fb.improve),
+    feature: txt(fb.feature),
+    client: String(fb.clientId || '').slice(0, 40),
+    at: Date.now(),
+  });
+  try {
+    await redis('LPUSH', 'cardwise:feedback', entry);
+    await redis('LTRIM', 'cardwise:feedback', 0, 999); // keep the last 1000
+    if (Number(fb.rating) > 0) await redis('ZINCRBY', 'cardwise:feedback:ratings', 1, String(Number(fb.rating)));
+    return true;
+  } catch (e) {
+    console.error('recordFeedback failed (non-fatal):', e?.message || e);
+    return false;
+  }
+}
+
 export async function claimSpot(clientId) {
   if (!kvConfigured()) return { configured: false, cap: CAP, granted: true, already: false, full: false, spot: null };
   const now = Date.now();
