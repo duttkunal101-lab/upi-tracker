@@ -78,18 +78,24 @@ function rateLimited(ip) {
 
 const SYSTEM_PROMPT = `You are CardWise's research engine — an expert on Indian credit cards.
 
-Given a credit card name, use the web_search tool to find the LATEST, currently-published
-reward program, customer value proposition (CVP), annual fee, caps and exclusions for that
-specific card from reliable sources (the issuing bank's site, reputable card-comparison sites).
-Prefer the most recent information; reward programs change often.
+The user gives you a card name that may be MISSPELLED, abbreviated, or approximate. Using your
+knowledge of the Indian credit-card market, work out the SPECIFIC card they most likely mean and
+return its publicly-known value proposition (CVP), reward program, annual fee, caps and exclusions.
 
-GROUNDING (non-negotiable): Base every part of the profile STRICTLY on the card's publicly
-available CVP and reward terms that you actually find via web_search on authoritative public
-sources — the issuer's official website first, then reputable public card-information sites.
-Do NOT rely on memory, do NOT assume, and do NOT include undocumented or "rumoured" perks.
-Every reward rate you output must be supported by a public source you found. Put the real
-source URLs you used in "sources" (at least one). If you cannot find public information for
-this exact card, return {"error":"..."} — never guess.
+BE SMART & FORGIVING ABOUT THE INPUT:
+- Misspelled / approximate / abbreviated -> infer the most likely REAL Indian credit card and
+  analyse THAT, putting the correct official name in "name" (e.g. "hdfc millenia" -> "HDFC Bank
+  Millennia Credit Card"; "axis atlus" -> "Axis Bank Atlas Credit Card"; "au zetta" -> the closest
+  real AU Small Finance Bank card such as "AU Bank Zenith Credit Card").
+- If the input is NOT an Indian credit card — a card issued only outside India, a debit card, a
+  brand with no credit card, a random word or gibberish — do NOT invent one. Return EXACTLY this
+  and nothing else: {"error":"<one warm, helpful sentence asking for an Indian credit card, naming
+  two real examples like 'HDFC Millennia' or 'Axis Atlas'>"}.
+- Only return a card profile when you are reasonably confident the card exists in India.
+
+GROUNDING & FRESHNESS: base every reward rate on the card's publicly-known terms. Rates are
+INDICATIVE and change often, so set "asOf" to the month your knowledge reflects and gently remind
+people to confirm current terms with the issuer.
 
 TONE & COMPLIANCE: write "cvp", "tips" and "notes" in a warm, friendly, human voice — like a
 knowledgeable friend helping someone, not a sales brochure. Be encouraging and conversational
@@ -122,7 +128,7 @@ before or after. The JSON must match this exact shape:
   "caps": "Short note on monthly caps / exclusions",
   "notes": ["0-3 short extra notes worth surfacing"],
   "tips": ["3-5 specific, actionable tips to use & manage THIS card optimally"],
-  "sources": ["url", "url"],
+  "sources": ["official issuer page url(s) you're confident about — else an empty array []"],
   "asOf": "YYYY-MM (month your information reflects)"
 }
 
@@ -134,7 +140,8 @@ CRITICAL RULES:
 - Resolution priority the app uses: merchant override > category bonus > base. Put a rate in
   "merchant" only when the card singles out that specific merchant; otherwise use "category".
 - Omit merchants/categories the card doesn't reward specially — don't pad with the base rate.
-- If you genuinely cannot identify the card, return {"error":"Could not identify this card. Please check the name."} instead.
+- Never invent a card that doesn't exist. If you're not confident it's a real Indian credit card,
+  use the {"error":"..."} form described above so the user can correct their input.
 - "issuerDomain": the issuing bank/brand's official website domain only (e.g. "hdfcbank.com",
   "sbicard.com", "axisbank.com") — no path, no https. We use it to show the correct bank logo.
 - "colors": give 1–2 hex colours that match the card's ACTUAL physical colour scheme so we can
@@ -280,11 +287,10 @@ export default async function handler(req, res) {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
-      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 1 }],
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: `Research and return the JSON profile for this Indian credit card: "${name}".`,
+        content: `Identify and return the JSON profile for this Indian credit card: "${name}". If it's misspelled, infer the most likely real card; if it isn't an Indian credit card, return the {"error":"..."} prompt.`,
       }],
     });
 
@@ -300,26 +306,23 @@ export default async function handler(req, res) {
 
     const parsed = extractJson(text);
     if (!parsed) {
-      return res.status(502).json({ error: 'The analysis came back in an unexpected format. Please try again.' });
+      // Be forgiving: ask the user to confirm the name rather than showing a scary error.
+      return res.status(200).json({ notice: 'Hmm, I couldn’t read that one. Try the card’s full name, e.g. “HDFC Millennia” or “Axis Atlas”.' });
     }
+    // The model returns {"error":"..."} for non-Indian / non-card / unclear input — surface it
+    // as a friendly prompt (a notice), not a failure.
     if (parsed.error) {
-      return res.status(404).json({ error: String(parsed.error).slice(0, 200) });
+      return res.status(200).json({ notice: String(parsed.error).slice(0, 220) });
     }
 
     const card = normalizeCard(parsed, name);
-    // Require at least *some* signal to be useful
+    // Need at least some reward signal to be useful — otherwise nudge for a clearer name.
     const hasRewards =
       Object.keys(card.rewards.merchant).length ||
       Object.keys(card.rewards.category).length ||
       card.rewards.base > 0;
     if (!hasRewards) {
-      return res.status(404).json({ error: 'Could not find reliable reward details for that card.' });
-    }
-    // Enforce public grounding: a card with no public source is not recommended.
-    if (!card.sources.length) {
-      return res.status(404).json({
-        error: 'Could not find publicly available CVP details for that card. CardWise only recommends based on public information.',
-      });
+      return res.status(200).json({ notice: 'I couldn’t pin down that card’s rewards. Try its full official name, e.g. “SBI Cashback” or “ICICI Amazon Pay”.' });
     }
 
     // Best-effort: attach the card's photo from Google image search (if configured).

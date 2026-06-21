@@ -3,13 +3,14 @@
 **Swipe the right card, every single time.**
 
 CardWise tells you **which of your credit cards to use at every merchant** to maximise
-rewards. Add **any** credit card issued in India — CardWise uses **Claude with
-live web search** to read that card's *latest* value proposition (CVP), reward program,
-fees and caps, then computes the single best card for each merchant, with the reward rate,
-the reasoning, an annual-rewards projection, and tips to manage each card better.
+rewards. Add **any** credit card issued in India — CardWise uses **Claude** to read that card's
+publicly-known value proposition (CVP), reward program, fees and caps, then computes the single
+best card for each merchant, with the reward rate, the reasoning, an annual-rewards projection,
+and tips to manage each card better. It's smart about messy input too: it corrects misspelled
+card names and gently prompts you if you enter something that isn't an Indian credit card.
 
 - **16 popular cards built in** — instant, free, offline.
-- **Any other card → researched on demand by AI** with current, web-sourced terms.
+- **Any other card → analysed on demand by AI** from its publicly-known terms.
 - A tiny **serverless backend** keeps your Anthropic API key private; results are cached so
   repeat lookups are instant and cheap.
 
@@ -21,12 +22,13 @@ the reasoning, an annual-rewards projection, and tips to manage each card better
 ## ✨ What it does
 
 1. **Add any card** — pick from the built-in list, or type a card name and hit **Analyze
-   with AI**. The card's CVP, reward rates (mapped to the optimizer's taxonomy), fees, caps,
-   management tips are fetched live, with source links and an "as of" month. Each card shows
-   the **correct bank logo** (from the issuer's domain) and the **payment-network logo**
-   (Visa/Mastercard/RuPay/Amex/Diners) on a clean, on-brand card face. If Google image keys
-   are configured, the card's **actual photo from Google** is shown too — otherwise it falls
-   back to the branded card, so it's always seamless.
+   with AI**. The card's CVP, reward rates (mapped to the optimizer's taxonomy), fees, caps and
+   management tips are analysed by AI, with an "as of" month. Misspelled names are auto-corrected,
+   and non-Indian / unclear inputs get a friendly prompt instead of an error. If the card ships on
+   more than one network you're asked which is yours. Each card shows the **correct bank logo**
+   (from the issuer's domain) and the **payment-network logo** (Visa/Mastercard/RuPay/Amex/Diners)
+   on a clean, on-brand card face. If Google image keys are configured, the card's **actual photo
+   from Google** is shown too — otherwise it falls back to the branded card, so it's always seamless.
 2. **Pick your merchants** — choose where you spend and set a rough monthly amount.
 3. **Get your strategy** — for every merchant: the best card, the effective reward %, the
    reasoning, runner-ups, and ₹/year. Plus a wallet cheat-sheet, **"Manage your cards
@@ -52,10 +54,10 @@ When the datastore is configured it's stored anonymously in `cardwise:feedback` 
 and `cardwise:feedback:ratings` (a tally by star rating); otherwise it's written to the function
 logs. No personal data is collected.
 
-**Public-CVP grounding:** the AI is instructed to base every reward rate strictly on the
-card's **publicly available** CVP found via web search (issuer site first, then reputable
-public card-info sites), to cite its sources, and to **refuse rather than guess** — a card
-with no public source is not recommended.
+**Public-CVP grounding:** the AI is instructed to base every reward rate on the card's
+**publicly-known** CVP and terms, to mark the month its knowledge reflects (`asOf`), to nudge
+you to confirm current terms with the issuer, and to **prompt for a correction rather than
+invent** a card it isn't confident exists in India.
 
 **Early access — "first 100 people" (optional):** you can cap the AI feature to the first 100
 testers. A shared counter shows live progress (`X / 100 spots claimed`) and a **time tracker**
@@ -71,7 +73,7 @@ the app stays fully usable.
 Browser (static, GitHub-Pages-able)                Serverless (Vercel/Netlify/Cloudflare)
 ┌─────────────────────────────────────┐            ┌──────────────────────────────────────┐
 │ index.html + assets/js/*            │            │ /api/analyze-card.js                  │
-│  • optimizer engine (merchant>cat>  │  POST {name}│  • Claude Sonnet 4.6 + web_search     │
+│  • optimizer engine (merchant>cat>  │  POST {name}│  • Claude Sonnet 4.6 (no tools)      │
 │    base, effective % return)        │ ─────────► │  • returns a structured card profile  │
 │  • built-in 16-card database        │ ◄───────── │  • validates → optimizer taxonomy     │
 │  • AI client + localStorage cache   │   {card}   │  • caches + rate-limits (best-effort) │
@@ -196,10 +198,11 @@ python3 -m http.server 8000              # http://localhost:8000
 
 ## 🔧 Configuration & customisation
 
-- **Model:** `api/analyze-card.js` uses `claude-haiku-4-5-20251001` with the `web_search_20260209`
-  tool — the fastest option, chosen so the live lookup finishes inside the serverless timeout.
-  Switch to `claude-sonnet-4-6` for deeper analysis once the function has more time to run (e.g.
-  enable Vercel **Fluid Compute** so the `maxDuration: 60` takes effect). Edit the `model` field.
+- **Model:** `api/analyze-card.js` uses `claude-sonnet-4-6` with **no tools** — it analyses each
+  card from the model's knowledge of the Indian market, which keeps the lookup fast and well within
+  the serverless timeout (live web search was the cause of `FUNCTION_INVOCATION_TIMEOUT` on Hobby).
+  To trade speed for the very latest terms, add the `web_search_20260209` tool back **and** give the
+  function more time (enable Vercel **Fluid Compute** so `maxDuration: 60` applies).
 - **Built-in cards:** add/edit a card object in `assets/js/data.js` (documented inline). Use
   the same `rewards: { merchant, category, base }` shape — rates are effective % return. The
   card visual comes from its `gradient` (or `colors`) + `network`; issuer brand palettes in

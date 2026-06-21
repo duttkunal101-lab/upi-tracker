@@ -72,6 +72,11 @@
     // Surface the live early-access counter whenever the backend includes it.
     if (data.access && window.CW_ACCESS) window.CW_ACCESS.renderBanner(data.access);
 
+    // Friendly guidance for messy / non-Indian / unclear input — not a failure.
+    if (data.notice) {
+      return { ok: false, notice: data.notice, access: data.access };
+    }
+
     if (res.status === 403 && data.access && data.access.full) {
       return { ok: false, full: true, error: data.error || 'Early access is full.', access: data.access };
     }
