@@ -349,6 +349,7 @@
     const hint = merchantAcceptanceHint(m);
     return `
       <div class="merchant ${selected ? 'is-selected' : ''}" data-merchant="${m.id}">
+        <div class="merchant__check">✓</div>
         <div class="merchant__top">
           <span class="merchant__icon">
             <span class="merchant__emoji">${m.icon || '🏷️'}</span>
