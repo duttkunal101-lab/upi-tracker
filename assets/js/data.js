@@ -473,6 +473,36 @@ function brandFor(issuer) {
   return DEFAULT_BRAND;
 }
 
+/* Issuer → official website domain, used to fetch the correct bank logo.
+ * Falls back to the AI-provided issuerDomain for issuers not listed here. */
+const ISSUER_DOMAINS = {
+  'hdfc': 'hdfcbank.com',
+  'sbi': 'sbicard.com',
+  'icici': 'icicibank.com',
+  'axis': 'axisbank.com',
+  'american express': 'americanexpress.com',
+  'amex': 'americanexpress.com',
+  'kotak': 'kotak.com',
+  'hsbc': 'hsbc.co.in',
+  'idfc': 'idfcfirstbank.com',
+  'standard chartered': 'sc.com',
+  'rbl': 'rblbank.com',
+  'indusind': 'indusind.com',
+  'au ': 'aubank.in',
+  'yes bank': 'yesbank.in',
+  'citi': 'online.citibank.co.in',
+  'federal': 'federalbank.co.in',
+  'onecard': 'getonecard.app',
+  'amazon': 'icicibank.com',
+};
+function domainFor(card) {
+  const s = String(card.issuer || '').toLowerCase();
+  for (const [k, v] of Object.entries(ISSUER_DOMAINS)) if (s.includes(k)) return v;
+  const d = String(card.issuerDomain || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d) ? d : '';
+}
+
 /* Build an on-brand gradient: prefer the card's real colours, then the issuer
  * brand palette, then a neutral default. */
 function gradientFor(card) {
@@ -493,7 +523,7 @@ function registerCard(card) {
   if (!card || !card.id) return null;
   const gradient = card.gradient || gradientFor(card);
   const stored = {
-    bestFor: [], notes: [], tips: [], sources: [], colors: [], network: '',
+    bestFor: [], notes: [], tips: [], sources: [], colors: [], network: '', issuerDomain: '', image: '',
     ...card,
     gradient,
     rewards: {
@@ -509,4 +539,4 @@ function registerCard(card) {
 }
 
 /* Expose globally (no module bundler needed) */
-window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID, registerCard };
+window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID, registerCard, domainFor };

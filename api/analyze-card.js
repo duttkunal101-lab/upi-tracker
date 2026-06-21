@@ -15,6 +15,34 @@
 
 import { kvConfigured, claimSpot, recordSearch } from './_lib/access-store.js';
 
+/* Fetch the card's photo from Google's official Programmable Search (Custom
+ * Search) image API. Best-effort: returns '' unless GOOGLE_API_KEY +
+ * GOOGLE_CSE_ID are configured and a usable image is found. */
+async function googleCardImage(name) {
+  const key = process.env.GOOGLE_API_KEY;
+  const cx = process.env.GOOGLE_CSE_ID;
+  if (!key || !cx || !name) return '';
+  const q = encodeURIComponent(`${name} credit card`);
+  const url = `https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&searchType=image&num=5&safe=active&imgSize=large&q=${q}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const withExt = items.find((it) => typeof it.link === 'string'
+      && /^https:\/\//i.test(it.link) && /\.(png|jpe?g|webp)(\?|$)/i.test(it.link));
+    if (withExt) return withExt.link;
+    const anyHttps = items.find((it) => typeof it.link === 'string' && /^https:\/\//i.test(it.link));
+    return anyHttps ? anyHttps.link : '';
+  } catch (_) {
+    return '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* The optimizer's fixed taxonomy. The model must map rewards onto these ids. */
 const MERCHANT_IDS = [
   'amazon', 'flipkart', 'myntra', 'nykaa', 'ajio', 'tatacliq', 'tataneu',
@@ -79,6 +107,7 @@ before or after. The JSON must match this exact shape:
   "name": "Exact official card name",
   "issuer": "Issuing bank/brand",
   "network": "Visa | Mastercard | RuPay | American Express | Diners Club",
+  "issuerDomain": "the issuer's official website domain, e.g. hdfcbank.com",
   "colors": ["#0a3d91", "#13294e"],
   "annualFee": <number, rupees, 0 if lifetime free>,
   "feeNote": "Short fee note incl. waiver, e.g. '₹500 (waived above ₹2L/yr spend)'",
@@ -106,6 +135,8 @@ CRITICAL RULES:
   "merchant" only when the card singles out that specific merchant; otherwise use "category".
 - Omit merchants/categories the card doesn't reward specially — don't pad with the base rate.
 - If you genuinely cannot identify the card, return {"error":"Could not identify this card. Please check the name."} instead.
+- "issuerDomain": the issuing bank/brand's official website domain only (e.g. "hdfcbank.com",
+  "sbicard.com", "axisbank.com") — no path, no https. We use it to show the correct bank logo.
 - "colors": give 1–2 hex colours that match the card's ACTUAL physical colour scheme so we can
   render an on-brand card visual (e.g. a black metal card -> ["#111111","#2b2b2b"]; a deep-blue
   card -> ["#0a3d91","#13294e"]; a teal card -> ["#0f766e","#0b4f4a"]). Best-effort and optional
@@ -154,18 +185,25 @@ function normalizeCard(raw, fallbackName) {
   const base = Number(raw?.rewards?.base);
   const arr = (v) => Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 6) : [];
 
-  // 1–2 brand colours for an on-brand card visual (no fetched photos).
+  // 1–2 brand colours for an on-brand card visual.
   const colors = (Array.isArray(raw.colors) ? raw.colors : [])
     .map((c) => String(c).trim())
     .map((c) => (c.startsWith('#') ? c : '#' + c))
     .filter((c) => /^#[0-9a-fA-F]{6}$/.test(c))
     .slice(0, 2);
 
+  // Issuer domain (for the bank logo).
+  const domain = String(raw.issuerDomain || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const issuerDomain = /^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain) ? domain : '';
+
   return {
     id: `ai-${slug}`,
     name: String(raw.name || fallbackName).slice(0, 80),
     issuer: String(raw.issuer || 'Unknown issuer').slice(0, 60),
     network: String(raw.network || '').slice(0, 40),
+    issuerDomain,
+    image: '',
     colors,
     annualFee: Number.isFinite(Number(raw.annualFee)) ? Number(raw.annualFee) : 0,
     feeNote: String(raw.feeNote || '').slice(0, 120) || '—',
@@ -284,6 +322,9 @@ export default async function handler(req, res) {
         error: 'Could not find publicly available CVP details for that card. CardWise only recommends based on public information.',
       });
     }
+
+    // Best-effort: attach the card's photo from Google image search (if configured).
+    card.image = await googleCardImage(card.name);
 
     CACHE.set(key, { card, at: Date.now() });
     return res.status(200).json({ card, cached: false, access });

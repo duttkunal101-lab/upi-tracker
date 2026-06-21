@@ -77,6 +77,12 @@
     return best;
   }
 
+  // Correct bank logo from the issuer's domain (Clearbit logo service).
+  function logoFor(card) {
+    const d = window.CW_DATA.domainFor ? window.CW_DATA.domainFor(card) : '';
+    return d ? `https://logo.clearbit.com/${d}` : '';
+  }
+
   function networkMark(card) {
     switch (networkOf(card)) {
       case 'visa':   return '<span class="net net--visa">VISA</span>';
@@ -105,7 +111,9 @@
       return `
         <article class="cardlet ${selected ? 'is-selected' : ''}" data-card="${c.id}">
           <div class="cardlet__check">✓</div>
-          <div class="cardlet__visual" style="background:${c.gradient}">
+          <div class="cardlet__visual ${c.image ? 'cardlet__visual--photo' : ''}" style="background:${c.gradient}">
+            ${c.image ? `<img class="cardlet__photo" src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)}" loading="lazy" onerror="this.closest('.cardlet__visual').classList.remove('cardlet__visual--photo'); this.remove()" />` : ''}
+            ${logoFor(c) ? `<img class="cardlet__logo" src="${escapeHtml(logoFor(c))}" alt="" loading="lazy" onerror="this.remove()" />` : ''}
             <div class="cardlet__issuer">${escapeHtml(c.issuer)}</div>
             <div class="cardlet__chip"></div>
             ${CONTACTLESS}
@@ -380,7 +388,9 @@
 
     $('#modalPanel').innerHTML = `
       <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
-      <div class="modal__visual" style="background:${c.gradient}">
+      <div class="modal__visual ${c.image ? 'modal__visual--photo' : ''}" style="background:${c.gradient}">
+        ${c.image ? `<img class="modal__photo" src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)}" onerror="this.closest('.modal__visual').classList.remove('modal__visual--photo'); this.remove()" />` : ''}
+        ${logoFor(c) ? `<img class="cardlet__logo" src="${escapeHtml(logoFor(c))}" alt="" onerror="this.remove()" />` : ''}
         <div class="cardlet__chip"></div>
         ${CONTACTLESS}
         <div class="cv-number">•••• •••• •••• ••••</div>

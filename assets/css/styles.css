@@ -233,10 +233,27 @@ body {
   background: linear-gradient(120deg, rgba(255,255,255,0.14), transparent 42%);
 }
 .cardlet__issuer {
-  position: absolute; top: 0.8rem; left: 1rem; right: 3.4rem; z-index: 2; color: #fff;
+  position: absolute; top: 0.95rem; left: 2.75rem; right: 3.4rem; z-index: 2; color: #fff;
   font-size: 0.76rem; font-weight: 700; letter-spacing: 0.02em; opacity: 0.95;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,0.28);
 }
+/* bank logo (correct issuer logo) + Google card photo */
+.cardlet__photo, .modal__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+.cardlet__visual--photo .cardlet__issuer,
+.cardlet__visual--photo .cardlet__name,
+.cardlet__visual--photo .cardlet__chip,
+.cardlet__visual--photo .cv-wifi,
+.cardlet__visual--photo .net { display: none; }
+.modal__visual--photo .cardlet__chip,
+.modal__visual--photo .cv-wifi,
+.modal__visual--photo .cv-number,
+.modal__visual--photo .net { display: none; }
+.cardlet__logo {
+  position: absolute; top: 0.6rem; left: 0.7rem; z-index: 5;
+  width: 30px; height: 30px; object-fit: contain;
+  background: #fff; border-radius: 7px; padding: 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+}
+.modal__visual .cardlet__logo { top: 0.9rem; left: 1.4rem; width: 40px; height: 40px; border-radius: 9px; }
 .cardlet__name {
   position: absolute; bottom: 0.7rem; left: 1rem; right: 4rem; z-index: 2; color: #fff;
   font-size: 0.98rem; font-weight: 800; letter-spacing: -0.01em;

@@ -22,10 +22,11 @@ the reasoning, an annual-rewards projection, and tips to manage each card better
 
 1. **Add any card** — pick from the built-in list, or type a card name and hit **Analyze
    with AI**. The card's CVP, reward rates (mapped to the optimizer's taxonomy), fees, caps,
-   management tips are fetched live, with source links and an "as of" month. Each card renders
-   as a clean, **on-brand visual** built from the card's real colours + issuer palette + the
-   correct **payment-network logo** (Visa/Mastercard/RuPay/Amex/Diners) — always accurate and
-   consistent, with no unreliable fetched photos.
+   management tips are fetched live, with source links and an "as of" month. Each card shows
+   the **correct bank logo** (from the issuer's domain) and the **payment-network logo**
+   (Visa/Mastercard/RuPay/Amex/Diners) on a clean, on-brand card face. If Google image keys
+   are configured, the card's **actual photo from Google** is shown too — otherwise it falls
+   back to the branded card, so it's always seamless.
 2. **Pick your merchants** — choose where you spend and set a rough monthly amount.
 3. **Get your strategy** — for every merchant: the best card, the effective reward %, the
    reasoning, runner-ups, and ₹/year. Plus a wallet cheat-sheet, **"Manage your cards
@@ -135,6 +136,21 @@ Add a free shared datastore:
 > Leave these two vars blank to keep the gate **off** — the app works the same, just without
 > the counter/cap. The cap is **per browser** (deduped by a random client id in
 > `localStorage`), which is the practical proxy for "people" without forcing logins.
+
+### Optional: real card photos from Google
+
+Bank logos appear automatically. To also show each card's **actual photo from Google image
+search**, set two more env vars in Vercel:
+
+1. **Google API key:** [console.cloud.google.com](https://console.cloud.google.com) → enable
+   **Custom Search API** → create an **API key**.
+2. **Search engine:** [programmablesearchengine.google.com](https://programmablesearchengine.google.com)
+   → create an engine with **Image search ON** and **Search the entire web** → copy its **ID**.
+3. Add `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` in Vercel → **Redeploy**.
+
+Free tier is ~100 lookups/day. The top image result is usually the right card; if a photo is
+missing or fails to load, the app **falls back to the branded card** (bank logo + network +
+colours), so it always looks right. Bank logos come from the Clearbit logo service (no key).
 
 > **Netlify / Cloudflare Pages** work too — put the function under their Functions directory
 > and set the same `ANTHROPIC_API_KEY` env var. The frontend calls `/api/analyze-card`
