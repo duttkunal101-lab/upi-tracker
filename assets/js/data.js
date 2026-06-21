@@ -551,5 +551,35 @@ function registerMerchant(m) {
   return stored;
 }
 
+/* -------------------- Card-network acceptance (India) -------------------- */
+/* Visa, Mastercard and RuPay are accepted virtually everywhere. American Express
+ * and Diners Club have narrower acceptance — below are merchants in our list
+ * where they commonly AREN'T reliably taken. Indicative only (acceptance keeps
+ * improving); the app simply avoids recommending a card where it likely won't
+ * swipe, and nudges the user to keep a backup. */
+const NETWORK_LABEL = { visa: 'Visa', mc: 'Mastercard', rupay: 'RuPay', amex: 'American Express', diners: 'Diners Club' };
+const LIMITED_NETWORK_NOACCEPT = {
+  amex:   new Set(['irctc', 'fuel']),
+  diners: new Set(['irctc', 'fuel', 'dmart']),
+};
+
+/* The single payment network a card runs on (first one listed), as a key. */
+function networkKeyOf(card) {
+  const s = String((card && card.network) || '').toLowerCase();
+  const order = [['mastercard', 'mc'], ['master card', 'mc'], ['rupay', 'rupay'], ['visa', 'visa'], ['american express', 'amex'], ['amex', 'amex'], ['diners', 'diners']];
+  let best = '', bestIdx = Infinity;
+  for (const [kw, key] of order) { const i = s.indexOf(kw); if (i >= 0 && i < bestIdx) { bestIdx = i; best = key; } }
+  return best || 'visa'; // unknown -> assume a widely-accepted network
+}
+function isLimitedNetwork(networkKey) { return Boolean(LIMITED_NETWORK_NOACCEPT[networkKey]); }
+function networkAcceptedAt(networkKey, merchantId) {
+  const noset = LIMITED_NETWORK_NOACCEPT[networkKey];
+  return noset ? !noset.has(merchantId) : true;
+}
+
 /* Expose globally (no module bundler needed) */
-window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID, registerCard, registerMerchant, domainFor };
+window.CW_DATA = {
+  CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID,
+  registerCard, registerMerchant, domainFor,
+  networkKeyOf, isLimitedNetwork, networkAcceptedAt, NETWORK_LABEL,
+};

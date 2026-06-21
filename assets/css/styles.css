@@ -378,6 +378,10 @@ body {
 .rec__swatch { width: 26px; height: 18px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.25); }
 .rec__reason { font-size: 0.85rem; color: var(--muted); }
 .rec__runners { font-size: 0.78rem; color: var(--muted-2); margin-top: 0.15rem; }
+.rec__mlogo { width: 26px; height: 26px; border-radius: 6px; object-fit: contain; background: #fff; padding: 1px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.rec__net { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.03em; color: var(--muted); border: 1px solid var(--border-2); border-radius: 5px; padding: 0.06rem 0.34rem; }
+.rec__accept { display: block; font-size: 0.78rem; color: var(--gold); margin-top: 0.4rem; line-height: 1.4; font-weight: 600; }
+.merchant__accept { font-size: 0.7rem; color: var(--gold); font-weight: 600; line-height: 1.3; margin-top: -0.15rem; }
 
 .rec__reward { text-align: right; }
 .rec__rate {

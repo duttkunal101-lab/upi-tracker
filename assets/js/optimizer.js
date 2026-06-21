@@ -8,7 +8,7 @@
 (function () {
   'use strict';
 
-  const { MERCHANT_BY_ID, CARD_BY_ID, CATEGORIES } = window.CW_DATA;
+  const { MERCHANT_BY_ID, CARD_BY_ID, CATEGORIES, networkKeyOf, networkAcceptedAt, NETWORK_LABEL } = window.CW_DATA;
 
   /**
    * Resolve a card's effective reward rate (%) at a given merchant, plus a
@@ -57,17 +57,23 @@
       .filter(Boolean)
       .map((card) => {
         const { rate, reason, tier } = getEffectiveRate(card, merchant);
+        const networkKey = networkKeyOf(card);
+        const accepted = networkAcceptedAt(networkKey, merchant.id);
         return {
           card,
           rate,
           reason,
           tier,
           monthlyReward: (spend * rate) / 100,
+          networkKey,
+          networkLabel: NETWORK_LABEL[networkKey] || '',
+          accepted,
         };
       })
       .sort((a, b) => {
-        if (b.rate !== a.rate) return b.rate - a.rate;   // higher reward wins
-        return a.card.annualFee - b.card.annualFee;       // tie-break: cheaper card
+        if (a.accepted !== b.accepted) return a.accepted ? -1 : 1; // accepted cards first
+        if (b.rate !== a.rate) return b.rate - a.rate;             // then higher reward
+        return a.card.annualFee - b.card.annualFee;                // tie-break: cheaper card
       });
   }
 
@@ -96,7 +102,17 @@
       const ranked = rankCardsForMerchant(merchantId, ownedCardIds, monthlySpend);
       if (ranked.length === 0) return;
 
+      // `ranked` puts accepted cards first, so the best pick is one that will
+      // actually swipe here. Note when a higher-reward card was blocked.
       const best = ranked[0];
+      const topByRate = ranked.reduce((m, r) => (r.rate > m.rate ? r : m), ranked[0]);
+      let acceptanceNote = '';
+      if (!best.accepted) {
+        acceptanceNote = `${best.networkLabel || 'This card'} isn't reliably accepted at ${merchant.name} — keep a Visa/RuPay card or UPI handy as backup.`;
+      } else if (!topByRate.accepted && topByRate.rate > best.rate && topByRate.card.id !== best.card.id) {
+        acceptanceNote = `${topByRate.card.name} would earn ${fmtRate(topByRate.rate)} here, but ${topByRate.networkLabel} has limited acceptance — so ${best.card.name} is the reliable pick.`;
+      }
+
       const spend = Number(monthlySpend) || 0;
 
       totalMonthlySpend += spend;
@@ -106,8 +122,9 @@
         merchant,
         monthlySpend: spend,
         best,
-        runnersUp: ranked.slice(1, 3),
+        runnersUp: ranked.filter((r) => r.accepted && r.card.id !== best.card.id).slice(0, 2),
         allRanked: ranked,
+        acceptanceNote,
       });
 
       // accumulate per-card usage for the summary view

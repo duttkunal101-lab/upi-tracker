@@ -325,9 +325,28 @@
     return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`;
   }
 
+  // If any of the user's selected cards runs on a limited network (Amex/Diners)
+  // that isn't reliably taken here, flag it so the merchant screen maps to what
+  // their wallet can actually pay.
+  function merchantAcceptanceHint(m) {
+    const D = window.CW_DATA;
+    if (!D.isLimitedNetwork) return '';
+    const labels = new Set();
+    state.selectedCards.forEach((id) => {
+      const card = CARD_BY_ID[id]; if (!card) return;
+      const nk = effectiveNetworkKey(card);
+      if (D.isLimitedNetwork(nk) && !D.networkAcceptedAt(nk, m.id)) {
+        const net = NETWORKS.find((n) => n.key === nk);
+        labels.add(net ? net.label : nk);
+      }
+    });
+    return labels.size ? [...labels].join(' / ') + ' not taken here' : '';
+  }
+
   function merchantTile(m) {
     const selected = state.selectedMerchants.has(m.id);
     const spend = selected ? state.selectedMerchants.get(m.id) : m.avgSpend;
+    const hint = merchantAcceptanceHint(m);
     return `
       <div class="merchant ${selected ? 'is-selected' : ''}" data-merchant="${m.id}">
         <div class="merchant__top">
@@ -337,6 +356,7 @@
           </span>
           <span class="merchant__name">${escapeHtml(m.name)}</span>
         </div>
+        ${hint ? `<div class="merchant__accept">⚠ ${escapeHtml(hint)}</div>` : ''}
         <div class="merchant__spend">
           <label>₹/mo</label>
           <input type="number" min="0" step="100" value="${spend}" data-spend="${m.id}"
@@ -468,27 +488,30 @@
 
   function recRow(rec) {
     const c = rec.best.card;
+    const m = rec.merchant;
     const runners = rec.runnersUp.length
       ? `<div class="rec__runners">Alt: ${rec.runnersUp.map((r) => `${escapeHtml(r.card.name)} (${fmtRate(r.rate)})`).join(' · ')}</div>`
       : '';
     const tierBadge = rec.best.tier === 'merchant'
       ? '<span class="badge">Accelerated</span>'
       : rec.best.tier === 'category' ? '<span class="badge">Category bonus</span>' : '';
+    const micon = `<span class="rec__emoji">${m.icon || '🏷️'}</span>${m.domain ? `<img class="rec__mlogo" src="${escapeHtml(merchantLogo(m.domain))}" alt="" loading="lazy" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()" />` : ''}`;
 
     return `
       <div class="rec">
         <div class="rec__merchant">
-          <div class="rec__micon">${rec.merchant.icon}</div>
+          <div class="rec__micon">${micon}</div>
           <div>
-            <div class="rec__mname">${escapeHtml(rec.merchant.name)}</div>
+            <div class="rec__mname">${escapeHtml(m.name)}</div>
             <div class="rec__msub">${rec.monthlySpend > 0 ? rupee(rec.monthlySpend) + '/mo' : 'spend not set'}</div>
           </div>
         </div>
         <div class="rec__pick">
           <span class="rec__use">Use this card ${tierBadge}</span>
-          <span class="rec__cardname"><span class="rec__swatch" style="background:${c.gradient}"></span>${escapeHtml(c.name)}</span>
+          <span class="rec__cardname"><span class="rec__swatch" style="background:${c.gradient}"></span>${escapeHtml(c.name)}${rec.best.networkLabel ? ` <span class="rec__net">${escapeHtml(rec.best.networkLabel)}</span>` : ''}</span>
           <span class="rec__reason">${escapeHtml(rec.best.reason)}</span>
           ${runners}
+          ${rec.acceptanceNote ? `<span class="rec__accept">⚠️ ${escapeHtml(rec.acceptanceNote)}</span>` : ''}
         </div>
         <div class="rec__reward">
           <div class="rec__rate">${fmtRate(rec.best.rate)}</div>
@@ -1052,11 +1075,6 @@
   function init() {
     if (booted) return;            // idempotent — guard against a double DOMContentLoaded
     booted = true;
-
-    // headline counts — count only the curated built-in cards, never the
-    // AI-analyzed cards that get cached into CARDS (that would inflate it).
-    $('#statCards').textContent = CARDS.filter((c) => c.source !== 'ai').length;
-    $('#statMerchants').textContent = MERCHANTS.length;
 
     restore();
     bindEvents();
