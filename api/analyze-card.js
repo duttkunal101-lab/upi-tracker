@@ -278,7 +278,7 @@ export default async function handler(req, res) {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 1 }],
       system: SYSTEM_PROMPT,
@@ -329,11 +329,13 @@ export default async function handler(req, res) {
     return res.status(200).json({ card, cached: false, access });
   } catch (err) {
     const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
+    // Surface the real reason so failures are diagnosable, not opaque.
+    const detail = String(err?.error?.error?.message || err?.message || err || '')
+      .replace(/\s+/g, ' ').trim().slice(0, 220);
     const msg = status === 429
-      ? 'The AI service is rate-limited right now. Please try again shortly.'
-      : 'Something went wrong while analyzing this card. Please try again.';
-    // Log server-side for debugging; don't leak details to the client.
-    console.error('analyze-card error:', err?.message || err);
+      ? 'The AI service is rate-limited right now — please try again in a moment.'
+      : `Analysis failed (${status})${detail ? ': ' + detail : ''}. Please try again.`;
+    console.error('analyze-card error:', status, detail);
     return res.status(status >= 400 && status < 600 ? status : 500).json({ error: msg });
   }
 }
