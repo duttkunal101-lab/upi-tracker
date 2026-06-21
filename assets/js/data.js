@@ -37,39 +37,39 @@ const CATEGORIES = {
  * so the projection feels real before the user customises it. */
 const MERCHANTS = [
   // Online shopping
-  { id: 'amazon',     name: 'Amazon',     category: 'online-shopping', icon: '📦', avgSpend: 4000 },
-  { id: 'flipkart',   name: 'Flipkart',   category: 'online-shopping', icon: '🛍️', avgSpend: 3000 },
-  { id: 'myntra',     name: 'Myntra',     category: 'online-shopping', icon: '👗', avgSpend: 2000 },
-  { id: 'nykaa',      name: 'Nykaa',      category: 'online-shopping', icon: '💄', avgSpend: 1500 },
-  { id: 'ajio',       name: 'Ajio',       category: 'online-shopping', icon: '🧥', avgSpend: 1500 },
-  { id: 'tatacliq',   name: 'Tata CLiQ',  category: 'online-shopping', icon: '🏬', avgSpend: 1500 },
-  { id: 'tataneu',    name: 'Tata Neu',   category: 'online-shopping', icon: '🟣', avgSpend: 2000 },
+  { id: 'amazon',     name: 'Amazon',     category: 'online-shopping', icon: '📦', domain: 'amazon.in',     avgSpend: 4000 },
+  { id: 'flipkart',   name: 'Flipkart',   category: 'online-shopping', icon: '🛍️', domain: 'flipkart.com',  avgSpend: 3000 },
+  { id: 'myntra',     name: 'Myntra',     category: 'online-shopping', icon: '👗', domain: 'myntra.com',    avgSpend: 2000 },
+  { id: 'nykaa',      name: 'Nykaa',      category: 'online-shopping', icon: '💄', domain: 'nykaa.com',     avgSpend: 1500 },
+  { id: 'ajio',       name: 'Ajio',       category: 'online-shopping', icon: '🧥', domain: 'ajio.com',      avgSpend: 1500 },
+  { id: 'tatacliq',   name: 'Tata CLiQ',  category: 'online-shopping', icon: '🏬', domain: 'tatacliq.com',  avgSpend: 1500 },
+  { id: 'tataneu',    name: 'Tata Neu',   category: 'online-shopping', icon: '🟣', domain: 'tataneu.com',   avgSpend: 2000 },
 
   // Food delivery
-  { id: 'swiggy',     name: 'Swiggy',     category: 'food-delivery', icon: '🛵', avgSpend: 3000 },
-  { id: 'zomato',     name: 'Zomato',     category: 'food-delivery', icon: '🍅', avgSpend: 3000 },
+  { id: 'swiggy',     name: 'Swiggy',     category: 'food-delivery', icon: '🛵', domain: 'swiggy.com', avgSpend: 3000 },
+  { id: 'zomato',     name: 'Zomato',     category: 'food-delivery', icon: '🍅', domain: 'zomato.com', avgSpend: 3000 },
 
   // Groceries & quick commerce
-  { id: 'bigbasket',  name: 'BigBasket',  category: 'groceries', icon: '🧺', avgSpend: 4000 },
-  { id: 'blinkit',    name: 'Blinkit',    category: 'groceries', icon: '⚡', avgSpend: 2500 },
-  { id: 'zepto',      name: 'Zepto',      category: 'groceries', icon: '🟪', avgSpend: 2000 },
-  { id: 'dmart',      name: 'DMart',      category: 'groceries', icon: '🏪', avgSpend: 3000 },
+  { id: 'bigbasket',  name: 'BigBasket',  category: 'groceries', icon: '🧺', domain: 'bigbasket.com', avgSpend: 4000 },
+  { id: 'blinkit',    name: 'Blinkit',    category: 'groceries', icon: '⚡', domain: 'blinkit.com',   avgSpend: 2500 },
+  { id: 'zepto',      name: 'Zepto',      category: 'groceries', icon: '🟪', domain: 'zeptonow.com',  avgSpend: 2000 },
+  { id: 'dmart',      name: 'DMart',      category: 'groceries', icon: '🏪', domain: 'dmart.in',      avgSpend: 3000 },
 
   // Travel
   { id: 'flights',    name: 'Flights',    category: 'travel', icon: '🛫', avgSpend: 8000 },
   { id: 'hotels',     name: 'Hotels',     category: 'travel', icon: '🏨', avgSpend: 5000 },
-  { id: 'makemytrip', name: 'MakeMyTrip', category: 'travel', icon: '🧳', avgSpend: 5000 },
-  { id: 'irctc',      name: 'IRCTC / Rail', category: 'travel', icon: '🚆', avgSpend: 1500 },
+  { id: 'makemytrip', name: 'MakeMyTrip', category: 'travel', icon: '🧳', domain: 'makemytrip.com', avgSpend: 5000 },
+  { id: 'irctc',      name: 'IRCTC / Rail', category: 'travel', icon: '🚆', domain: 'irctc.co.in', avgSpend: 1500 },
 
   // Cabs
-  { id: 'uber',       name: 'Uber',       category: 'cabs', icon: '🚗', avgSpend: 2000 },
-  { id: 'ola',        name: 'Ola',        category: 'cabs', icon: '🛺', avgSpend: 1500 },
+  { id: 'uber',       name: 'Uber',       category: 'cabs', icon: '🚗', domain: 'uber.com',    avgSpend: 2000 },
+  { id: 'ola',        name: 'Ola',        category: 'cabs', icon: '🛺', domain: 'olacabs.com', avgSpend: 1500 },
 
   // Dining
   { id: 'dining',     name: 'Restaurants (Dine-in)', category: 'dining', icon: '🍽️', avgSpend: 4000 },
 
   // Entertainment
-  { id: 'bookmyshow', name: 'BookMyShow', category: 'entertainment', icon: '🎟️', avgSpend: 1000 },
+  { id: 'bookmyshow', name: 'BookMyShow', category: 'entertainment', icon: '🎟️', domain: 'bookmyshow.com', avgSpend: 1000 },
   { id: 'ott',        name: 'OTT & Streaming', category: 'entertainment', icon: '📺', avgSpend: 800 },
 
   // Fuel
@@ -80,8 +80,8 @@ const MERCHANTS = [
   { id: 'mobile',     name: 'Mobile & DTH Recharge', category: 'bills', icon: '📱', avgSpend: 1000 },
 
   // Wellness
-  { id: 'cultfit',    name: 'Cult.fit', category: 'wellness', icon: '🏋️', avgSpend: 1500 },
-  { id: 'pharmacy',   name: 'Pharmacy (1mg/Apollo)', category: 'wellness', icon: '💊', avgSpend: 1500 },
+  { id: 'cultfit',    name: 'Cult.fit', category: 'wellness', icon: '🏋️', domain: 'cult.fit', avgSpend: 1500 },
+  { id: 'pharmacy',   name: 'Pharmacy (1mg/Apollo)', category: 'wellness', icon: '💊', domain: '1mg.com', avgSpend: 1500 },
 
   // International
   { id: 'international', name: 'International / Forex', category: 'international', icon: '🌍', avgSpend: 5000 },
@@ -538,5 +538,18 @@ function registerCard(card) {
   return stored;
 }
 
+/* Register a custom merchant / spend category the user adds at runtime, so it
+ * flows through the optimizer and persists like the built-in ones. */
+function registerMerchant(m) {
+  if (!m || !m.id) return null;
+  const stored = {
+    icon: '🏷️', avgSpend: 1000, category: 'online-shopping', custom: true,
+    ...m,
+  };
+  if (!MERCHANT_BY_ID[stored.id]) MERCHANTS.push(stored);
+  MERCHANT_BY_ID[stored.id] = stored;
+  return stored;
+}
+
 /* Expose globally (no module bundler needed) */
-window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID, registerCard, domainFor };
+window.CW_DATA = { CATEGORIES, MERCHANTS, CARDS, MERCHANT_BY_ID, CARD_BY_ID, registerCard, registerMerchant, domainFor };

@@ -17,6 +17,7 @@
     selectedCards: new Set(),          // cardId
     selectedMerchants: new Map(),      // merchantId -> monthlySpend
     cardNetwork: new Map(),            // cardId -> chosen network key (for multi-network cards)
+    customMerchants: [],               // user-added spending categories
     cardQuery: '',
     analyzing: null,                   // name currently being analyzed by AI, or null
   };
@@ -27,6 +28,7 @@
         cards: [...state.selectedCards],
         merchants: [...state.selectedMerchants.entries()],
         cardNetwork: [...state.cardNetwork.entries()],
+        customMerchants: state.customMerchants,
       }));
     } catch (_) { /* storage unavailable — non-fatal */ }
   }
@@ -36,6 +38,11 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const data = JSON.parse(raw);
+      // Re-register custom merchants first so the optimizer/render can resolve them.
+      (data.customMerchants || []).forEach((m) => {
+        const s = window.CW_DATA.registerMerchant(m);
+        if (s) state.customMerchants.push(s);
+      });
       (data.cards || []).forEach((id) => CARD_BY_ID[id] && state.selectedCards.add(id));
       (data.merchants || []).forEach(([id, spend]) => state.selectedMerchants.set(id, spend));
       (data.cardNetwork || []).forEach(([id, net]) => state.cardNetwork.set(id, net));
@@ -289,7 +296,7 @@
     const byCat = {};
     MERCHANTS.forEach((m) => { (byCat[m.category] ||= []).push(m); });
 
-    wrap.innerHTML = Object.entries(CATEGORIES).map(([catId, cat]) => {
+    const groups = Object.entries(CATEGORIES).map(([catId, cat]) => {
       const list = byCat[catId] || [];
       if (list.length === 0) return '';
       return `
@@ -300,7 +307,22 @@
           </div>
         </div>`;
     }).join('');
+
+    wrap.innerHTML = groups + `
+      <div class="merchant-cat merchant-cat--custom">
+        <div class="merchant-cat__head"><span>🏷️</span><h3>Something else?</h3></div>
+        <button class="add-custom" data-action="addCustom">
+          <span class="add-custom__plus">＋</span>
+          <span class="add-custom__text"><strong>Add your own spending</strong>
+            <span class="add-custom__sub">A merchant or category not listed above</span></span>
+        </button>
+      </div>`;
     updateMerchantFooter();
+  }
+
+  // Bank/merchant logo via Google's favicon service; falls back to the emoji.
+  function merchantLogo(domain) {
+    return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`;
   }
 
   function merchantTile(m) {
@@ -309,7 +331,10 @@
     return `
       <div class="merchant ${selected ? 'is-selected' : ''}" data-merchant="${m.id}">
         <div class="merchant__top">
-          <span class="merchant__icon">${m.icon}</span>
+          <span class="merchant__icon">
+            <span class="merchant__emoji">${m.icon || '🏷️'}</span>
+            ${m.domain ? `<img class="merchant__logo" src="${escapeHtml(merchantLogo(m.domain))}" alt="" loading="lazy" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()" />` : ''}
+          </span>
           <span class="merchant__name">${escapeHtml(m.name)}</span>
         </div>
         <div class="merchant__spend">
@@ -347,10 +372,23 @@
       ${feedbackBlock()}
     `;
 
-    // Now that they've completed everything, gently suggest feedback (once).
+    // Suggest feedback only once they've actually seen ALL the recommendations —
+    // i.e. the end-of-results CTA scrolls into view.
     if (!feedbackPrompted && !feedbackSubmitted) {
-      feedbackPrompted = true;
-      setTimeout(() => { if (!feedbackSubmitted && $('#modal').hidden) openFeedback(); }, 3800);
+      const cta = $('.fb-cta');
+      const trigger = () => {
+        if (feedbackPrompted || feedbackSubmitted) return;
+        feedbackPrompted = true;
+        setTimeout(() => { if (!feedbackSubmitted && $('#modal').hidden) openFeedback(); }, 1200);
+      };
+      if (cta && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          if (entries.some((e) => e.isIntersecting)) { io.disconnect(); trigger(); }
+        }, { threshold: 0.6 });
+        io.observe(cta);
+      } else {
+        setTimeout(trigger, 9000); // fallback if IntersectionObserver is unavailable
+      }
     }
   }
 
@@ -728,6 +766,53 @@
     setTimeout(() => layer.remove(), 3200);
   }
 
+  /* ===================== CUSTOM SPENDING CATEGORY ===================== */
+  function openCustomMerchant() {
+    const cats = Object.entries(CATEGORIES)
+      .map(([id, c]) => `<option value="${id}">${c.icon} ${escapeHtml(c.name)}</option>`).join('');
+    $('#modalPanel').innerHTML = `
+      <button class="modal__close" data-action="closeModal" aria-label="Close">✕</button>
+      <div class="modal__visual modal__visual--fb"><div class="fb-hero">🏷️ Add your spending</div></div>
+      <div class="modal__body cm">
+        <p class="cm__lead">Spend somewhere we don't list? Add it and we'll fold it into your strategy.</p>
+        <div class="fb__q">
+          <label for="cmName">What do you spend on?</label>
+          <input id="cmName" class="fb-text" type="text" maxlength="40" placeholder="e.g. Apple Store, School fees, Insurance" />
+        </div>
+        <div class="fb__q">
+          <label for="cmCat">Which category is it closest to?</label>
+          <select id="cmCat" class="fb-text">${cats}</select>
+        </div>
+        <div class="fb__q">
+          <label for="cmSpend">Roughly how much per month? (₹)</label>
+          <input id="cmSpend" class="fb-text" type="number" min="0" step="100" value="2000" />
+        </div>
+        <button class="btn btn--primary modal__cta" data-action="saveCustom">Add it →</button>
+      </div>`;
+    $('#modal').hidden = false;
+    const n = $('#cmName'); if (n) n.focus();
+  }
+
+  function saveCustom() {
+    const name = ($('#cmName') ? $('#cmName').value : '').trim().slice(0, 40);
+    const category = ($('#cmCat') ? $('#cmCat').value : 'online-shopping');
+    const spend = Math.max(0, Number($('#cmSpend') ? $('#cmSpend').value : 0) || 0);
+    if (!name) { toast('Give your spending a name 🙂', 'error'); return; }
+    const cat = CATEGORIES[category] ? category : 'online-shopping';
+    const id = 'custom-' + (name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'item')
+      + '-' + Date.now().toString(36).slice(-4);
+    const stored = window.CW_DATA.registerMerchant({
+      id, name, category: cat, icon: (CATEGORIES[cat] && CATEGORIES[cat].icon) || '🏷️', avgSpend: spend, custom: true,
+    });
+    if (!stored) { closeModal(); return; }
+    state.customMerchants.push(stored);
+    state.selectedMerchants.set(stored.id, spend);
+    persist();
+    closeModal();
+    renderMerchants();
+    toast(`Added “${stored.name}” ✨`, 'success');
+  }
+
   /* ===================== FEEDBACK (gamified) ===================== */
   let fbRating = 0, feedbackPrompted = false, feedbackSubmitted = false;
   const FB_LIKES = ['Best-card picks', 'The AI analysis', 'Design & UX', 'Speed', 'Easy to use', 'The gamification'];
@@ -909,6 +994,8 @@
         break;
       }
       case 'terms': openTerms(); break;
+      case 'addCustom': openCustomMerchant(); break;
+      case 'saveCustom': saveCustom(); break;
       case 'feedback': openFeedback(); break;
       case 'submitFeedback': submitFeedback(); break;
       case 'confirmSuggestion': confirmSuggestion(); break;
