@@ -1,7 +1,7 @@
 /* =============================================================================
  * CardWise — /api/analyze-card  (Vercel serverless function, Node 18+ / ESM)
  * -----------------------------------------------------------------------------
- * Given any Indian credit-card name, uses Claude Opus 4.8 with live web search
+ * Given any Indian credit-card name, uses Claude with live web search
  * to research the card's CURRENT value proposition, reward program, fees and
  * caps, and returns a structured profile that drops straight into the optimizer
  * (rewards expressed as effective % return, mapped to the app's taxonomy).
@@ -106,7 +106,7 @@ before or after. The JSON must match this exact shape:
   "id": "kebab-case-unique-id",
   "name": "Exact official card name",
   "issuer": "Issuing bank/brand",
-  "network": "Visa | Mastercard | RuPay | American Express | Diners Club",
+  "network": "Every payment network this card is issued on; if it's offered on more than one, list them all separated by ' / ' (e.g. 'Visa / Mastercard' or 'RuPay / Visa')",
   "issuerDomain": "the issuer's official website domain, e.g. hdfcbank.com",
   "colors": ["#0a3d91", "#13294e"],
   "annualFee": <number, rupees, 0 if lifetime free>,
@@ -201,7 +201,7 @@ function normalizeCard(raw, fallbackName) {
     id: `ai-${slug}`,
     name: String(raw.name || fallbackName).slice(0, 80),
     issuer: String(raw.issuer || 'Unknown issuer').slice(0, 60),
-    network: String(raw.network || '').slice(0, 40),
+    network: String(raw.network || '').slice(0, 60),
     issuerDomain,
     image: '',
     colors,
@@ -278,7 +278,7 @@ export default async function handler(req, res) {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
     const response = await client.messages.create({
-      model: 'claude-opus-4-8',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       thinking: { type: 'adaptive' },
       tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],

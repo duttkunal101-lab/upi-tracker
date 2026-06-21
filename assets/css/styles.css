@@ -587,7 +587,115 @@ body {
 .terms li::before { content: '•'; position: absolute; left: 0; color: var(--primary-2); }
 .terms li strong { color: var(--text); }
 
+/* ===================== Multi-card pick hint ===================== */
+.pick-hint {
+  font-size: 0.86rem; color: var(--muted); line-height: 1.55;
+  background: linear-gradient(135deg, rgba(109,94,252,0.08), rgba(40,224,168,0.05));
+  border: 1px dashed var(--border-2); border-radius: var(--radius-sm);
+  padding: 0.7rem 0.95rem; margin: 0 0 1.3rem;
+}
+.pick-hint strong { color: var(--text); }
+
+/* ===================== Gamified analyze overlay ===================== */
+.analyze-overlay {
+  position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 1.25rem;
+  background: rgba(6,6,14,0.80); backdrop-filter: blur(8px);
+  animation: fade 0.3s var(--ease);
+}
+.analyze-box {
+  width: min(480px, 100%); background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.9rem 1.6rem; text-align: center;
+  animation: pop 0.34s var(--ease);
+}
+.analyze-orb {
+  width: 66px; height: 66px; margin: 0 auto 1rem; border-radius: 50%; display: grid; place-items: center;
+  font-size: 2rem; background: linear-gradient(135deg, rgba(109,94,252,0.40), rgba(40,224,168,0.30));
+  animation: orbpulse 1.9s var(--ease) infinite;
+}
+@keyframes orbpulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(109,94,252,0.50); transform: scale(1); }
+  50%      { box-shadow: 0 0 0 18px rgba(109,94,252,0); transform: scale(1.06); }
+}
+.analyze-title { font-size: 1.24rem; letter-spacing: -0.02em; margin-bottom: 1.15rem; }
+.analyze-title span { color: var(--primary-2); font-weight: 800; }
+.analyze-steps { list-style: none; text-align: left; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.2rem; }
+.ax-step {
+  display: flex; align-items: center; gap: 0.65rem; font-size: 0.92rem;
+  color: var(--muted-2); opacity: 0.55; transition: opacity 0.35s var(--ease), color 0.35s;
+}
+.ax-step__ic { font-size: 1.05rem; width: 1.5rem; text-align: center; }
+.ax-step__tx { flex: 1; }
+.ax-step__tick { color: var(--accent); font-weight: 800; opacity: 0; transition: opacity 0.3s; }
+.ax-step.is-active { opacity: 1; color: var(--text); font-weight: 700; }
+.ax-step.is-active .ax-step__ic { animation: orbpulse 1.5s ease infinite; }
+.ax-step.is-done { opacity: 1; color: var(--muted); }
+.ax-step.is-done .ax-step__tick { opacity: 1; }
+.analyze-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 1.1rem; }
+.analyze-bar__fill {
+  display: block; height: 100%; width: 6%; border-radius: 999px;
+  background: linear-gradient(100deg, var(--primary-2), var(--accent)); transition: width 0.6s var(--ease);
+}
+.analyze-fact {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem; font-size: 0.86rem; color: var(--muted); text-align: left;
+  min-height: 3.4rem; display: flex; flex-direction: column; gap: 0.25rem; transition: opacity 0.3s;
+}
+.analyze-fact__label { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; color: var(--gold); text-transform: uppercase; }
+.analyze-foot { font-size: 0.76rem; color: var(--muted-2); margin-top: 0.95rem; }
+
+/* ===================== Network picker ===================== */
+.netpick__visual { height: 132px; }
+.netpick__visual-name {
+  position: absolute; left: 1.4rem; bottom: 1.1rem; z-index: 2; max-width: 70%;
+  color: #fff; font-weight: 800; font-size: 1.05rem; line-height: 1.15;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.netpick__head { margin-bottom: 1.15rem; }
+.netpick__title { font-size: 1.32rem; letter-spacing: -0.02em; }
+.netpick__sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; }
+.netpick__sub strong { color: var(--text); }
+.net-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.net-option {
+  font: inherit; cursor: pointer; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 1rem 0.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+  transition: transform 0.16s var(--ease), border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.net-option:hover {
+  transform: translateY(-3px); border-color: var(--primary-2); background: rgba(109,94,252,0.12);
+  box-shadow: 0 12px 26px -16px rgba(109,94,252,0.9);
+}
+.net-option__mark {
+  height: 38px; min-width: 76px; display: flex; align-items: center; justify-content: center;
+  padding: 0 0.7rem; border-radius: 8px; background: #14142a;
+}
+.net-option__mark .net { position: static; bottom: auto; right: auto; }
+.net-option__label { font-weight: 700; font-size: 0.9rem; }
+.netpick__skip { width: 100%; justify-content: center; margin-top: 0.9rem; }
+
+/* ===================== Guided post-add actions ===================== */
+.modal__added { display: flex; align-items: center; gap: 0.45rem; font-weight: 800; color: var(--accent); margin-top: 1.2rem; font-size: 1.02rem; }
+.modal__nudge { font-size: 0.86rem; color: var(--muted); margin-top: 0.35rem; line-height: 1.5; }
+.modal__actions { display: flex; gap: 0.7rem; margin-top: 1.1rem; }
+.modal__actions .btn { flex: 1; justify-content: center; }
+@media (max-width: 520px) {
+  .modal__actions { flex-direction: column-reverse; }
+  .net-picker { grid-template-columns: 1fr; }
+}
+
+/* ===================== Confetti reward ===================== */
+.confetti { position: fixed; inset: 0; z-index: 250; pointer-events: none; overflow: hidden; }
+.confetti i {
+  position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; opacity: 0.95;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(-12px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(104vh) rotate(680deg); opacity: 0.9; }
+}
+
 /* reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .confetti { display: none; }
 }

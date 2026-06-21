@@ -16,6 +16,7 @@
   const state = {
     selectedCards: new Set(),          // cardId
     selectedMerchants: new Map(),      // merchantId -> monthlySpend
+    cardNetwork: new Map(),            // cardId -> chosen network key (for multi-network cards)
     cardQuery: '',
     analyzing: null,                   // name currently being analyzed by AI, or null
   };
@@ -25,6 +26,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         cards: [...state.selectedCards],
         merchants: [...state.selectedMerchants.entries()],
+        cardNetwork: [...state.cardNetwork.entries()],
       }));
     } catch (_) { /* storage unavailable — non-fatal */ }
   }
@@ -36,6 +38,7 @@
       const data = JSON.parse(raw);
       (data.cards || []).forEach((id) => CARD_BY_ID[id] && state.selectedCards.add(id));
       (data.merchants || []).forEach(([id, spend]) => state.selectedMerchants.set(id, spend));
+      (data.cardNetwork || []).forEach(([id, net]) => state.cardNetwork.set(id, net));
     } catch (_) { /* ignore corrupt state */ }
   }
 
@@ -65,16 +68,46 @@
   /* ----------------------- card visual building blocks ------------------- */
   const CONTACTLESS = '<svg class="cv-wifi" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.82)" stroke-width="2" stroke-linecap="round"><path d="M5 9.5a5 5 0 0 1 0 5"/><path d="M9 6.5a9.5 9.5 0 0 1 0 11"/><path d="M13 3.5a14 14 0 0 1 0 17"/></svg>';
 
-  // Pick the card's payment network from its (possibly multi-) network string.
-  function networkOf(card) {
+  // Payment networks a card can be issued on. A card's `network` string may name
+  // several (e.g. "Visa / Mastercard"); we let the user pick which one is theirs.
+  const NETWORKS = [
+    { key: 'visa',   label: 'Visa',             kw: ['visa'] },
+    { key: 'mc',     label: 'Mastercard',       kw: ['mastercard', 'master card'] },
+    { key: 'rupay',  label: 'RuPay',            kw: ['rupay'] },
+    { key: 'amex',   label: 'American Express', kw: ['american express', 'amex'] },
+    { key: 'diners', label: 'Diners Club',      kw: ['diners'] },
+  ];
+
+  // Every network named in a card's network string, in the order they appear.
+  function networksOf(card) {
     const s = String(card.network || '').toLowerCase();
-    const keys = [['mastercard', 'mc'], ['rupay', 'rupay'], ['visa', 'visa'], ['american express', 'amex'], ['amex', 'amex'], ['diners', 'diners']];
-    let best = '', bestIdx = Infinity;
-    for (const [kw, key] of keys) {
-      const i = s.indexOf(kw);
-      if (i >= 0 && i < bestIdx) { bestIdx = i; best = key; }
+    const found = [];
+    for (const n of NETWORKS) {
+      const at = Math.min(...n.kw.map((k) => { const i = s.indexOf(k); return i < 0 ? Infinity : i; }));
+      if (at !== Infinity) found.push({ key: n.key, label: n.label, at });
     }
-    return best;
+    return found.sort((a, b) => a.at - b.at);
+  }
+
+  // The single network to display: the user's explicit choice, else the only
+  // listed network, else the first listed (until they choose).
+  function effectiveNetworkKey(card) {
+    const chosen = state.cardNetwork.get(card.id);
+    if (chosen) return chosen;
+    const nets = networksOf(card);
+    return nets.length ? nets[0].key : '';
+  }
+
+  // True when a card lists 2+ networks and the user hasn't picked one yet.
+  function needsNetworkChoice(card) {
+    return networksOf(card).length > 1 && !state.cardNetwork.get(card.id);
+  }
+
+  // Human label for the chosen (or raw) network, for the detail view.
+  function networkLabelOf(card) {
+    const chosen = state.cardNetwork.get(card.id);
+    if (chosen) { const n = NETWORKS.find((x) => x.key === chosen); return n ? n.label : ''; }
+    return String(card.network || '');
   }
 
   // Correct bank logo from the issuer's domain, via Google's logo/favicon
@@ -84,8 +117,8 @@
     return d ? `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(d)}` : '';
   }
 
-  function networkMark(card) {
-    switch (networkOf(card)) {
+  function networkMarkByKey(key) {
+    switch (key) {
       case 'visa':   return '<span class="net net--visa">VISA</span>';
       case 'mc':     return '<span class="net net--mc"><span></span><span></span></span>';
       case 'rupay':  return '<span class="net net--rupay">RuPay</span>';
@@ -94,6 +127,7 @@
       default:       return '';
     }
   }
+  function networkMark(card) { return networkMarkByKey(effectiveNetworkKey(card)); }
 
   /* ============================ STEP 1: CARDS =========================== */
   function renderCards() {
@@ -163,27 +197,39 @@
 
     state.analyzing = name;
     renderCards();
+    startAnalyzeUx(name);
 
     const result = await window.CW_AI.analyze(name);
     state.analyzing = null;
 
     if (result.ok) {
-      state.selectedCards.add(result.card.id);
+      const card = result.card;
+      state.selectedCards.add(card.id);
       state.cardQuery = '';
       const search = $('#cardSearch'); if (search) search.value = '';
       persist();
       renderCards();
       updateCardFooter();
-      toast(`Added ${result.card.name}${result.cached ? '' : ' · analyzed with live web data'}`, 'success');
+      // Let the overlay finish its "done" beat, then reveal the card + next step.
+      stopAnalyzeUx(() => {
+        celebrate();
+        const showDetails = () => openModal(card.id, { advance: true });
+        if (needsNetworkChoice(card)) openNetworkPicker(card.id, showDetails);
+        else showDetails();
+      });
     } else {
-      renderCards();
-      toast(result.error, 'error');
+      stopAnalyzeUx(() => { renderCards(); toast(result.error, 'error'); });
     }
   }
 
   function updateCardFooter() {
     const n = state.selectedCards.size;
-    $('#cardCount').textContent = `${n} card${n === 1 ? '' : 's'} selected`;
+    const el = $('#cardCount');
+    if (el) {
+      el.textContent = n === 0
+        ? 'Add one or more of your cards to begin'
+        : `${n} card${n === 1 ? '' : 's'} in your wallet 👛 — add more, or continue`;
+    }
     $('#toMerchants').disabled = n === 0;
   }
 
@@ -379,10 +425,11 @@
   }
 
   /* ============================== MODAL =============================== */
-  function openModal(cardId) {
+  function openModal(cardId, opts = {}) {
     const c = CARD_BY_ID[cardId];
     if (!c) return;
     const selected = state.selectedCards.has(c.id);
+    const advance = !!opts.advance;
 
     const tips = Array.isArray(c.tips) ? c.tips : [];
     const sources = Array.isArray(c.sources) ? c.sources : [];
@@ -400,7 +447,7 @@
       </div>
       <div class="modal__body">
         <div class="modal__head">
-          <div class="modal__issuer">${escapeHtml(c.issuer)}${c.network ? ' · ' + escapeHtml(c.network) : ''}</div>
+          <div class="modal__issuer">${escapeHtml(c.issuer)}${networkLabelOf(c) ? ' · ' + escapeHtml(networkLabelOf(c)) : ''}</div>
           <h3 class="modal__name">${escapeHtml(c.name)}</h3>
         </div>
         <p class="modal__cvp">${escapeHtml(c.cvp || '')}</p>
@@ -420,9 +467,18 @@
             ✨ Researched by AI with live web data${c.asOf ? ` · reflects ${escapeHtml(c.asOf)}` : ''}. Always confirm current terms with the issuer.
             ${sources.length ? `<div class="modal__sources">${sources.map((u, i) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">source ${i + 1}</a>`).join(' · ')}</div>` : ''}
           </div>` : ''}
-        <button class="btn ${selected ? 'btn--ghost' : 'btn--primary'} modal__cta" data-toggle-card="${c.id}">
-          ${selected ? '✓ Added to wallet — tap to remove' : '+ Add to my wallet'}
-        </button>
+        ${advance ? `
+          <div class="modal__added">✓ Added to your wallet</div>
+          <p class="modal__nudge">Got more cards? Add them for a sharper strategy — or move on to where you spend.</p>
+          <div class="modal__actions">
+            <button class="btn btn--ghost" data-action="addAnother">+ Add another card</button>
+            <button class="btn btn--primary" data-action="toMerchants">Pick where you spend →</button>
+          </div>
+        ` : `
+          <button class="btn ${selected ? 'btn--ghost' : 'btn--primary'} modal__cta" data-toggle-card="${c.id}">
+            ${selected ? '✓ Added to wallet — tap to remove' : '+ Add to my wallet'}
+          </button>
+        `}
       </div>`;
     $('#modal').hidden = false;
   }
@@ -467,6 +523,119 @@
     $('#modal').hidden = false;
   }
 
+  /* ===================== NETWORK PICKER ===================== */
+  let pendingNetworkThen = null;
+  function openNetworkPicker(cardId, onChosen) {
+    const c = CARD_BY_ID[cardId];
+    const nets = c ? networksOf(c) : [];
+    if (!c || nets.length <= 1) { if (onChosen) onChosen(); return; }
+    pendingNetworkThen = onChosen || null;
+    $('#modalPanel').innerHTML = `
+      <button class="modal__close" data-pick-network="${c.id}" data-net="" aria-label="Close">✕</button>
+      <div class="modal__visual netpick__visual" style="background:${c.gradient}">
+        ${logoFor(c) ? `<img class="cardlet__logo" src="${escapeHtml(logoFor(c))}" alt="" onerror="this.remove()" />` : ''}
+        <div class="cardlet__chip"></div>
+        ${CONTACTLESS}
+        <div class="netpick__visual-name">${escapeHtml(c.name)}</div>
+      </div>
+      <div class="modal__body">
+        <div class="netpick__head">
+          <h3 class="netpick__title">Which network is your card on?</h3>
+          <p class="netpick__sub">The <strong>${escapeHtml(c.name)}</strong> comes on more than one payment network. Pick the one printed on your card so your recommendations and card art are spot-on.</p>
+        </div>
+        <div class="net-picker">
+          ${nets.map((n) => `
+            <button class="net-option" data-pick-network="${c.id}" data-net="${n.key}">
+              <span class="net-option__mark">${networkMarkByKey(n.key)}</span>
+              <span class="net-option__label">${escapeHtml(n.label)}</span>
+            </button>`).join('')}
+        </div>
+        <button class="btn btn--ghost netpick__skip" data-pick-network="${c.id}" data-net="">I'm not sure — skip for now</button>
+      </div>`;
+    $('#modal').hidden = false;
+  }
+
+  function chooseNetwork(cardId, net) {
+    if (net) state.cardNetwork.set(cardId, net);
+    else state.cardNetwork.delete(cardId);
+    persist();
+    renderCards();
+    const then = pendingNetworkThen; pendingNetworkThen = null;
+    closeModal();
+    if (then) then();
+  }
+
+  /* ===================== ANALYZE — gamified loading ===================== */
+  const ANALYZE_STEPS = [
+    { ic: '🔎', tx: 'Searching the web for your card' },
+    { ic: '📑', tx: 'Reading the latest rewards, fees & caps' },
+    { ic: '🧮', tx: 'Crunching the value across your merchants' },
+    { ic: '✨', tx: 'Building your personalised card profile' },
+  ];
+  const CARD_FACTS = [
+    'Clearing your full statement on time keeps 100% of your rewards — card interest erases them fast.',
+    'There’s rarely one “best” card — the smartest pick changes from merchant to merchant.',
+    'Many cards waive their annual fee once you cross a yearly spend milestone.',
+    'Not all points are equal — 1 reward point can be worth ₹0.25 on one card and ₹1 on another.',
+    'RuPay credit cards can link to UPI — handy for everyday QR-code payments.',
+    'Co-branded cards often shine at one brand but stay average everywhere else.',
+    'A fuel-surcharge waiver can quietly save frequent drivers a few hundred rupees a month.',
+    'Stacking the right card with a live offer can lift your effective return nicely.',
+  ];
+  let axTimers = [];
+  let axStepIdx = 0, axFactIdx = 0, axBar = 0;
+
+  function applyAxBar() { const el = $('#analyzeBarFill'); if (el) el.style.width = axBar + '%'; }
+  function applyAxFact() { const el = $('#analyzeFact'); if (el) el.textContent = CARD_FACTS[axFactIdx % CARD_FACTS.length]; }
+  function setAxStep(i) {
+    axStepIdx = i;
+    $$('#analyzeSteps .ax-step').forEach((li) => {
+      const k = Number(li.dataset.i);
+      li.classList.toggle('is-done', k < i);
+      li.classList.toggle('is-active', k === i);
+    });
+  }
+  function startAnalyzeUx(name) {
+    const ov = $('#analyzeOverlay'); if (!ov) return;
+    const nameEl = $('#analyzeName'); if (nameEl) nameEl.textContent = name || 'your card';
+    const stepsEl = $('#analyzeSteps');
+    if (stepsEl) stepsEl.innerHTML = ANALYZE_STEPS.map((s, i) =>
+      `<li class="ax-step" data-i="${i}"><span class="ax-step__ic">${s.ic}</span><span class="ax-step__tx">${s.tx}</span><span class="ax-step__tick">✓</span></li>`).join('');
+    axBar = 6; applyAxBar(); setAxStep(0);
+    axFactIdx = Math.floor(Math.random() * CARD_FACTS.length); applyAxFact();
+    ov.hidden = false;
+    axTimers.forEach(clearInterval); axTimers = [];
+    axTimers.push(setInterval(() => { if (axStepIdx < ANALYZE_STEPS.length - 1) setAxStep(axStepIdx + 1); }, 3800));
+    axTimers.push(setInterval(() => { axFactIdx = (axFactIdx + 1) % CARD_FACTS.length; applyAxFact(); }, 4200));
+    axTimers.push(setInterval(() => { if (axBar < 93) { axBar += 1; applyAxBar(); } }, 600));
+  }
+  function stopAnalyzeUx(onDone) {
+    axTimers.forEach(clearInterval); axTimers = [];
+    const ov = $('#analyzeOverlay');
+    if (!ov) { if (onDone) onDone(); return; }
+    // Fill the bar + tick every step, hold a beat, then hand off to the reveal.
+    setAxStep(ANALYZE_STEPS.length); axBar = 100; applyAxBar();
+    setTimeout(() => { ov.hidden = true; if (onDone) onDone(); }, 650);
+  }
+
+  /* A short, tasteful confetti burst — a little reward for adding a card. */
+  function celebrate() {
+    const layer = document.createElement('div');
+    layer.className = 'confetti';
+    const colors = ['#6d5efc', '#28e0a8', '#ffd166', '#9d7bff', '#ff6b8a'];
+    for (let i = 0; i < 80; i++) {
+      const p = document.createElement('i');
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = (Math.random() * 0.25) + 's';
+      p.style.animationDuration = (1.6 + Math.random() * 1.2) + 's';
+      p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      layer.appendChild(p);
+    }
+    document.body.appendChild(layer);
+    setTimeout(() => layer.remove(), 3200);
+  }
+
   /* ============================== EVENTS ============================= */
   function bindEvents() {
     // global action buttons (data-action)
@@ -481,6 +650,10 @@
       // "Analyze with AI" call-to-action
       const aiEl = e.target.closest('[data-ai-analyze]');
       if (aiEl) { startAnalyze(aiEl.dataset.aiAnalyze); return; }
+
+      // network choice for a multi-network card
+      const netEl = e.target.closest('[data-pick-network]');
+      if (netEl) { chooseNetwork(netEl.dataset.pickNetwork, netEl.dataset.net || ''); return; }
 
       // select/deselect a card
       const cardEl = e.target.closest('[data-card]');
@@ -536,11 +709,16 @@
         showView('wizard'); showStep('cards'); renderCards(); updateCardFooter();
         if (window.CW_ACCESS) window.CW_ACCESS.refresh();
         break;
-      case 'toCards':   showStep('cards'); break;
+      case 'toCards':   closeModal(); showStep('cards'); break;
       case 'toMerchants':
-        showStep('merchants'); renderMerchants(); break;
+        closeModal(); showStep('merchants'); renderMerchants(); break;
       case 'optimize':
-        showStep('results'); renderResults(); break;
+        closeModal(); showStep('results'); renderResults(); break;
+      case 'addAnother': {
+        closeModal();
+        const s = $('#cardSearch'); if (s) s.focus();
+        break;
+      }
       case 'terms': openTerms(); break;
       case 'closeModal': closeModal(); break;
     }
@@ -561,11 +739,14 @@
 
   function toggleCard(id) {
     if (!CARD_BY_ID[id]) return;
-    if (state.selectedCards.has(id)) state.selectedCards.delete(id);
-    else state.selectedCards.add(id);
+    const adding = !state.selectedCards.has(id);
+    if (adding) state.selectedCards.add(id);
+    else state.selectedCards.delete(id);
     persist();
     renderCards();
     updateCardFooter();
+    // If this card ships on multiple networks, ask which one is theirs.
+    if (adding && needsNetworkChoice(CARD_BY_ID[id])) openNetworkPicker(id);
   }
 
   function toggleMerchant(id) {

@@ -3,7 +3,7 @@
 **Swipe the right card, every single time.**
 
 CardWise tells you **which of your credit cards to use at every merchant** to maximise
-rewards. Add **any** credit card issued in India — CardWise uses **Claude (Opus 4.8) with
+rewards. Add **any** credit card issued in India — CardWise uses **Claude with
 live web search** to read that card's *latest* value proposition (CVP), reward program,
 fees and caps, then computes the single best card for each merchant, with the reward rate,
 the reasoning, an annual-rewards projection, and tips to manage each card better.
@@ -65,7 +65,7 @@ the app stays fully usable.
 Browser (static, GitHub-Pages-able)                Serverless (Vercel/Netlify/Cloudflare)
 ┌─────────────────────────────────────┐            ┌──────────────────────────────────────┐
 │ index.html + assets/js/*            │            │ /api/analyze-card.js                  │
-│  • optimizer engine (merchant>cat>  │  POST {name}│  • Claude Opus 4.8 + web_search       │
+│  • optimizer engine (merchant>cat>  │  POST {name}│  • Claude Sonnet 4.6 + web_search     │
 │    base, effective % return)        │ ─────────► │  • returns a structured card profile  │
 │  • built-in 16-card database        │ ◄───────── │  • validates → optimizer taxonomy     │
 │  • AI client + localStorage cache   │   {card}   │  • caches + rate-limits (best-effort) │
@@ -190,9 +190,9 @@ python3 -m http.server 8000              # http://localhost:8000
 
 ## 🔧 Configuration & customisation
 
-- **Model:** `api/analyze-card.js` uses `claude-opus-4-8` with the `web_search_20260209`
-  tool. You can switch to `claude-sonnet-4-6` or `claude-haiku-4-5` to trade some quality
-  for lower cost (edit the `model` field).
+- **Model:** `api/analyze-card.js` uses `claude-sonnet-4-6` with the `web_search_20260209`
+  tool (fast, reliable and cost-efficient). Switch to a larger model for more depth, or
+  `claude-haiku-4-5` for the lowest cost (edit the `model` field).
 - **Built-in cards:** add/edit a card object in `assets/js/data.js` (documented inline). Use
   the same `rewards: { merchant, category, base }` shape — rates are effective % return. The
   card visual comes from its `gradient` (or `colors`) + `network`; issuer brand palettes in

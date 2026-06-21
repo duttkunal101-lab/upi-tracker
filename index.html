@@ -96,11 +96,12 @@
       <div class="step is-active" data-step="cards">
         <div class="step__head">
           <h2>Which credit cards do you own?</h2>
-          <p>Select from popular cards below, or type <strong>any</strong> Indian card and let AI analyze it live.</p>
+          <p>Add <strong>one or more</strong> of your cards — pick from the popular list, or type <strong>any</strong> Indian card for a live AI analysis. The more you add, the smarter your strategy.</p>
         </div>
         <div class="ea-banner" id="earlyAccessBanner" hidden></div>
         <input type="search" class="search" id="cardSearch" placeholder="Search or type any card, e.g. HDFC Diners Black, Axis Atlas, IDFC…" autocomplete="off" />
         <p class="consent-note">Heads up: when you analyze a card with AI, we note the card name (anonymously) to understand demand — no personal data. <a href="#" data-action="terms">Terms &amp; privacy</a>.</p>
+        <div class="pick-hint">✅ Add <strong>as many cards as you like</strong> — tap a card to add it, then hit <strong>Continue</strong>. Not listed? Just type its name for an instant AI analysis.</div>
         <div class="card-grid" id="cardGrid"></div>
         <div class="step__footer">
           <span class="muted" id="cardCount">0 cards selected</span>
@@ -134,6 +135,21 @@
       </div>
     </section>
   </main>
+
+  <!-- ============ Gamified "researching live" overlay ============ -->
+  <div class="analyze-overlay" id="analyzeOverlay" hidden>
+    <div class="analyze-box">
+      <div class="analyze-orb">✨</div>
+      <h3 class="analyze-title">Researching <span id="analyzeName">your card</span> live…</h3>
+      <ol class="analyze-steps" id="analyzeSteps"></ol>
+      <div class="analyze-bar"><span class="analyze-bar__fill" id="analyzeBarFill"></span></div>
+      <div class="analyze-fact">
+        <span class="analyze-fact__label">💡 Did you know</span>
+        <span id="analyzeFact"></span>
+      </div>
+      <p class="analyze-foot">Reading the latest public info from the web · usually 10–40s</p>
+    </div>
+  </div>
 
   <footer class="footer">
     <p>
