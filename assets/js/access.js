@@ -58,8 +58,8 @@
       el.classList.remove('ea-banner--full');
       main = `🎟️ Early access — <strong>${stats.taken}</strong> / ${stats.cap} spots claimed`;
       sub = stats.launchAtMs != null
-        ? `Opened ${fmtAgo(stats.launchAtMs)} · ${stats.remaining} left`
-        : `Be one of the first ${stats.cap} to try the AI lookup!`;
+        ? `Opened ${fmtAgo(stats.launchAtMs)} · ${stats.remaining} spots left`
+        : `Be one of the first ${stats.cap} to try CardWise!`;
     }
     el.innerHTML = `
       <div class="ea-banner__row">
@@ -72,7 +72,8 @@
 
   async function refresh() {
     try {
-      const res = await fetch(STATS_URL, { headers: { Accept: 'application/json' } });
+      const url = `${STATS_URL}?clientId=${encodeURIComponent(getClientId())}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
       const ct = res.headers.get('content-type') || '';
       if (!ct.includes('application/json')) { renderBanner({ configured: false }); return null; }
       const stats = await res.json();
@@ -84,9 +85,48 @@
     }
   }
 
+  /* Claim an early-access spot when the visitor starts using the platform.
+   * Deduped per browser; fails open so the platform never breaks. */
+  async function claim() {
+    try {
+      const res = await fetch(STATS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ clientId: getClientId() }),
+      });
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) return { configured: false, granted: true };
+      const access = await res.json();
+      renderBanner(access);
+      return access;
+    } catch (_) {
+      return { configured: false, granted: true };
+    }
+  }
+
+  /* Retain an anonymous snapshot of a finished session (cards + merchants +
+   * strategy). Best-effort, fire-and-forget. */
+  function recordSession(data) {
+    try {
+      fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, clientId: getClientId() }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (_) { /* best-effort */ }
+  }
+
   function isFull() {
     return !!(lastStats && lastStats.configured && lastStats.full);
   }
+  // True only when the round is full AND this browser hasn't already claimed a spot.
+  function isBlocked() {
+    return !!(lastStats && lastStats.configured && lastStats.full && !lastStats.mine);
+  }
 
-  window.CW_ACCESS = { getClientId, refresh, renderBanner, isFull, fmtDuration, fmtAgo, get stats() { return lastStats; } };
+  window.CW_ACCESS = {
+    getClientId, refresh, claim, recordSession, renderBanner,
+    isFull, isBlocked, fmtDuration, fmtAgo, get stats() { return lastStats; },
+  };
 })();

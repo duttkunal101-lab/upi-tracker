@@ -178,6 +178,21 @@ body {
 }
 .how__step h3 { font-size: 1.15rem; margin-bottom: 0.4rem; }
 .how__step p { color: var(--muted); font-size: 0.95rem; }
+.how__cta { text-align: center; margin-top: 2rem; }
+
+/* value props */
+.value { max-width: var(--maxw); margin: 0 auto; padding: 1rem 1.25rem 0; }
+.value__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.value__card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.6rem;
+  transition: transform 0.2s var(--ease), border-color 0.2s;
+}
+.value__card:hover { transform: translateY(-4px); border-color: var(--border-2); }
+.value__icon { font-size: 1.9rem; display: block; margin-bottom: 0.7rem; }
+.value__card h3 { font-size: 1.12rem; margin-bottom: 0.35rem; letter-spacing: -0.01em; }
+.value__card p { color: var(--muted); font-size: 0.93rem; line-height: 1.55; }
+@media (max-width: 860px) { .value__grid { grid-template-columns: 1fr; } }
 
 /* ------------------------------- Steps ----------------------------------- */
 .view[data-view="wizard"] { max-width: var(--maxw); margin: 0 auto; padding: 2rem 1.25rem 4rem; }
@@ -781,6 +796,22 @@ select.fb-text { appearance: none; -webkit-appearance: none; cursor: pointer; }
   background: rgba(109,94,252,0.14); border: 1px solid var(--border-2);
 }
 .suggest__sub { color: var(--muted); font-size: 0.92rem; margin: 0.95rem 0 0.2rem; text-align: center; }
+
+/* ===================== "We're full" limit screen ===================== */
+.limit-screen {
+  position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 1.5rem;
+  background: radial-gradient(1000px 500px at 50% -10%, rgba(109,94,252,0.22), transparent 60%), var(--bg);
+}
+.limit-card {
+  width: min(520px, 100%); text-align: center; background: var(--bg-2);
+  border: 1px solid var(--border-2); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 2.4rem 2rem; animation: pop 0.34s var(--ease);
+}
+.limit-emoji { font-size: 3rem; margin-bottom: 0.6rem; }
+.limit-card h2 { font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: 0.7rem; }
+.limit-card p { color: var(--muted); font-size: 0.98rem; line-height: 1.6; }
+.limit-card .limit-sub { margin-top: 0.8rem; font-size: 0.92rem; }
+.limit-card strong { color: var(--gold); }
 
 /* reduced motion */
 @media (prefers-reduced-motion: reduce) {

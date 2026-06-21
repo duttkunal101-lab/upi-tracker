@@ -110,14 +110,43 @@ function parseTimeline(flat) {
   return out;
 }
 
-export async function getStats() {
-  if (!kvConfigured()) return { configured: false, cap: CAP };
-  const [count, launchAt, zrange] = await Promise.all([
+export async function getStats(clientId) {
+  if (!kvConfigured()) return { configured: false, cap: CAP, mine: true };
+  const [count, launchAt, zrange, mine] = await Promise.all([
     redis('GET', K_COUNT),
     redis('GET', K_LAUNCH),
     redis('ZRANGE', K_TIMELINE, '0', '-1', 'WITHSCORES'),
+    clientId ? redis('HGET', K_CLAIMS, String(clientId)) : Promise.resolve(null),
   ]);
-  return computeStats(count, launchAt != null ? Number(launchAt) : null, parseTimeline(zrange));
+  const stats = computeStats(count, launchAt != null ? Number(launchAt) : null, parseTimeline(zrange));
+  stats.mine = mine != null; // has THIS browser already claimed a spot?
+  return stats;
+}
+
+/**
+ * Retain an anonymous snapshot of a completed session — the cards and merchants
+ * used and the strategy produced — for demand/insight. No personal data; just an
+ * anonymous browser id. Disclosed in the in-app Terms. Best-effort.
+ */
+export async function recordSession(session) {
+  if (!kvConfigured() || !session) return false;
+  const s = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const entry = JSON.stringify({
+    cards: Array.isArray(session.cards) ? session.cards.slice(0, 30).map((c) => s(c, 80)) : [],
+    merchants: Array.isArray(session.merchants) ? session.merchants.slice(0, 80).map((m) => ({ id: s(m && m.id, 40), spend: Number(m && m.spend) || 0 })) : [],
+    strategy: Array.isArray(session.strategy) ? session.strategy.slice(0, 80).map((r) => ({ merchant: s(r && r.merchant, 40), card: s(r && r.card, 80), rate: Number(r && r.rate) || 0 })) : [],
+    annual: Number(session.annual) || 0,
+    client: s(session.clientId, 40),
+    at: Date.now(),
+  });
+  try {
+    await redis('LPUSH', 'cardwise:sessions', entry);
+    await redis('LTRIM', 'cardwise:sessions', 0, 999); // keep the last 1000
+    return true;
+  } catch (e) {
+    console.error('recordSession failed (non-fatal):', e?.message || e);
+    return false;
+  }
 }
 
 /**

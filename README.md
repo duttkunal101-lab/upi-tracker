@@ -126,8 +126,10 @@ serverless functions. **Vercel** is the simplest:
 
 ### Optional: enable the early-access gate ("first 100 people")
 
-Want the AI feature limited to the first 100 testers, with a live counter and time tracker?
-Add a free shared datastore:
+Want the platform limited to the first 100 testers, with a live counter and time tracker?
+A spot is claimed when a visitor **starts using the platform** (deduped per browser); once the
+cap is reached, new visitors get a friendly *"we're full — thank you for visiting"* screen while
+existing testers keep their access. Add a free shared datastore:
 
 1. Create a free database at [console.upstash.com](https://console.upstash.com) → **Create
    Database** (Redis) → open it → copy the **REST URL** and **REST Token**.
@@ -136,10 +138,13 @@ Add a free shared datastore:
    - `UPSTASH_REDIS_REST_TOKEN` = the REST token
    - *(optional)* `CARDWISE_CAP` = how many people get access (defaults to `100`; set it to
      `2` to quickly test the "closed" state, or any number for a bigger round)
-3. **Redeploy.** The counter (`X / <cap> spots claimed`) now appears, spots are consumed as
-   people use the AI lookup, and once the cap is reached the feature closes and shows how long
-   it took. To **reset** the round, delete the keys `cardwise:*` in the Upstash console (Data
-   Browser).
+3. **Redeploy.** The counter (`X / <cap> spots claimed`) now appears, a spot is consumed when a
+   person starts using the platform, and once the cap is reached new visitors see the "we're full"
+   screen (with how long it took to fill). Anonymous usage is also retained for demand insight —
+   in the Upstash Data Browser: `cardwise:searches` / `cardwise:searchlog` (card searches),
+   `cardwise:sessions` (a snapshot of each finished session: cards + merchants + the strategy),
+   and `cardwise:feedback` (ratings & suggestions). To **reset** the round, delete the `cardwise:*`
+   keys.
 
 > Leave these two vars blank to keep the gate **off** — the app works the same, just without
 > the counter/cap. The cap is **per browser** (deduped by a random client id in

@@ -379,6 +379,7 @@
 
     const strategy = OPT.buildStrategy(ownedCardIds, merchantSpends);
     const upgrades = OPT.findUpgradeOpportunities(ownedCardIds, merchantSpends);
+    lastStrategy = strategy;
     const root = $('#resultsRoot');
 
     root.innerHTML = `
@@ -629,9 +630,10 @@
 
         <h4>What we keep — and what we don't</h4>
         <ul>
-          <li><strong>We do note which cards people search for</strong> — just the card name you type,
-          with a timestamp and a random, anonymous browser id — so we can understand demand and improve
-          the platform.</li>
+          <li><strong>We keep an anonymous record of what's used</strong> — the card names you search,
+          and a snapshot of the cards &amp; merchants in a finished session plus the strategy we produced —
+          each with a timestamp and a random, anonymous browser id, so we can understand demand and
+          improve the platform.</li>
           <li><strong>We don't collect personal or financial data</strong> — no name, email, phone, card
           numbers or logins. Your selected cards and spending amounts stay in your browser and are never
           sent to us.</li>
@@ -918,6 +920,51 @@
     $('#modal').hidden = false;
   }
 
+  /* ===================== PLATFORM ACCESS (first-100 gate) ===================== */
+  function enterWizard() {
+    showView('wizard'); showStep('cards'); renderCards(); updateCardFooter();
+  }
+  function startPlatform() {
+    enterWizard(); // optimistic — no latency; the load-time check is the primary gate
+    const acc = window.CW_ACCESS;
+    if (acc && acc.claim) {
+      // Claim a spot in the background; if the round just filled, greet them kindly.
+      acc.claim().then((access) => {
+        if (access && access.configured && access.full && !access.granted && !access.already) {
+          showLimitScreen(access);
+        }
+      });
+    }
+  }
+  function showLimitScreen(stats) {
+    let el = document.getElementById('limitScreen');
+    if (!el) { el = document.createElement('div'); el.id = 'limitScreen'; el.className = 'limit-screen'; document.body.appendChild(el); }
+    const cap = (stats && stats.cap) || 100;
+    const took = (stats && stats.reachedCapMs != null && window.CW_ACCESS)
+      ? ` It filled up in just ${window.CW_ACCESS.fmtDuration(stats.reachedCapMs)}.` : '';
+    el.innerHTML = `
+      <div class="limit-card">
+        <div class="limit-emoji">🎉</div>
+        <h2>We're full for now — thank you for visiting!</h2>
+        <p>CardWise opened to its first <strong>${cap}</strong> testers, and every spot is now taken.${took}</p>
+        <p class="limit-sub">Thanks so much for stopping by. 💜 We're planning to open more spots soon — do check back.</p>
+      </div>`;
+    el.hidden = false;
+  }
+
+  // Anonymous snapshot of the finished session (disclosed in Terms).
+  let lastStrategy = null;
+  function recordSessionData() {
+    const acc = window.CW_ACCESS;
+    if (!acc || !acc.recordSession || !lastStrategy) return;
+    acc.recordSession({
+      cards: [...state.selectedCards].map((id) => (CARD_BY_ID[id] && CARD_BY_ID[id].name) || id),
+      merchants: [...state.selectedMerchants.entries()].map(([id, spend]) => ({ id, spend })),
+      strategy: lastStrategy.recommendations.map((r) => ({ merchant: r.merchant.name, card: r.best.card.name, rate: r.best.rate })),
+      annual: lastStrategy.totals.annualReward,
+    });
+  }
+
   /* ============================== EVENTS ============================= */
   function bindEvents() {
     // global action buttons (data-action)
@@ -993,10 +1040,7 @@
         showView('landing');
         if (action === 'restart') resetAll();
         break;
-      case 'start':
-        showView('wizard'); showStep('cards'); renderCards(); updateCardFooter();
-        if (window.CW_ACCESS) window.CW_ACCESS.refresh();
-        break;
+      case 'start': startPlatform(); break;
       case 'toCards':   closeModal(); showStep('cards'); break;
       case 'toMerchants':
         closeModal(); showStep('merchants'); renderMerchants(); break;
@@ -1009,7 +1053,7 @@
           foot: 'Comparing every one of your cards across your chosen merchants',
           steps: STRATEGY_STEPS, facts: CARD_FACTS, stepInterval: 520,
         });
-        setTimeout(() => agentComplete(() => { showStep('results'); renderResults(); }), 2400);
+        setTimeout(() => agentComplete(() => { showStep('results'); renderResults(); recordSessionData(); }), 2400);
         break;
       case 'addAnother': {
         closeModal();
@@ -1080,11 +1124,21 @@
     bindEvents();
 
     // If the user already has selections from a previous visit, jump them in.
+    // (Per-browser localStorage — each visitor has their own private history,
+    // and a brand-new visitor always starts fresh.)
     if (state.selectedCards.size > 0) {
       showView('wizard');
       showStep('cards');
       renderCards();
       updateCardFooter();
+    }
+
+    // Live counter + the "first 100" gate: if the round is full and this browser
+    // hasn't already claimed a spot, greet new visitors with a friendly message.
+    if (window.CW_ACCESS) {
+      window.CW_ACCESS.refresh().then((s) => {
+        if (s && s.configured && s.full && !s.mine) showLimitScreen(s);
+      });
     }
   }
 
