@@ -919,8 +919,9 @@
     if (booted) return;            // idempotent — guard against a double DOMContentLoaded
     booted = true;
 
-    // headline counts
-    $('#statCards').textContent = CARDS.length;
+    // headline counts — count only the curated built-in cards, never the
+    // AI-analyzed cards that get cached into CARDS (that would inflate it).
+    $('#statCards').textContent = CARDS.filter((c) => c.source !== 'ai').length;
     $('#statMerchants').textContent = MERCHANTS.length;
 
     restore();
