@@ -139,15 +139,15 @@
   <!-- ============ Gamified "researching live" overlay ============ -->
   <div class="analyze-overlay" id="analyzeOverlay" hidden>
     <div class="analyze-box">
-      <div class="analyze-orb">✨</div>
-      <h3 class="analyze-title">Researching <span id="analyzeName">your card</span> live…</h3>
+      <div class="analyze-orb" id="analyzeOrb">✨</div>
+      <h3 class="analyze-title" id="analyzeTitle">Working…</h3>
       <ol class="analyze-steps" id="analyzeSteps"></ol>
       <div class="analyze-bar"><span class="analyze-bar__fill" id="analyzeBarFill"></span></div>
-      <div class="analyze-fact">
+      <div class="analyze-fact" id="analyzeFactWrap">
         <span class="analyze-fact__label">💡 Did you know</span>
         <span id="analyzeFact"></span>
       </div>
-      <p class="analyze-foot">Reading the latest public info from the web · usually 10–40s</p>
+      <p class="analyze-foot" id="analyzeFoot"></p>
     </div>
   </div>
 

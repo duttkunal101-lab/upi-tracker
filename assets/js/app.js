@@ -197,7 +197,12 @@
 
     state.analyzing = name;
     renderCards();
-    startAnalyzeUx(name);
+    agentStart({
+      orb: '✨',
+      title: `Researching <span>${escapeHtml(name)}</span> live…`,
+      foot: 'Reading the latest public info from the web · usually 10–30s',
+      steps: ANALYZE_STEPS, facts: CARD_FACTS,
+    });
 
     const result = await window.CW_AI.analyze(name);
     state.analyzing = null;
@@ -211,14 +216,14 @@
       renderCards();
       updateCardFooter();
       // Let the overlay finish its "done" beat, then reveal the card + next step.
-      stopAnalyzeUx(() => {
+      agentComplete(() => {
         celebrate();
         const showDetails = () => openModal(card.id, { advance: true });
         if (needsNetworkChoice(card)) openNetworkPicker(card.id, showDetails);
         else showDetails();
       });
     } else {
-      stopAnalyzeUx(() => { renderCards(); toast(result.error, 'error'); });
+      agentComplete(() => { renderCards(); toast(result.error, 'error'); });
     }
   }
 
@@ -565,12 +570,19 @@
     if (then) then();
   }
 
-  /* ===================== ANALYZE — gamified loading ===================== */
+  /* ============ Agent overlay — reusable gamified "working" screen ============ */
   const ANALYZE_STEPS = [
     { ic: '🔎', tx: 'Searching the web for your card' },
     { ic: '📑', tx: 'Reading the latest rewards, fees & caps' },
     { ic: '🧮', tx: 'Crunching the value across your merchants' },
     { ic: '✨', tx: 'Building your personalised card profile' },
+  ];
+  const STRATEGY_STEPS = [
+    { ic: '🧠', tx: 'Reading each card’s reward structure' },
+    { ic: '🔗', tx: 'Matching your cards to your merchants' },
+    { ic: '🧮', tx: 'Computing rewards at every merchant' },
+    { ic: '🏆', tx: 'Picking the single best card per merchant' },
+    { ic: '✨', tx: 'Finalising your personalised game-plan' },
   ];
   const CARD_FACTS = [
     'Clearing your full statement on time keeps 100% of your rewards — card interest erases them fast.',
@@ -583,10 +595,11 @@
     'Stacking the right card with a live offer can lift your effective return nicely.',
   ];
   let axTimers = [];
-  let axStepIdx = 0, axFactIdx = 0, axBar = 0;
+  let axStepIdx = 0, axFactIdx = 0, axBar = 0, axStartMs = 0;
+  let axSteps = ANALYZE_STEPS, axFacts = CARD_FACTS;
 
   function applyAxBar() { const el = $('#analyzeBarFill'); if (el) el.style.width = axBar + '%'; }
-  function applyAxFact() { const el = $('#analyzeFact'); if (el) el.textContent = CARD_FACTS[axFactIdx % CARD_FACTS.length]; }
+  function applyAxFact() { const el = $('#analyzeFact'); if (el && axFacts.length) el.textContent = axFacts[axFactIdx % axFacts.length]; }
   function setAxStep(i) {
     axStepIdx = i;
     $$('#analyzeSteps .ax-step').forEach((li) => {
@@ -594,28 +607,44 @@
       li.classList.toggle('is-done', k < i);
       li.classList.toggle('is-active', k === i);
     });
+    const milestone = Math.round((i / Math.max(1, axSteps.length)) * 86) + 6;
+    if (milestone > axBar) { axBar = milestone; applyAxBar(); }
   }
-  function startAnalyzeUx(name) {
+
+  // Show the agent overlay. opts: { orb, title (html), foot, steps, facts, stepInterval }
+  function agentStart(opts) {
     const ov = $('#analyzeOverlay'); if (!ov) return;
-    const nameEl = $('#analyzeName'); if (nameEl) nameEl.textContent = name || 'your card';
+    axSteps = opts.steps || []; axFacts = opts.facts || [];
+    const set = (sel, prop, val) => { const el = $(sel); if (el) el[prop] = val; };
+    set('#analyzeOrb', 'textContent', opts.orb || '✨');
+    set('#analyzeTitle', 'innerHTML', opts.title || 'Working…');
+    set('#analyzeFoot', 'textContent', opts.foot || '');
     const stepsEl = $('#analyzeSteps');
-    if (stepsEl) stepsEl.innerHTML = ANALYZE_STEPS.map((s, i) =>
+    if (stepsEl) stepsEl.innerHTML = axSteps.map((s, i) =>
       `<li class="ax-step" data-i="${i}"><span class="ax-step__ic">${s.ic}</span><span class="ax-step__tx">${s.tx}</span><span class="ax-step__tick">✓</span></li>`).join('');
+    const factWrap = $('#analyzeFactWrap'); if (factWrap) factWrap.hidden = !axFacts.length;
     axBar = 6; applyAxBar(); setAxStep(0);
-    axFactIdx = Math.floor(Math.random() * CARD_FACTS.length); applyAxFact();
+    axFactIdx = Math.floor(Math.random() * (axFacts.length || 1)); applyAxFact();
+    axStartMs = Date.now();
     ov.hidden = false;
     axTimers.forEach(clearInterval); axTimers = [];
-    axTimers.push(setInterval(() => { if (axStepIdx < ANALYZE_STEPS.length - 1) setAxStep(axStepIdx + 1); }, 3800));
-    axTimers.push(setInterval(() => { axFactIdx = (axFactIdx + 1) % CARD_FACTS.length; applyAxFact(); }, 4200));
-    axTimers.push(setInterval(() => { if (axBar < 93) { axBar += 1; applyAxBar(); } }, 600));
+    const every = opts.stepInterval || 3600;
+    axTimers.push(setInterval(() => { if (axStepIdx < axSteps.length - 1) setAxStep(axStepIdx + 1); }, every));
+    if (axFacts.length) axTimers.push(setInterval(() => { axFactIdx = (axFactIdx + 1) % axFacts.length; applyAxFact(); }, 4200));
+    axTimers.push(setInterval(() => { if (axBar < 93) { axBar += 1; applyAxBar(); } }, 700));
   }
-  function stopAnalyzeUx(onDone) {
-    axTimers.forEach(clearInterval); axTimers = [];
+
+  // Finish the overlay. Guarantees a minimum on-screen time so it's never a flash.
+  function agentComplete(onDone) {
     const ov = $('#analyzeOverlay');
-    if (!ov) { if (onDone) onDone(); return; }
-    // Fill the bar + tick every step, hold a beat, then hand off to the reveal.
-    setAxStep(ANALYZE_STEPS.length); axBar = 100; applyAxBar();
-    setTimeout(() => { ov.hidden = true; if (onDone) onDone(); }, 650);
+    const finish = () => {
+      axTimers.forEach(clearInterval); axTimers = [];
+      if (!ov) { if (onDone) onDone(); return; }
+      setAxStep(axSteps.length); axBar = 100; applyAxBar();
+      setTimeout(() => { ov.hidden = true; if (onDone) onDone(); }, 600);
+    };
+    const MIN = 1600, elapsed = Date.now() - axStartMs;
+    if (elapsed < MIN) setTimeout(finish, MIN - elapsed); else finish();
   }
 
   /* A short, tasteful confetti burst — a little reward for adding a card. */
@@ -713,7 +742,16 @@
       case 'toMerchants':
         closeModal(); showStep('merchants'); renderMerchants(); break;
       case 'optimize':
-        closeModal(); showStep('results'); renderResults(); break;
+        closeModal();
+        // Agentic "building your strategy" screen, then reveal the game-plan.
+        agentStart({
+          orb: '🧠',
+          title: 'Your <span>CardWise agent</span> is building your strategy…',
+          foot: 'Comparing every one of your cards across your chosen merchants',
+          steps: STRATEGY_STEPS, facts: CARD_FACTS, stepInterval: 520,
+        });
+        setTimeout(() => agentComplete(() => { showStep('results'); renderResults(); }), 2400);
+        break;
       case 'addAnother': {
         closeModal();
         const s = $('#cardSearch'); if (s) s.focus();
