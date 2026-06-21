@@ -490,7 +490,7 @@ const ISSUER_DOMAINS = {
   'indusind': 'indusind.com',
   'au ': 'aubank.in',
   'yes bank': 'yesbank.in',
-  'citi': 'online.citibank.co.in',
+  'citi': 'citi.com',
   'federal': 'federalbank.co.in',
   'onecard': 'getonecard.app',
   'amazon': 'icicibank.com',

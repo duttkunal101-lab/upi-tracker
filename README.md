@@ -150,7 +150,7 @@ search**, set two more env vars in Vercel:
 
 Free tier is ~100 lookups/day. The top image result is usually the right card; if a photo is
 missing or fails to load, the app **falls back to the branded card** (bank logo + network +
-colours), so it always looks right. Bank logos come from the Clearbit logo service (no key).
+colours), so it always looks right. Bank logos come from Google's logo/favicon service (no key).
 
 > **Netlify / Cloudflare Pages** work too — put the function under their Functions directory
 > and set the same `ANTHROPIC_API_KEY` env var. The frontend calls `/api/analyze-card`

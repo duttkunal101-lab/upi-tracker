@@ -77,10 +77,11 @@
     return best;
   }
 
-  // Correct bank logo from the issuer's domain (Clearbit logo service).
+  // Correct bank logo from the issuer's domain, via Google's logo/favicon
+  // service — always returns that bank's real logo mark (reliable, no key).
   function logoFor(card) {
     const d = window.CW_DATA.domainFor ? window.CW_DATA.domainFor(card) : '';
-    return d ? `https://logo.clearbit.com/${d}` : '';
+    return d ? `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(d)}` : '';
   }
 
   function networkMark(card) {
