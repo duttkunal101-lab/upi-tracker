@@ -46,10 +46,11 @@ async function googleCardImage(name) {
 /* The optimizer's fixed taxonomy. The model must map rewards onto these ids. */
 const MERCHANT_IDS = [
   'amazon', 'flipkart', 'myntra', 'nykaa', 'ajio', 'tatacliq', 'tataneu',
+  'meesho', 'croma', 'reliancedigital',
   'swiggy', 'zomato', 'bigbasket', 'blinkit', 'zepto', 'dmart',
   'flights', 'hotels', 'makemytrip', 'irctc', 'uber', 'ola', 'dining',
-  'bookmyshow', 'ott', 'fuel', 'utilities', 'mobile', 'cultfit', 'pharmacy',
-  'international',
+  'bookmyshow', 'netflix', 'primevideo', 'hotstar', 'spotify', 'ott',
+  'fuel', 'utilities', 'mobile', 'cultfit', 'pharmacy', 'international',
 ];
 const CATEGORY_IDS = [
   'online-shopping', 'food-delivery', 'groceries', 'travel', 'cabs', 'dining',

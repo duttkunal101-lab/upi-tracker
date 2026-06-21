@@ -44,6 +44,9 @@ const MERCHANTS = [
   { id: 'ajio',       name: 'Ajio',       category: 'online-shopping', icon: '🧥', domain: 'ajio.com',      avgSpend: 1500 },
   { id: 'tatacliq',   name: 'Tata CLiQ',  category: 'online-shopping', icon: '🏬', domain: 'tatacliq.com',  avgSpend: 1500 },
   { id: 'tataneu',    name: 'Tata Neu',   category: 'online-shopping', icon: '🟣', domain: 'tataneu.com',   avgSpend: 2000 },
+  { id: 'meesho',     name: 'Meesho',     category: 'online-shopping', icon: '🛍️', domain: 'meesho.com',    avgSpend: 1000 },
+  { id: 'croma',      name: 'Croma',      category: 'online-shopping', icon: '🔌', domain: 'croma.com',     avgSpend: 2500 },
+  { id: 'reliancedigital', name: 'Reliance Digital', category: 'online-shopping', icon: '🖥️', domain: 'reliancedigital.in', avgSpend: 2500 },
 
   // Food delivery
   { id: 'swiggy',     name: 'Swiggy',     category: 'food-delivery', icon: '🛵', domain: 'swiggy.com', avgSpend: 3000 },
@@ -68,9 +71,13 @@ const MERCHANTS = [
   // Dining
   { id: 'dining',     name: 'Restaurants (Dine-in)', category: 'dining', icon: '🍽️', avgSpend: 4000 },
 
-  // Entertainment
+  // Entertainment & streaming
   { id: 'bookmyshow', name: 'BookMyShow', category: 'entertainment', icon: '🎟️', domain: 'bookmyshow.com', avgSpend: 1000 },
-  { id: 'ott',        name: 'OTT & Streaming', category: 'entertainment', icon: '📺', avgSpend: 800 },
+  { id: 'netflix',    name: 'Netflix',    category: 'entertainment', icon: '🎬', domain: 'netflix.com',    avgSpend: 650 },
+  { id: 'primevideo', name: 'Prime Video', category: 'entertainment', icon: '🎞️', domain: 'primevideo.com', avgSpend: 300 },
+  { id: 'hotstar',    name: 'JioHotstar', category: 'entertainment', icon: '⭐', domain: 'hotstar.com',     avgSpend: 300 },
+  { id: 'spotify',    name: 'Spotify',    category: 'entertainment', icon: '🎵', domain: 'spotify.com',     avgSpend: 150 },
+  { id: 'ott',        name: 'SonyLIV / other OTT', category: 'entertainment', icon: '📺', avgSpend: 400 },
 
   // Fuel
   { id: 'fuel',       name: 'Fuel / Petrol', category: 'fuel', icon: '⛽', avgSpend: 4000 },

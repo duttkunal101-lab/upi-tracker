@@ -171,8 +171,12 @@
    * @returns {Array<{card, extraAnnual, fee, net, wins:string[]}>}
    */
   function findUpgradeOpportunities(ownedCardIds, merchantSpends, opts = {}) {
-    const maxFee = (opts.maxAnnualFee == null) ? Infinity : Number(opts.maxAnnualFee);
     const limit = opts.limit || 3;
+    // Budget filter on the new card's annual fee: 'lte' (≤ value) or 'gt' (> value).
+    const feeOp = opts.feeOp || 'lte';
+    const feeValue = opts.feeValue != null ? Number(opts.feeValue)
+      : (opts.maxAnnualFee != null ? Number(opts.maxAnnualFee) : Infinity);
+    const feeOk = (fee) => feeOp === 'gt' ? fee > feeValue : fee <= feeValue;
     const owned = new Set(ownedCardIds);
     const merchants = merchantSpends.filter((m) => (Number(m.monthlySpend) || 0) > 0);
     if (merchants.length === 0) return [];
@@ -184,7 +188,7 @@
     }, 0);
 
     const candidates = window.CW_DATA.CARDS.filter(
-      (c) => !owned.has(c.id) && (Number(c.annualFee) || 0) <= maxFee
+      (c) => !owned.has(c.id) && feeOk(Number(c.annualFee) || 0)
     );
 
     return candidates

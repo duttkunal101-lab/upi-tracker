@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  const { CATEGORIES, MERCHANTS, CARDS, CARD_BY_ID } = window.CW_DATA;
+  const { CATEGORIES, MERCHANTS, CARDS, CARD_BY_ID, MERCHANT_BY_ID } = window.CW_DATA;
   const OPT = window.CW_OPTIMIZER;
   const fmtRate = OPT.fmtRate;
 
@@ -20,7 +20,8 @@
     customMerchants: [],               // user-added spending categories
     cardQuery: '',
     analyzing: null,                   // name currently being analyzed by AI, or null
-    upgradeBudget: 5000,               // max annual fee the user will pay for a NEW card
+    budgetOp: 'lte',                   // 'lte' (fee up to) | 'gt' (fee over) for new-card ideas
+    budgetValue: 5000,                 // the ₹ value the new-card annual fee is compared against
   };
 
   // Sessions are intentionally NOT saved — every visit starts completely fresh,
@@ -375,6 +376,7 @@
       <h3 class="results__section-title">🎯 Best card at every merchant</h3>
       ${strategy.recommendations.map(recRow).join('')}
       ${cardUsageBlock(strategy.cardUsage)}
+      ${idleCardsBlock(strategy)}
       ${manageBlock(strategy.cardUsage)}
       <div id="upgradeRoot">${upgradeBlock()}</div>
       ${feedbackBlock()}
@@ -525,47 +527,91 @@
       </div>`;
   }
 
-  const BUDGET_CHIPS = [
-    { v: 0, label: 'Free only' },
-    { v: 1000, label: '≤ ₹1,000' },
-    { v: 5000, label: '≤ ₹5,000' },
-    { v: Infinity, label: 'Any fee' },
-  ];
+  const BUDGET_PRESETS = [0, 2500, 10000];
 
-  // Recompute upgrades from the user's wallet, merchants and chosen budget.
-  function renderUpgrades() {
+  function computeUpgrades() {
     const ownedCardIds = [...state.selectedCards];
     const merchantSpends = [...state.selectedMerchants.entries()]
       .map(([merchantId, monthlySpend]) => ({ merchantId, monthlySpend }));
-    const upgrades = OPT.findUpgradeOpportunities(ownedCardIds, merchantSpends, { maxAnnualFee: state.upgradeBudget });
-    const root = $('#upgradeRoot');
-    if (root) root.innerHTML = upgradeBlock(upgrades);
+    return OPT.findUpgradeOpportunities(ownedCardIds, merchantSpends, { feeOp: state.budgetOp, feeValue: state.budgetValue });
   }
 
-  function upgradeBlock(upgrades) {
-    if (!upgrades) return upgradeBlockShell('');
-    const list = upgrades.length
-      ? upgrades.map((u) => `
-        <div class="upgrade">
-          <div class="upgrade__text">
-            <div class="upgrade__name"><span class="rec__swatch" style="background:${u.card.gradient}"></span>${escapeHtml(u.card.name)}
-              <span class="upgrade__fee">${u.fee > 0 ? '₹' + u.fee.toLocaleString('en-IN') + '/yr fee' : 'Lifetime free'}</span></div>
-            <div class="upgrade__why">Becomes your best card at <strong>${escapeHtml(u.wins.slice(0, 3).join(', '))}</strong>${u.wins.length > 3 ? ' & more' : ''} — about ${rupee(u.extraAnnual)}/yr extra rewards across your spends.</div>
-          </div>
-          <div class="upgrade__amt ${u.net >= 0 ? 'is-pos' : 'is-neg'}">${u.net >= 0 ? '+' : '−'}${rupee(Math.abs(u.net))}<span>net / yr</span></div>
-        </div>`).join('')
-      : `<p class="muted upgrade__empty">No new card within this budget beats your current wallet at your merchants. Try a higher budget above.</p>`;
-    return upgradeBlockShell(list);
+  function upgradeListHtml(upgrades) {
+    if (!upgrades.length) {
+      return `<p class="muted upgrade__empty">No card in this budget beats your current wallet at your merchants — try widening the budget above.</p>`;
+    }
+    return upgrades.map((u) => `
+      <div class="upgrade">
+        <div class="upgrade__text">
+          <div class="upgrade__name"><span class="rec__swatch" style="background:${u.card.gradient}"></span>${escapeHtml(u.card.name)}
+            <span class="upgrade__fee">${u.fee > 0 ? '₹' + u.fee.toLocaleString('en-IN') + '/yr fee' : 'Lifetime free'}</span></div>
+          <div class="upgrade__why">Becomes your best card at <strong>${escapeHtml(u.wins.slice(0, 3).join(', '))}</strong>${u.wins.length > 3 ? ' & more' : ''} — about ${rupee(u.extraAnnual)}/yr extra rewards across your spends.</div>
+        </div>
+        <div class="upgrade__amt ${u.net >= 0 ? 'is-pos' : 'is-neg'}">${u.net >= 0 ? '+' : '−'}${rupee(Math.abs(u.net))}<span>net / yr</span></div>
+      </div>`).join('');
   }
 
-  function upgradeBlockShell(inner) {
-    const chips = BUDGET_CHIPS.map((c) =>
-      `<button class="ub-chip ${c.v === state.upgradeBudget ? 'is-on' : ''}" data-budget="${c.v === Infinity ? 'any' : c.v}">${c.label}</button>`).join('');
+  // Full upgrade block: the budget controls (operator + value + presets) and the ranked list.
+  function upgradeBlock() {
+    const op = state.budgetOp, val = state.budgetValue;
+    const presets = BUDGET_PRESETS.map((v) =>
+      `<button class="ub-chip ${op === 'lte' && val === v ? 'is-on' : ''}" data-budget-preset="${v}">${v === 0 ? 'Free' : '₹' + v.toLocaleString('en-IN')}</button>`).join('');
     return `
-      <h3 class="results__section-title">💡 Smart upgrade ideas</h3>
-      <p class="muted" style="margin-bottom:0.7rem">Thinking of a new card? Pick your budget — the annual fee you'd pay — and we'll find the one that earns you the most across <em>your</em> merchants, net of its fee.</p>
-      <div class="ub-budget"><span class="ub-budget__label">New-card budget:</span>${chips}</div>
-      ${inner}`;
+      <h3 class="results__section-title">💡 Best other cards for you</h3>
+      <p class="muted" style="margin-bottom:0.8rem">Thinking of a new card? Set your budget — the annual fee you'd pay — and we'll find the one that earns you the most across <em>your</em> merchants, net of its fee. Pick <strong>up to</strong> a fee for value cards, or <strong>over</strong> it to see premium cards.</p>
+      <div class="ub-budget">
+        <span class="ub-budget__label">Annual fee</span>
+        <div class="ub-seg">
+          <button class="ub-seg__btn ${op === 'lte' ? 'is-on' : ''}" data-budget-op="lte">up to</button>
+          <button class="ub-seg__btn ${op === 'gt' ? 'is-on' : ''}" data-budget-op="gt">over</button>
+        </div>
+        <span class="ub-rupee">₹</span>
+        <input class="ub-input" type="number" min="0" step="500" value="${val}" data-budget-value aria-label="New-card annual-fee budget" />
+        <span class="ub-quick">${presets}</span>
+      </div>
+      <div id="upgradeList">${upgradeListHtml(computeUpgrades())}</div>`;
+  }
+
+  // Re-render the upgrade controls + list (after an operator/preset change).
+  function renderUpgrades() {
+    const root = $('#upgradeRoot');
+    if (root) root.innerHTML = upgradeBlock();
+  }
+
+  /* "Make the most of your other cards": for every owned card that ISN'T the
+   * best at any merchant the user picked, show where it shines so no card is
+   * wasted. */
+  function topRewardOf(card) {
+    let best = null;
+    const consider = (rate, label, kind, id) => { if (rate > 0 && (!best || rate > best.rate)) best = { rate, label, kind, id }; };
+    Object.entries(card.rewards.merchant || {}).forEach(([id, rate]) => { const m = MERCHANT_BY_ID[id]; if (m) consider(rate, m.name, 'merchant', id); });
+    Object.entries(card.rewards.category || {}).forEach(([id, rate]) => { const c = CATEGORIES[id]; if (c) consider(rate, c.name, 'category', id); });
+    return best;
+  }
+
+  function idleCardsBlock(strategy) {
+    const usedIds = new Set(strategy.cardUsage.map((u) => u.card.id));
+    const idle = [...state.selectedCards].map((id) => CARD_BY_ID[id]).filter((c) => c && !usedIds.has(c.id));
+    if (idle.length === 0) return '';
+    const items = idle.map((c) => {
+      const top = topRewardOf(c);
+      const rate = top ? top.rate : c.rewards.base;
+      const where = top ? top.label : 'everyday spends';
+      let action;
+      if (!top) action = `A solid all-rounder — use it for everyday spends where your other cards earn less.`;
+      else if (top.kind === 'category') action = `Best for <strong>${escapeHtml(where)}</strong> — add ${escapeHtml(where)} spends above to see it shine.`;
+      else if (state.selectedMerchants.has(top.id)) action = `It's a strong runner-up at <strong>${escapeHtml(where)}</strong> — keep it as your backup there (handy when your top card hits its monthly cap).`;
+      else action = `Add <strong>${escapeHtml(where)}</strong> on the merchants step to put it to work — or just use it there.`;
+      return `
+        <div class="idle">
+          <div class="idle__name"><span class="usage__swatch" style="background:${c.gradient}"></span>${escapeHtml(c.name)}</div>
+          <div class="idle__tip">Not your top card at the merchants you picked — but it earns the most here: <strong>${fmtRate(rate)}</strong> on <strong>${escapeHtml(where)}</strong>. ${action}</div>
+        </div>`;
+    }).join('');
+    return `
+      <h3 class="results__section-title">🧩 Make the most of your other cards</h3>
+      <p class="muted" style="margin-bottom:0.8rem">These cards aren't winning any merchant you picked — here's where they shine, so none goes to waste:</p>
+      ${items}`;
   }
 
   /* ============================== MODAL =============================== */
@@ -998,13 +1044,11 @@
       const netEl = e.target.closest('[data-pick-network]');
       if (netEl) { chooseNetwork(netEl.dataset.pickNetwork, netEl.dataset.net || ''); return; }
 
-      // new-card budget chips (re-rank upgrade ideas)
-      const ubEl = e.target.closest('[data-budget]');
-      if (ubEl) {
-        state.upgradeBudget = ubEl.dataset.budget === 'any' ? Infinity : Number(ubEl.dataset.budget);
-        renderUpgrades();
-        return;
-      }
+      // new-card budget: operator (up to / over) and quick presets
+      const opEl = e.target.closest('[data-budget-op]');
+      if (opEl) { state.budgetOp = opEl.dataset.budgetOp; renderUpgrades(); return; }
+      const preEl = e.target.closest('[data-budget-preset]');
+      if (preEl) { state.budgetValue = Number(preEl.dataset.budgetPreset); state.budgetOp = 'lte'; renderUpgrades(); return; }
 
       // feedback: star rating + "what's working" chips
       const starEl = e.target.closest('[data-fb-star]');
@@ -1047,6 +1091,15 @@
         state.selectedMerchants.set(id, Math.max(0, Number(input.value) || 0));
         persist();
       }
+    });
+
+    // new-card budget value: update only the list so the input keeps focus while typing
+    document.addEventListener('input', (e) => {
+      const bv = e.target.closest('[data-budget-value]');
+      if (!bv) return;
+      state.budgetValue = Math.max(0, Number(bv.value) || 0);
+      const list = $('#upgradeList');
+      if (list) list.innerHTML = upgradeListHtml(computeUpgrades());
     });
 
     // close modal on Escape
