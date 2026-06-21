@@ -281,7 +281,7 @@ export default async function handler(req, res) {
       model: 'claude-opus-4-8',
       max_tokens: 2000,
       thinking: { type: 'adaptive' },
-      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }],
+      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
