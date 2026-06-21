@@ -161,35 +161,53 @@
   }
 
   /**
-   * "What am I leaving on the table?" — compares the user's best owned card at
-   * each merchant against the best card in the *entire* database, to surface
-   * upgrade opportunities. Returns the biggest gaps first.
+   * Budget-aware "which new card should I add?" — for every card the user doesn't
+   * own whose ANNUAL FEE is within their budget, computes the EXTRA rewards it
+   * would earn across exactly the merchants they entered (if it became their best
+   * card there), nets out its annual fee, and ranks by net benefit. Not random:
+   * it's mapped to the user's own merchant-level spend and their fee budget.
+   *
+   * @param {object} opts { maxAnnualFee:number=Infinity, limit:number=3 }
+   * @returns {Array<{card, extraAnnual, fee, net, wins:string[]}>}
    */
-  function findUpgradeOpportunities(ownedCardIds, merchantSpends, limit = 3) {
+  function findUpgradeOpportunities(ownedCardIds, merchantSpends, opts = {}) {
+    const maxFee = (opts.maxAnnualFee == null) ? Infinity : Number(opts.maxAnnualFee);
+    const limit = opts.limit || 3;
     const owned = new Set(ownedCardIds);
-    const allCardIds = window.CW_DATA.CARDS.map((c) => c.id);
-    const gaps = [];
+    const merchants = merchantSpends.filter((m) => (Number(m.monthlySpend) || 0) > 0);
+    if (merchants.length === 0) return [];
 
-    merchantSpends.forEach(({ merchantId, monthlySpend }) => {
-      const spend = Number(monthlySpend) || 0;
-      if (spend <= 0) return;
+    // Current best annual rewards with the cards the user already owns.
+    const currentAnnual = merchants.reduce((sum, { merchantId, monthlySpend }) => {
+      const best = rankCardsForMerchant(merchantId, ownedCardIds, monthlySpend)[0];
+      return sum + (best ? best.monthlyReward * 12 : 0);
+    }, 0);
 
-      const ownedBest = rankCardsForMerchant(merchantId, ownedCardIds, spend)[0];
-      const globalBest = rankCardsForMerchant(merchantId, allCardIds, spend)[0];
-      if (!ownedBest || !globalBest) return;
+    const candidates = window.CW_DATA.CARDS.filter(
+      (c) => !owned.has(c.id) && (Number(c.annualFee) || 0) <= maxFee
+    );
 
-      if (globalBest.rate > ownedBest.rate && !owned.has(globalBest.card.id)) {
-        const extraAnnual = (globalBest.monthlyReward - ownedBest.monthlyReward) * 12;
-        gaps.push({
-          merchant: MERCHANT_BY_ID[merchantId],
-          ownedBest,
-          globalBest,
-          extraAnnual,
+    return candidates
+      .map((card) => {
+        const withIds = [...ownedCardIds, card.id];
+        let newAnnual = 0;
+        const wins = [];
+        merchants.forEach(({ merchantId, monthlySpend }) => {
+          const best = rankCardsForMerchant(merchantId, withIds, monthlySpend)[0];
+          if (!best) return;
+          newAnnual += best.monthlyReward * 12;
+          if (best.card.id === card.id) {
+            const m = MERCHANT_BY_ID[merchantId];
+            if (m) wins.push(m.name);
+          }
         });
-      }
-    });
-
-    return gaps.sort((a, b) => b.extraAnnual - a.extraAnnual).slice(0, limit);
+        const extraAnnual = newAnnual - currentAnnual;
+        const fee = Number(card.annualFee) || 0;
+        return { card, extraAnnual, fee, net: extraAnnual - fee, wins };
+      })
+      .filter((r) => r.extraAnnual > 0 && r.wins.length > 0)
+      .sort((a, b) => b.net - a.net)
+      .slice(0, limit);
   }
 
   /* ------------------------------- helpers -------------------------------- */

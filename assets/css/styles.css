@@ -453,14 +453,33 @@ body {
 .usage__reward { font-weight: 700; color: var(--accent); font-size: 0.95rem; }
 
 /* upgrade opportunities */
+/* new-card budget chips */
+.ub-budget { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.ub-budget__label { font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-right: 0.2rem; }
+.ub-chip {
+  font: inherit; cursor: pointer; font-size: 0.82rem; font-weight: 700;
+  padding: 0.4rem 0.85rem; border-radius: 999px; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border-2);
+  transition: transform 0.12s var(--ease), border-color 0.2s, background 0.2s, color 0.2s;
+}
+.ub-chip:hover { transform: translateY(-2px); border-color: var(--gold); }
+.ub-chip.is-on { background: rgba(255,209,102,0.18); border-color: var(--gold); color: var(--text); }
+
 .upgrade {
   background: linear-gradient(135deg, rgba(255,209,102,0.10), rgba(255,107,138,0.06));
   border: 1px solid rgba(255,209,102,0.25); border-radius: var(--radius);
   padding: 1rem 1.2rem; margin-bottom: 0.8rem;
   display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
 }
-.upgrade__text strong { color: var(--gold); }
-.upgrade__amt { font-weight: 800; color: var(--gold); white-space: nowrap; }
+.upgrade__name { font-weight: 800; font-size: 1.02rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.upgrade__fee { font-size: 0.72rem; font-weight: 700; color: var(--muted); border: 1px solid var(--border-2); border-radius: 6px; padding: 0.08rem 0.4rem; }
+.upgrade__why { font-size: 0.88rem; color: var(--muted); margin-top: 0.35rem; line-height: 1.45; }
+.upgrade__why strong { color: var(--text); }
+.upgrade__empty { padding: 0.6rem 0.2rem; }
+.upgrade__amt { font-weight: 800; white-space: nowrap; text-align: right; display: flex; flex-direction: column; line-height: 1.1; }
+.upgrade__amt.is-pos { color: var(--accent); }
+.upgrade__amt.is-neg { color: var(--muted); }
+.upgrade__amt span { font-size: 0.68rem; font-weight: 600; color: var(--muted-2); margin-top: 0.1rem; }
 
 /* ------------------------------- Modal ----------------------------------- */
 .modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1.25rem; }

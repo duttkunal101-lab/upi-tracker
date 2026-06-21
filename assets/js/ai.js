@@ -11,26 +11,12 @@
   const AICACHE_KEY = 'cardwise.aicards.v1';
   const { registerCard } = window.CW_DATA;
 
-  /* ---- restore previously analyzed cards (synchronously, before app init) -- */
+  /* AI cards are session-only now — nothing is restored across visits, and we
+   * don't persist them, so every visit starts fresh with just the built-ins. */
   function loadCached() {
-    try {
-      const raw = localStorage.getItem(AICACHE_KEY);
-      if (!raw) return;
-      const list = JSON.parse(raw);
-      if (Array.isArray(list)) list.forEach((c) => registerCard(c));
-    } catch (_) { /* ignore corrupt cache */ }
+    try { localStorage.removeItem(AICACHE_KEY); } catch (_) { /* ignore */ }
   }
-
-  function cacheCard(card) {
-    try {
-      const raw = localStorage.getItem(AICACHE_KEY);
-      const list = raw ? JSON.parse(raw) : [];
-      const next = Array.isArray(list) ? list.filter((c) => c.id !== card.id) : [];
-      next.push(card);
-      // keep the cache bounded
-      localStorage.setItem(AICACHE_KEY, JSON.stringify(next.slice(-40)));
-    } catch (_) { /* storage unavailable — non-fatal */ }
-  }
+  function cacheCard(_card) { /* no-op: fresh start each visit */ }
 
   /**
    * Analyze any card by name via the backend.

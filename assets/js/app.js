@@ -20,33 +20,20 @@
     customMerchants: [],               // user-added spending categories
     cardQuery: '',
     analyzing: null,                   // name currently being analyzed by AI, or null
+    upgradeBudget: 5000,               // max annual fee the user will pay for a NEW card
   };
 
-  function persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        cards: [...state.selectedCards],
-        merchants: [...state.selectedMerchants.entries()],
-        cardNetwork: [...state.cardNetwork.entries()],
-        customMerchants: state.customMerchants,
-      }));
-    } catch (_) { /* storage unavailable — non-fatal */ }
-  }
+  // Sessions are intentionally NOT saved — every visit starts completely fresh,
+  // so no previous (or anyone else's) selections are ever shown. (localStorage is
+  // per-browser and never shared between users; we don't carry a session over either.)
+  function persist() { /* no-op: fresh start each visit */ }
 
   function restore() {
+    // Wipe any session a prior build may have saved, so stale data can't appear.
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      // Re-register custom merchants first so the optimizer/render can resolve them.
-      (data.customMerchants || []).forEach((m) => {
-        const s = window.CW_DATA.registerMerchant(m);
-        if (s) state.customMerchants.push(s);
-      });
-      (data.cards || []).forEach((id) => CARD_BY_ID[id] && state.selectedCards.add(id));
-      (data.merchants || []).forEach(([id, spend]) => state.selectedMerchants.set(id, spend));
-      (data.cardNetwork || []).forEach(([id, net]) => state.cardNetwork.set(id, net));
-    } catch (_) { /* ignore corrupt state */ }
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('cardwise.aicards.v1');
+    } catch (_) { /* ignore */ }
   }
 
   /* ------------------------------- Helpers ------------------------------ */
@@ -379,7 +366,6 @@
       .map(([merchantId, monthlySpend]) => ({ merchantId, monthlySpend }));
 
     const strategy = OPT.buildStrategy(ownedCardIds, merchantSpends);
-    const upgrades = OPT.findUpgradeOpportunities(ownedCardIds, merchantSpends);
     lastStrategy = strategy;
     const root = $('#resultsRoot');
 
@@ -390,7 +376,7 @@
       ${strategy.recommendations.map(recRow).join('')}
       ${cardUsageBlock(strategy.cardUsage)}
       ${manageBlock(strategy.cardUsage)}
-      ${upgradeBlock(upgrades)}
+      <div id="upgradeRoot">${upgradeBlock()}</div>
       ${feedbackBlock()}
     `;
 
@@ -539,20 +525,47 @@
       </div>`;
   }
 
+  const BUDGET_CHIPS = [
+    { v: 0, label: 'Free only' },
+    { v: 1000, label: '≤ ₹1,000' },
+    { v: 5000, label: '≤ ₹5,000' },
+    { v: Infinity, label: 'Any fee' },
+  ];
+
+  // Recompute upgrades from the user's wallet, merchants and chosen budget.
+  function renderUpgrades() {
+    const ownedCardIds = [...state.selectedCards];
+    const merchantSpends = [...state.selectedMerchants.entries()]
+      .map(([merchantId, monthlySpend]) => ({ merchantId, monthlySpend }));
+    const upgrades = OPT.findUpgradeOpportunities(ownedCardIds, merchantSpends, { maxAnnualFee: state.upgradeBudget });
+    const root = $('#upgradeRoot');
+    if (root) root.innerHTML = upgradeBlock(upgrades);
+  }
+
   function upgradeBlock(upgrades) {
-    if (upgrades.length === 0) return '';
-    return `
-      <h3 class="results__section-title">💡 Smart upgrade ideas</h3>
-      <p class="muted" style="margin-bottom:1rem">Cards you don't own yet that would beat your current best at these merchants:</p>
-      ${upgrades.map((u) => `
+    if (!upgrades) return upgradeBlockShell('');
+    const list = upgrades.length
+      ? upgrades.map((u) => `
         <div class="upgrade">
           <div class="upgrade__text">
-            At <strong>${escapeHtml(u.merchant.name)}</strong>, the
-            <strong>${escapeHtml(u.globalBest.card.name)}</strong> earns ${fmtRate(u.globalBest.rate)}
-            vs your ${fmtRate(u.ownedBest.rate)} (${escapeHtml(u.ownedBest.card.name)}).
+            <div class="upgrade__name"><span class="rec__swatch" style="background:${u.card.gradient}"></span>${escapeHtml(u.card.name)}
+              <span class="upgrade__fee">${u.fee > 0 ? '₹' + u.fee.toLocaleString('en-IN') + '/yr fee' : 'Lifetime free'}</span></div>
+            <div class="upgrade__why">Becomes your best card at <strong>${escapeHtml(u.wins.slice(0, 3).join(', '))}</strong>${u.wins.length > 3 ? ' & more' : ''} — about ${rupee(u.extraAnnual)}/yr extra rewards across your spends.</div>
           </div>
-          <div class="upgrade__amt">+${rupee(u.extraAnnual)}/yr</div>
-        </div>`).join('')}`;
+          <div class="upgrade__amt ${u.net >= 0 ? 'is-pos' : 'is-neg'}">${u.net >= 0 ? '+' : '−'}${rupee(Math.abs(u.net))}<span>net / yr</span></div>
+        </div>`).join('')
+      : `<p class="muted upgrade__empty">No new card within this budget beats your current wallet at your merchants. Try a higher budget above.</p>`;
+    return upgradeBlockShell(list);
+  }
+
+  function upgradeBlockShell(inner) {
+    const chips = BUDGET_CHIPS.map((c) =>
+      `<button class="ub-chip ${c.v === state.upgradeBudget ? 'is-on' : ''}" data-budget="${c.v === Infinity ? 'any' : c.v}">${c.label}</button>`).join('');
+    return `
+      <h3 class="results__section-title">💡 Smart upgrade ideas</h3>
+      <p class="muted" style="margin-bottom:0.7rem">Thinking of a new card? Pick your budget — the annual fee you'd pay — and we'll find the one that earns you the most across <em>your</em> merchants, net of its fee.</p>
+      <div class="ub-budget"><span class="ub-budget__label">New-card budget:</span>${chips}</div>
+      ${inner}`;
   }
 
   /* ============================== MODAL =============================== */
@@ -985,6 +998,14 @@
       const netEl = e.target.closest('[data-pick-network]');
       if (netEl) { chooseNetwork(netEl.dataset.pickNetwork, netEl.dataset.net || ''); return; }
 
+      // new-card budget chips (re-rank upgrade ideas)
+      const ubEl = e.target.closest('[data-budget]');
+      if (ubEl) {
+        state.upgradeBudget = ubEl.dataset.budget === 'any' ? Infinity : Number(ubEl.dataset.budget);
+        renderUpgrades();
+        return;
+      }
+
       // feedback: star rating + "what's working" chips
       const starEl = e.target.closest('[data-fb-star]');
       if (starEl) { setFbRating(Number(starEl.dataset.fbStar)); return; }
@@ -1124,15 +1145,8 @@
     restore();
     bindEvents();
 
-    // If the user already has selections from a previous visit, jump them in.
-    // (Per-browser localStorage — each visitor has their own private history,
-    // and a brand-new visitor always starts fresh.)
-    if (state.selectedCards.size > 0) {
-      showView('wizard');
-      showStep('cards');
-      renderCards();
-      updateCardFooter();
-    }
+    // Always start on the landing — no previous session is restored, so every
+    // visit (and every visitor) sees a clean, fresh platform.
 
     // Live counter + the "first 100" gate: if the round is full and this browser
     // hasn't already claimed a spot, greet new visitors with a friendly message.
