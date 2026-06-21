@@ -49,14 +49,21 @@
       return { ok: false, error: 'Could not reach the AI service. Are you running the deployed app? (See README.)' };
     }
 
-    // If the static site is served without the backend (e.g. GitHub Pages),
-    // the request 404s to an HTML page rather than our JSON API.
+    // Non-JSON means either a static host with no backend (404 → HTML page), or
+    // a platform error page (a function timeout/crash returns HTML, not our JSON).
+    // Keep the friendly hint for genuine 404s; otherwise surface the status + a
+    // snippet so failures are diagnosable instead of opaque.
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
-      return {
-        ok: false,
-        error: 'AI lookup isn’t available on this host. Deploy the backend (Vercel/Netlify) or run `vercel dev` locally — see README.',
-      };
+      if (res.status === 404) {
+        return {
+          ok: false,
+          error: 'AI lookup isn’t available on this host. Deploy the backend (Vercel/Netlify) or run `vercel dev` locally — see README.',
+        };
+      }
+      let detail = '';
+      try { detail = (await res.text()).replace(/\s+/g, ' ').trim().slice(0, 160); } catch (_) {}
+      return { ok: false, error: `Backend error ${res.status}${detail ? ` · ${detail}` : ''}` };
     }
 
     let data;
