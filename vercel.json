@@ -3,6 +3,9 @@
   "functions": {
     "api/analyze-card.js": {
       "maxDuration": 60
+    },
+    "api/recommend-card.js": {
+      "maxDuration": 60
     }
   },
   "headers": [

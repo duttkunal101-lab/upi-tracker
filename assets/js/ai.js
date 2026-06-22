@@ -87,6 +87,39 @@
     return stored;
   }
 
+  /**
+   * Ask the agent for the best NEW card on the current Indian market, given the
+   * user's merchants + monthly spends + annual-fee budget.
+   * @returns {Promise<{ok:true, recommendations:Array, note?:string} | {ok:false, error:string}>}
+   */
+  async function recommend({ merchants, budget, ownedCardNames }) {
+    let res;
+    try {
+      res = await fetch('/api/recommend-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchants, budget, ownedCardNames }),
+      });
+    } catch (_) {
+      return { ok: false, error: 'Could not reach the agent. Are you running the deployed app? (See README.)' };
+    }
+
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      if (res.status === 404) {
+        return { ok: false, error: 'The recommendation agent isn’t available on this host. Deploy the backend (Vercel) — see README.' };
+      }
+      let detail = '';
+      try { detail = (await res.text()).replace(/\s+/g, ' ').trim().slice(0, 160); } catch (_) {}
+      return { ok: false, error: `Backend error ${res.status}${detail ? ` · ${detail}` : ''}` };
+    }
+
+    let data;
+    try { data = await res.json(); } catch (_) { data = {}; }
+    if (!res.ok) return { ok: false, error: data.error || `Recommendation failed (${res.status}).` };
+    return { ok: true, recommendations: Array.isArray(data.recommendations) ? data.recommendations : [], note: data.note || '' };
+  }
+
   loadCached();
-  window.CW_AI = { analyze, confirmCard };
+  window.CW_AI = { analyze, confirmCard, recommend };
 })();

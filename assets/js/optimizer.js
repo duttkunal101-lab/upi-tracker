@@ -172,11 +172,21 @@
    */
   function findUpgradeOpportunities(ownedCardIds, merchantSpends, opts = {}) {
     const limit = opts.limit || 3;
-    // Budget filter on the new card's annual fee: 'lte' (≤ value) or 'gt' (> value).
+    // Budget filter on the new card's annual fee:
+    //   'lte'    -> fee ≤ value      (best value within budget)
+    //   'around' -> fee within ±band (cards at that fee tier — a fixed target)
+    //   'gt'     -> fee > value      (premium, above budget)
     const feeOp = opts.feeOp || 'lte';
     const feeValue = opts.feeValue != null ? Number(opts.feeValue)
       : (opts.maxAnnualFee != null ? Number(opts.maxAnnualFee) : Infinity);
-    const feeOk = (fee) => feeOp === 'gt' ? fee > feeValue : fee <= feeValue;
+    const feeOk = (fee) => {
+      if (feeOp === 'gt') return fee > feeValue;
+      if (feeOp === 'around') {
+        const band = Math.max(feeValue * 0.4, 1000); // ±40% (min ±₹1,000)
+        return Math.abs(fee - feeValue) <= band;
+      }
+      return fee <= feeValue; // 'lte'
+    };
     const owned = new Set(ownedCardIds);
     const merchants = merchantSpends.filter((m) => (Number(m.monthlySpend) || 0) > 0);
     if (merchants.length === 0) return [];

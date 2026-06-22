@@ -482,6 +482,35 @@ body {
 }
 .ub-chip:hover { border-color: var(--gold); }
 .ub-chip.is-on { background: rgba(255,209,102,0.18); border-color: var(--gold); color: var(--text); }
+.ub-seg--3 { flex-wrap: wrap; }
+
+/* "Find my best card with the agent" CTA + the agent's market picks */
+.ub-agent-btn { width: 100%; margin: 0.2rem 0 0.4rem; }
+.agent-recs:empty { display: none; }
+.agent-recs { margin-top: 0.6rem; }
+.agent-recs__head { font-weight: 800; margin: 0.4rem 0 0.7rem; }
+.agent-recs__sub { font-weight: 500; color: var(--muted); }
+.agent-recs__empty, .agent-recs__err { font-size: 0.9rem; line-height: 1.5; margin-bottom: 0.6rem; }
+.arec {
+  background: linear-gradient(135deg, rgba(109,94,252,0.10), rgba(40,224,168,0.06));
+  border: 1px solid rgba(109,94,252,0.28); border-radius: var(--radius);
+  padding: 1rem 1.15rem; margin-bottom: 0.7rem;
+}
+.arec__top { display: flex; align-items: center; gap: 0.7rem; }
+.arec__logo { width: 34px; height: 34px; border-radius: 9px; background: #fff; object-fit: contain; padding: 3px; flex-shrink: 0; }
+.arec__logo--ph { display: grid; place-items: center; background: var(--surface); font-size: 1.1rem; }
+.arec__id { flex: 1; min-width: 0; }
+.arec__name { font-weight: 800; letter-spacing: -0.01em; }
+.arec__issuer { font-size: 0.78rem; color: var(--muted); }
+.arec__fee { text-align: right; font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+.arec__fee span { display: block; font-size: 0.66rem; font-weight: 600; color: var(--muted); }
+.arec__cvp { font-size: 0.9rem; color: var(--text); margin-top: 0.6rem; line-height: 1.45; }
+.arec__fit { font-size: 0.86rem; color: var(--muted); margin-top: 0.45rem; line-height: 1.45; }
+.arec__tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+.arec__value { margin-top: 0.6rem; font-weight: 800; color: var(--accent); font-size: 0.92rem; }
+.arec__foot { margin-top: 0.6rem; font-size: 0.72rem; color: var(--muted-2); }
+.arec__foot a { color: var(--primary-2); }
+.arec__disclaimer { font-size: 0.72rem; color: var(--muted-2); line-height: 1.5; margin-top: 0.3rem; }
 
 /* idle (other) cards guidance */
 .idle {

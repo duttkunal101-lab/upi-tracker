@@ -80,7 +80,10 @@
     tap()     { tone(430, 0.06, 'sine', 0.022); },                                           // soft selection
     tick()    { tone(680, 0.05, 'triangle', 0.03); },                                        // agent step done
     success() { tone(587.33, 0.12, 'sine', 0.05); tone(880, 0.16, 'sine', 0.045, 0.10); },   // card added / done
-    reward()  { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.2, 'sine', 0.045, i * 0.085)); }, // strategy ready
+    reward()  { // celebratory: a bright ascending run, then a shimmering chord
+      [523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => tone(f, 0.24, 'triangle', 0.05, i * 0.08));
+      [1046.5, 1318.51, 1567.98].forEach((f) => tone(f, 0.6, 'sine', 0.038, 0.4));
+    },
   };
 
   function setSound(on) {
@@ -605,31 +608,136 @@
       </div>`).join('');
   }
 
-  // Full upgrade block: the budget controls (operator + value + presets) and the ranked list.
+  const BUDGET_OPS = [
+    { op: 'lte', label: 'up to' },
+    { op: 'around', label: 'around' },
+    { op: 'gt', label: 'over' },
+  ];
+  function budgetPhrase(op) { return op === 'gt' ? 'above' : op === 'around' ? 'around' : 'up to'; }
+
+  // Full upgrade block: the budget controls (operator + fixed value + presets) and
+  // the on-demand agent that scans the live Indian market for your best-fit card.
   function upgradeBlock() {
     const op = state.budgetOp, val = state.budgetValue;
+    const segs = BUDGET_OPS.map((b) =>
+      `<button class="ub-seg__btn ${op === b.op ? 'is-on' : ''}" data-budget-op="${b.op}">${b.label}</button>`).join('');
     const presets = BUDGET_PRESETS.map((v) =>
       `<button class="ub-chip ${op === 'lte' && val === v ? 'is-on' : ''}" data-budget-preset="${v}">${v === 0 ? 'Free' : '₹' + v.toLocaleString('en-IN')}</button>`).join('');
     return `
       <h3 class="results__section-title">💡 Best other cards for you</h3>
-      <p class="muted" style="margin-bottom:0.8rem">Thinking of a new card? Set your budget — the annual fee you'd pay — and we'll find the one that earns you the most across <em>your</em> merchants, net of its fee. Pick <strong>up to</strong> a fee for value cards, or <strong>over</strong> it to see premium cards.</p>
+      <p class="muted" style="margin-bottom:0.8rem">Thinking of a new card? Set the annual fee you're willing to pay, then let the agent scan the current Indian market and suggest the cards that earn <em>you</em> the most across your merchants — net of the fee. Target a fee <strong>up to</strong>, <strong>around</strong>, or <strong>over</strong> your number.</p>
       <div class="ub-budget">
         <span class="ub-budget__label">Annual fee</span>
-        <div class="ub-seg">
-          <button class="ub-seg__btn ${op === 'lte' ? 'is-on' : ''}" data-budget-op="lte">up to</button>
-          <button class="ub-seg__btn ${op === 'gt' ? 'is-on' : ''}" data-budget-op="gt">over</button>
-        </div>
+        <div class="ub-seg ub-seg--3">${segs}</div>
         <span class="ub-rupee">₹</span>
         <input class="ub-input" type="number" min="0" step="500" value="${val}" data-budget-value aria-label="New-card annual-fee budget" />
         <span class="ub-quick">${presets}</span>
       </div>
-      <div id="upgradeList">${upgradeListHtml(computeUpgrades())}</div>`;
+      <button class="btn btn--primary ub-agent-btn" data-action="findBestCard">✨ Find my best card with the agent</button>
+      <div id="agentRecs" class="agent-recs"></div>`;
   }
 
-  // Re-render the upgrade controls + list (after an operator/preset change).
+  // Re-render the budget controls (after an operator/preset change). Clears any
+  // prior agent picks since they no longer match the new budget.
   function renderUpgrades() {
     const root = $('#upgradeRoot');
     if (root) root.innerHTML = upgradeBlock();
+  }
+
+  const MARKET_STEPS = [
+    { ic: '🛰️', tx: 'Scanning the current Indian card market' },
+    { ic: '🧭', tx: 'Matching cards to your merchants & spends' },
+    { ic: '💰', tx: 'Weighing the rewards against the annual fee' },
+    { ic: '🏆', tx: 'Shortlisting your best-fit cards' },
+  ];
+
+  // The agentic "find me the best NEW card" flow: gathers the user's merchants +
+  // spends + fee budget, asks the agent to scan the real market, then renders the
+  // picks. Falls back to our built-in shortlist if the agent can't be reached.
+  let findingCard = false;
+  async function findBestCard() {
+    if (findingCard) return;
+    const merchants = [...state.selectedMerchants.entries()]
+      .map(([id, monthlySpend]) => {
+        const m = MERCHANT_BY_ID[id];
+        if (!m || !(Number(monthlySpend) > 0)) return null;
+        return { name: m.name, category: (CATEGORIES[m.category] || {}).name || m.category, monthlySpend: Number(monthlySpend) };
+      })
+      .filter(Boolean);
+    if (merchants.length === 0) { toast('Pick at least one merchant with a monthly spend first 🙂', 'error'); return; }
+    if (!(window.CW_AI && window.CW_AI.recommend)) { renderAgentFallback('The agent isn’t available here.'); return; }
+
+    findingCard = true;
+    const ownedCardNames = [...state.selectedCards].map((id) => (CARD_BY_ID[id] || {}).name).filter(Boolean);
+    const budget = { op: state.budgetOp, value: state.budgetValue };
+
+    agentStart({
+      orb: '🛰️',
+      agent: 'CardWise Agent',
+      title: 'The <span>agent</span> is scanning the market…',
+      foot: `Looking for the best card with an annual fee ${budgetPhrase(state.budgetOp)} ₹${Number(state.budgetValue).toLocaleString('en-IN')} for your spends`,
+      steps: MARKET_STEPS, facts: CARD_FACTS, stepInterval: 1100,
+    });
+
+    const result = await window.CW_AI.recommend({ merchants, budget, ownedCardNames });
+    findingCard = false;
+    agentComplete(() => {
+      if (result.ok && result.recommendations.length) {
+        renderAgentRecs(result.recommendations);
+        sfx.reward(); // celebratory — a real recommendation landed
+      } else if (result.ok) {
+        renderAgentRecs([], result.note);
+      } else {
+        renderAgentFallback(result.error);
+      }
+    });
+  }
+
+  function agentRecLogo(rec) {
+    const d = rec.issuerDomain;
+    return d ? `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(d)}` : '';
+  }
+
+  function agentRecCard(r) {
+    const logo = agentRecLogo(r);
+    const fee = Number(r.annualFee) > 0
+      ? `₹${Number(r.annualFee).toLocaleString('en-IN')}<span>/yr fee</span>`
+      : `Lifetime<span>free</span>`;
+    return `
+      <div class="arec">
+        <div class="arec__top">
+          ${logo ? `<img class="arec__logo" src="${escapeHtml(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'arec__logo arec__logo--ph',textContent:'💳'}))" />` : '<span class="arec__logo arec__logo--ph">💳</span>'}
+          <div class="arec__id">
+            <div class="arec__name">${escapeHtml(r.name)}</div>
+            <div class="arec__issuer">${escapeHtml(r.issuer)}${r.network ? ' · ' + escapeHtml(r.network) : ''}</div>
+          </div>
+          <div class="arec__fee">${fee}</div>
+        </div>
+        ${r.cvp ? `<p class="arec__cvp">${escapeHtml(r.cvp)}</p>` : ''}
+        ${r.fitReason ? `<p class="arec__fit">🎯 ${escapeHtml(r.fitReason)}</p>` : ''}
+        ${(r.bestFor && r.bestFor.length) ? `<div class="arec__tags">${r.bestFor.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        ${r.estValue ? `<div class="arec__value">${escapeHtml(r.estValue)}</div>` : ''}
+        ${(r.feeNote || (r.sources && r.sources.length)) ? `<div class="arec__foot">${r.feeNote ? escapeHtml(r.feeNote) : ''}${(r.sources && r.sources.length) ? `${r.feeNote ? ' · ' : ''}${r.sources.map((u, i) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">source ${i + 1}</a>`).join(' · ')}` : ''}</div>` : ''}
+      </div>`;
+  }
+
+  function renderAgentRecs(recs, note) {
+    const root = $('#agentRecs'); if (!root) return;
+    if (!recs.length) {
+      root.innerHTML = `<p class="muted agent-recs__empty">${escapeHtml(note || 'No strong match at this budget — try widening it and run the agent again.')}</p>`;
+      return;
+    }
+    root.innerHTML = `
+      <div class="agent-recs__head">✨ The agent's picks <span class="agent-recs__sub">— real cards on the Indian market right now, matched to your spends</span></div>
+      ${recs.map(agentRecCard).join('')}
+      <p class="arec__disclaimer">✨ Suggested by AI from each card’s publicly-known terms — rates change often, so do confirm current details with the issuer. Guidance, not financial advice.</p>`;
+  }
+
+  // If the live agent can't be reached, still help with our built-in shortlist.
+  function renderAgentFallback(error) {
+    const root = $('#agentRecs'); if (!root) return;
+    const ups = computeUpgrades();
+    root.innerHTML = `<p class="muted agent-recs__err">⚠️ ${escapeHtml(error || 'The agent is unavailable right now.')} Here are the best fits from the cards we already know:</p>${upgradeListHtml(ups)}`;
   }
 
   /* "Make the most of your other cards": for every owned card that ISN'T the
@@ -1126,7 +1234,7 @@
       const netEl = e.target.closest('[data-pick-network]');
       if (netEl) { chooseNetwork(netEl.dataset.pickNetwork, netEl.dataset.net || ''); return; }
 
-      // new-card budget: operator (up to / over) and quick presets
+      // new-card budget: operator (up to / around / over) and quick presets
       const opEl = e.target.closest('[data-budget-op]');
       if (opEl) { state.budgetOp = opEl.dataset.budgetOp; renderUpgrades(); return; }
       const preEl = e.target.closest('[data-budget-preset]');
@@ -1175,13 +1283,11 @@
       }
     });
 
-    // new-card budget value: update only the list so the input keeps focus while typing
+    // new-card budget value: just track it (the agent uses it when you run a search)
     document.addEventListener('input', (e) => {
       const bv = e.target.closest('[data-budget-value]');
       if (!bv) return;
       state.budgetValue = Math.max(0, Number(bv.value) || 0);
-      const list = $('#upgradeList');
-      if (list) list.innerHTML = upgradeListHtml(computeUpgrades());
     });
 
     // close modal on Escape
@@ -1224,6 +1330,7 @@
       }
       case 'terms': openTerms(); break;
       case 'toggleSound': setSound(!soundOn); break;
+      case 'findBestCard': findBestCard(); break;
       case 'addCustom': openCustomMerchant(); break;
       case 'saveCustom': saveCustom(); break;
       case 'feedback': openFeedback(); break;
