@@ -103,6 +103,8 @@ body {
 .brand__name { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; }
 .brand__name span { color: var(--primary-2); }
 .nav__links { display: flex; gap: 0.6rem; align-items: center; }
+.sound-toggle { padding: 0.42rem 0.55rem; font-size: 1.05rem; line-height: 1; }
+.sound-toggle[aria-pressed="false"] { opacity: 0.55; }
 
 /* ------------------------------- Views ----------------------------------- */
 .view { display: none; }
@@ -705,15 +707,47 @@ body {
   border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.9rem 1.6rem; text-align: center;
   animation: pop 0.34s var(--ease);
 }
+/* live "AI agent" status chip */
+.analyze-agent {
+  display: inline-flex; align-items: center; gap: 0.5rem; margin: 0 auto 1.15rem;
+  padding: 0.34rem 0.8rem 0.34rem 0.7rem; border-radius: 999px;
+  background: rgba(109,94,252,0.14); border: 1px solid rgba(109,94,252,0.34);
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--primary-2);
+}
+.analyze-agent__live {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(40,224,168,0.6); animation: livedot 1.4s ease infinite;
+}
+@keyframes livedot { 0%, 100% { box-shadow: 0 0 0 0 rgba(40,224,168,0.55); } 50% { box-shadow: 0 0 0 6px rgba(40,224,168,0); } }
+.analyze-agent__dots { display: inline-flex; gap: 3px; }
+.analyze-agent__dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--primary-2); animation: thinkdot 1.2s ease infinite; }
+.analyze-agent__dots i:nth-child(2) { animation-delay: 0.18s; }
+.analyze-agent__dots i:nth-child(3) { animation-delay: 0.36s; }
+@keyframes thinkdot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
 .analyze-orb {
-  width: 66px; height: 66px; margin: 0 auto 1rem; border-radius: 50%; display: grid; place-items: center;
+  position: relative; width: 66px; height: 66px; margin: 0 auto 1rem; border-radius: 50%; display: grid; place-items: center;
   font-size: 2rem; background: linear-gradient(135deg, rgba(109,94,252,0.40), rgba(40,224,168,0.30));
   animation: orbpulse 1.9s var(--ease) infinite;
 }
+.analyze-orb__face { position: relative; z-index: 2; line-height: 1; }
+.analyze-orb__ring {
+  position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(109,94,252,0.55);
+  animation: orbscan 2.2s ease-out infinite;
+}
+.analyze-orb__ring:nth-child(2) { animation-delay: 1.1s; }
+@keyframes orbscan { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(2); opacity: 0; } }
 @keyframes orbpulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(109,94,252,0.50); transform: scale(1); }
   50%      { box-shadow: 0 0 0 18px rgba(109,94,252,0); transform: scale(1.06); }
 }
+/* live computation meter — the agent visibly "scoring" matchups */
+.analyze-meter { display: flex; align-items: baseline; justify-content: center; gap: 0.45rem; margin: -0.15rem 0 1.05rem; }
+.analyze-meter__num {
+  font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(100deg, var(--primary-2), var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.analyze-meter__label { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
 .analyze-title { font-size: 1.24rem; letter-spacing: -0.02em; margin-bottom: 1.15rem; }
 .analyze-title span { color: var(--primary-2); font-weight: 800; }
 .analyze-steps { list-style: none; text-align: left; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.2rem; }
@@ -724,8 +758,13 @@ body {
 .ax-step__ic { font-size: 1.05rem; width: 1.5rem; text-align: center; }
 .ax-step__tx { flex: 1; }
 .ax-step__tick { color: var(--accent); font-weight: 800; opacity: 0; transition: opacity 0.3s; }
+.ax-step__work { display: none; gap: 3px; align-items: center; }
+.ax-step__work i { width: 4px; height: 4px; border-radius: 50%; background: var(--primary-2); animation: thinkdot 1s ease infinite; }
+.ax-step__work i:nth-child(2) { animation-delay: 0.15s; }
+.ax-step__work i:nth-child(3) { animation-delay: 0.3s; }
 .ax-step.is-active { opacity: 1; color: var(--text); font-weight: 700; }
 .ax-step.is-active .ax-step__ic { animation: orbpulse 1.5s ease infinite; }
+.ax-step.is-active .ax-step__work { display: inline-flex; }
 .ax-step.is-done { opacity: 1; color: var(--muted); }
 .ax-step.is-done .ax-step__tick { opacity: 1; }
 .analyze-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 1.1rem; }

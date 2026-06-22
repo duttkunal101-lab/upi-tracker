@@ -21,6 +21,7 @@
         <span class="brand__name">Card<span>Wise</span></span>
       </a>
       <nav class="nav__links">
+        <button class="btn btn--ghost sound-toggle" data-action="toggleSound" id="soundToggle" aria-label="Sound on — tap to mute" aria-pressed="true" title="Sound effects">🔊</button>
         <button class="btn btn--ghost" data-action="restart" hidden id="navRestart">Start over</button>
         <a class="btn btn--ghost" href="https://github.com/duttkunal101-lab/upi-tracker" target="_blank" rel="noopener">GitHub</a>
       </nav>
@@ -33,12 +34,12 @@
       <div class="hero">
         <div class="hero__glow"></div>
         <div class="hero__content">
-          <span class="pill">Your AI-powered wallet strategist</span>
+          <span class="pill">⚡ Your AI agent for credit-card rewards</span>
           <h1 class="hero__title">Swipe the <span class="grad-text">right card</span>,<br />every single time.</h1>
           <p class="hero__sub">
-            Tell CardWise the credit cards you own and where you spend. It works out the single best
-            card to use at every merchant — and only ones that are actually accepted there — so you
-            stop leaving rewards on the table.
+            Tell the agent the credit cards you own and where you spend. It researches each card,
+            checks where it's actually accepted, and works out the single best card to use at every
+            merchant — so you stop leaving rewards on the table.
           </p>
           <div class="hero__cta">
             <button class="btn btn--primary btn--lg" data-action="start">Optimize my wallet →</button>
@@ -66,12 +67,12 @@
           <div class="value__card">
             <span class="value__icon">🎯</span>
             <h3>The best card, every time</h3>
-            <p>For each merchant we compare your cards on real reward value — and only suggest one that's actually accepted there.</p>
+            <p>For each merchant the agent compares your cards on real reward value — and only suggests one that's actually accepted there.</p>
           </div>
           <div class="value__card">
             <span class="value__icon">✨</span>
             <h3>Any Indian card, via AI</h3>
-            <p>16 popular cards are built in. Type any other and AI profiles it — with a quick confirm so it's always the right card.</p>
+            <p>16 popular cards are built in. Type any other and the agent profiles it — with a quick confirm so it's always the right card.</p>
           </div>
           <div class="value__card">
             <span class="value__icon">🔒</span>
@@ -98,7 +99,7 @@
           <div class="how__step">
             <span class="how__num">3</span>
             <h3>Get your game-plan</h3>
-            <p>See the single best card at each merchant, the reasoning, your annual rewards, and smart upgrade ideas.</p>
+            <p>The agent drafts the single best card at each merchant, the reasoning, your annual rewards, and smart upgrade ideas.</p>
           </div>
         </div>
         <div class="how__cta">
@@ -122,7 +123,7 @@
       <div class="step is-active" data-step="cards">
         <div class="step__head">
           <h2>Which credit cards do you own?</h2>
-          <p>Add <strong>one or more</strong> of your cards — pick from the popular list, or type <strong>any</strong> Indian card for a live AI analysis. The more you add, the smarter your strategy.</p>
+          <p>Add <strong>one or more</strong> of your cards — pick from the popular list, or type <strong>any</strong> Indian card and the agent profiles it live. The more you add, the smarter your strategy.</p>
         </div>
         <div class="ea-banner" id="earlyAccessBanner" hidden></div>
         <input type="search" class="search" id="cardSearch" placeholder="Search or type any card, e.g. HDFC Diners Black, Axis Atlas, IDFC…" autocomplete="off" />
@@ -146,7 +147,7 @@
           <button class="btn btn--ghost" data-action="toCards">← Back</button>
           <div class="step__footer-right">
             <span class="muted" id="merchantCount">0 merchants selected</span>
-            <button class="btn btn--primary" data-action="optimize" disabled id="optimizeBtn">See my strategy →</button>
+            <button class="btn btn--primary" data-action="optimize" disabled id="optimizeBtn">Draft my strategy →</button>
           </div>
         </div>
       </div>
@@ -162,11 +163,24 @@
     </section>
   </main>
 
-  <!-- ============ Gamified "researching live" overlay ============ -->
+  <!-- ============ Gamified "AI agent at work" overlay ============ -->
   <div class="analyze-overlay" id="analyzeOverlay" hidden>
     <div class="analyze-box">
-      <div class="analyze-orb" id="analyzeOrb">✨</div>
+      <div class="analyze-agent">
+        <span class="analyze-agent__live"></span>
+        <span class="analyze-agent__name" id="analyzeAgentName">CardWise AI Agent</span>
+        <span class="analyze-agent__dots"><i></i><i></i><i></i></span>
+      </div>
+      <div class="analyze-orb" id="analyzeOrb">
+        <span class="analyze-orb__ring"></span>
+        <span class="analyze-orb__ring"></span>
+        <span class="analyze-orb__face" id="analyzeOrbFace">✨</span>
+      </div>
       <h3 class="analyze-title" id="analyzeTitle">Working…</h3>
+      <div class="analyze-meter" id="analyzeMeter" hidden>
+        <span class="analyze-meter__num" id="analyzeMeterNum">0</span>
+        <span class="analyze-meter__label" id="analyzeMeterLabel"></span>
+      </div>
       <ol class="analyze-steps" id="analyzeSteps"></ol>
       <div class="analyze-bar"><span class="analyze-bar__fill" id="analyzeBarFill"></span></div>
       <div class="analyze-fact" id="analyzeFactWrap">

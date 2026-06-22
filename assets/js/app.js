@@ -42,6 +42,60 @@
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const rupee = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
 
+  /* ===================== Sound — subtle gamified cues ===================== */
+  // Tiny Web-Audio chimes generated on the fly (no audio files). Soft by design,
+  // they fire only on positive/agentic moments and can be muted; the choice
+  // persists. Silently no-ops where Web Audio isn't available (e.g. tests).
+  const SOUND_KEY = 'cardwise.sound.v1';
+  let audioCtx = null;
+  let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (_) { return true; } })();
+
+  function ensureAudio() {
+    if (!soundOn) return null;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch (_) { return null; }
+  }
+
+  // One soft note with a gentle attack/release so it never clicks.
+  function tone(freq, dur, type, peak, delay) {
+    const ctx = ensureAudio(); if (!ctx) return;
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak || 0.05, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.03);
+  }
+
+  const sfx = {
+    tap()     { tone(430, 0.06, 'sine', 0.022); },                                           // soft selection
+    tick()    { tone(680, 0.05, 'triangle', 0.03); },                                        // agent step done
+    success() { tone(587.33, 0.12, 'sine', 0.05); tone(880, 0.16, 'sine', 0.045, 0.10); },   // card added / done
+    reward()  { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.2, 'sine', 0.045, i * 0.085)); }, // strategy ready
+  };
+
+  function setSound(on) {
+    soundOn = on;
+    try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (_) { /* ignore */ }
+    syncSoundToggle();
+    if (on) { ensureAudio(); sfx.tick(); } // a tiny confirmation blip
+  }
+  function syncSoundToggle() {
+    const b = $('#soundToggle'); if (!b) return;
+    b.textContent = soundOn ? '🔊' : '🔇';
+    b.setAttribute('aria-label', soundOn ? 'Sound on — tap to mute' : 'Sound off — tap to unmute');
+    b.setAttribute('aria-pressed', String(soundOn));
+  }
+
   function showView(name) {
     $$('.view').forEach((v) => v.classList.toggle('is-active', v.dataset.view === name));
     $('#navRestart').hidden = name === 'landing';
@@ -194,8 +248,8 @@
     renderCards();
     agentStart({
       orb: '✨',
-      title: `Analyzing <span>${escapeHtml(name)}</span>…`,
-      foot: 'Identifying your card and its known rewards · just a few seconds',
+      title: `The <span>agent</span> is profiling ${escapeHtml(name)}…`,
+      foot: 'Reading its rewards, fees and caps · just a few seconds',
       steps: ANALYZE_STEPS, facts: CARD_FACTS, stepInterval: 1300,
     });
 
@@ -466,8 +520,8 @@
   function resultsHero(t) {
     return `
       <div class="results__hero">
-        <h2>Here's your personalised wallet game-plan ✨</h2>
-        <p>We looked across your ${state.selectedCards.size} card${state.selectedCards.size === 1 ? '' : 's'} and ${state.selectedMerchants.size} merchant${state.selectedMerchants.size === 1 ? '' : 's'} — here's how to get a little more from every swipe.</p>
+        <h2>Your agent's game-plan is ready ✨</h2>
+        <p>The agent compared your ${state.selectedCards.size} card${state.selectedCards.size === 1 ? '' : 's'} across ${state.selectedMerchants.size} merchant${state.selectedMerchants.size === 1 ? '' : 's'} — here's how to get a little more from every swipe.</p>
         <div class="results__metrics">
           <div class="metric"><strong class="accent">${rupee(t.annualReward)}</strong><span>could earn / year*</span></div>
           <div class="metric"><strong>${rupee(t.monthlyReward)}</strong><span>per month</span></div>
@@ -764,29 +818,36 @@
     { ic: '✨', tx: 'Building your personalised card profile' },
   ];
   const STRATEGY_STEPS = [
-    { ic: '🧠', tx: 'Reading each card’s reward structure' },
-    { ic: '🔗', tx: 'Matching your cards to your merchants' },
-    { ic: '🧮', tx: 'Computing rewards at every merchant' },
-    { ic: '🏆', tx: 'Picking the single best card per merchant' },
-    { ic: '✨', tx: 'Finalising your personalised game-plan' },
+    { ic: '📖', tx: 'Reading every card’s reward structure' },
+    { ic: '🔗', tx: 'Mapping your cards onto your merchants' },
+    { ic: '🛡️', tx: 'Checking which cards are accepted where' },
+    { ic: '🧮', tx: 'Scoring the reward at every merchant' },
+    { ic: '🏆', tx: 'Locking in the best card for each' },
+    { ic: '✨', tx: 'Drafting your personalised game-plan' },
   ];
   const CARD_FACTS = [
-    'Clearing your full statement on time keeps 100% of your rewards — card interest erases them fast.',
+    'Clearing your full statement every month keeps 100% of your rewards — card interest wipes them out fast.',
     'There’s rarely one “best” card — the smartest pick changes from merchant to merchant.',
-    'Many cards waive their annual fee once you cross a yearly spend milestone.',
-    'Not all points are equal — 1 reward point can be worth ₹0.25 on one card and ₹1 on another.',
-    'RuPay credit cards can link to UPI — handy for everyday QR-code payments.',
-    'Co-branded cards often shine at one brand but stay average everywhere else.',
-    'A fuel-surcharge waiver can quietly save frequent drivers a few hundred rupees a month.',
-    'Stacking the right card with a live offer can lift your effective return nicely.',
+    'Most banks now cap reward points on utilities, insurance, rent and wallet loads — always check the fine print.',
+    'Rent paid on a card earns zero rewards on most cards today — “pay rent on card” apps rarely come out ahead after fees.',
+    'Not all points are equal — one reward point can be worth ₹0.25 on one card and ₹1 on another.',
+    'RuPay credit cards link to UPI, so you can earn rewards on everyday QR-code payments.',
+    'Many cards waive their annual fee once you cross a yearly spend milestone — that can flip a “costly” card into a free one.',
+    'Co-branded cards often shine at a single brand but stay average everywhere else.',
+    'A fuel-surcharge waiver quietly saves frequent drivers a few hundred rupees a month.',
+    'Education and government payments usually earn no rewards now — switching cards won’t help there.',
+    'A higher annual fee can still win — if milestone perks and accelerated rewards outweigh it.',
+    'Stacking the right card with a live bank offer can lift your effective return well beyond the base rate.',
   ];
   let axTimers = [];
   let axStepIdx = 0, axFactIdx = 0, axBar = 0, axStartMs = 0;
+  let axMeterTarget = 0, axMeterVal = 0;
   let axSteps = ANALYZE_STEPS, axFacts = CARD_FACTS;
 
   function applyAxBar() { const el = $('#analyzeBarFill'); if (el) el.style.width = axBar + '%'; }
   function applyAxFact() { const el = $('#analyzeFact'); if (el && axFacts.length) el.textContent = axFacts[axFactIdx % axFacts.length]; }
   function setAxStep(i) {
+    if (i > axStepIdx) sfx.tick(); // a soft blip as the agent finishes each step
     axStepIdx = i;
     $$('#analyzeSteps .ax-step').forEach((li) => {
       const k = Number(li.dataset.i);
@@ -797,18 +858,31 @@
     if (milestone > axBar) { axBar = milestone; applyAxBar(); }
   }
 
-  // Show the agent overlay. opts: { orb, title (html), foot, steps, facts, stepInterval }
+  function applyAxMeter() { const el = $('#analyzeMeterNum'); if (el) el.textContent = axMeterVal.toLocaleString('en-IN'); }
+
+  // Show the agent overlay. opts: { orb, agent, title (html), foot, steps, facts, stepInterval, meter:{label,target} }
   function agentStart(opts) {
     const ov = $('#analyzeOverlay'); if (!ov) return;
     axSteps = opts.steps || []; axFacts = opts.facts || [];
     const set = (sel, prop, val) => { const el = $(sel); if (el) el[prop] = val; };
-    set('#analyzeOrb', 'textContent', opts.orb || '✨');
+    set('#analyzeAgentName', 'textContent', opts.agent || 'CardWise Agent');
+    set('#analyzeOrbFace', 'textContent', opts.orb || '✨');
     set('#analyzeTitle', 'innerHTML', opts.title || 'Working…');
     set('#analyzeFoot', 'textContent', opts.foot || '');
     const stepsEl = $('#analyzeSteps');
     if (stepsEl) stepsEl.innerHTML = axSteps.map((s, i) =>
-      `<li class="ax-step" data-i="${i}"><span class="ax-step__ic">${s.ic}</span><span class="ax-step__tx">${s.tx}</span><span class="ax-step__tick">✓</span></li>`).join('');
+      `<li class="ax-step" data-i="${i}"><span class="ax-step__ic">${s.ic}</span><span class="ax-step__tx">${s.tx}</span><span class="ax-step__work"><i></i><i></i><i></i></span><span class="ax-step__tick">✓</span></li>`).join('');
     const factWrap = $('#analyzeFactWrap'); if (factWrap) factWrap.hidden = !axFacts.length;
+
+    // Live computation meter (optional): the agent visibly counts up real matchups.
+    const meterEl = $('#analyzeMeter');
+    if (opts.meter && meterEl) {
+      axMeterTarget = Math.max(1, Number(opts.meter.target) || 0);
+      axMeterVal = 0;
+      set('#analyzeMeterLabel', 'textContent', opts.meter.label || '');
+      meterEl.hidden = false; applyAxMeter();
+    } else if (meterEl) { meterEl.hidden = true; axMeterTarget = 0; axMeterVal = 0; }
+
     axBar = 6; applyAxBar(); setAxStep(0);
     axFactIdx = Math.floor(Math.random() * (axFacts.length || 1)); applyAxFact();
     axStartMs = Date.now();
@@ -818,6 +892,12 @@
     axTimers.push(setInterval(() => { if (axStepIdx < axSteps.length - 1) setAxStep(axStepIdx + 1); }, every));
     if (axFacts.length) axTimers.push(setInterval(() => { axFactIdx = (axFactIdx + 1) % axFacts.length; applyAxFact(); }, 4200));
     axTimers.push(setInterval(() => { if (axBar < 93) { axBar += 1; applyAxBar(); } }, 700));
+    if (axMeterTarget > 0) {
+      const inc = Math.max(1, Math.ceil(axMeterTarget / 26));
+      axTimers.push(setInterval(() => {
+        if (axMeterVal < axMeterTarget) { axMeterVal = Math.min(axMeterTarget, axMeterVal + inc); applyAxMeter(); }
+      }, 95));
+    }
   }
 
   // Finish the overlay. Guarantees a minimum on-screen time so it's never a flash.
@@ -825,6 +905,7 @@
     const ov = $('#analyzeOverlay');
     const finish = () => {
       axTimers.forEach(clearInterval); axTimers = [];
+      if (axMeterTarget > 0) { axMeterVal = axMeterTarget; applyAxMeter(); }
       if (!ov) { if (onDone) onDone(); return; }
       setAxStep(axSteps.length); axBar = 100; applyAxBar();
       setTimeout(() => { ov.hidden = true; if (onDone) onDone(); }, 600);
@@ -835,6 +916,7 @@
 
   /* A short, tasteful confetti burst — a little reward for adding a card. */
   function celebrate() {
+    sfx.success();
     const layer = document.createElement('div');
     layer.className = 'confetti';
     const colors = ['#6d5efc', '#28e0a8', '#ffd166', '#9d7bff', '#ff6b8a'];
@@ -1119,23 +1201,29 @@
       case 'toCards':   closeModal(); showStep('cards'); break;
       case 'toMerchants':
         closeModal(); showStep('merchants'); renderMerchants(); break;
-      case 'optimize':
+      case 'optimize': {
         closeModal();
-        // Agentic "building your strategy" screen, then reveal the game-plan.
+        // Agentic "drafting your strategy" screen, then reveal the game-plan.
+        const nCards = state.selectedCards.size || 1;
+        const nMerch = state.selectedMerchants.size || 1;
         agentStart({
           orb: '🧠',
-          title: 'Your <span>CardWise agent</span> is building your strategy…',
-          foot: 'Comparing every one of your cards across your chosen merchants',
-          steps: STRATEGY_STEPS, facts: CARD_FACTS, stepInterval: 520,
+          agent: 'CardWise Agent',
+          title: 'The <span>agent</span> is drafting your strategy…',
+          foot: `Weighing ${nCards} card${nCards > 1 ? 's' : ''} across ${nMerch} merchant${nMerch > 1 ? 's' : ''}, offer by offer`,
+          steps: STRATEGY_STEPS, facts: CARD_FACTS, stepInterval: 430,
+          meter: { label: 'card × merchant matchups scored', target: nCards * nMerch },
         });
-        setTimeout(() => agentComplete(() => { showStep('results'); renderResults(); recordSessionData(); }), 2400);
+        setTimeout(() => agentComplete(() => { showStep('results'); renderResults(); recordSessionData(); sfx.reward(); }), 2400);
         break;
+      }
       case 'addAnother': {
         closeModal();
         const s = $('#cardSearch'); if (s) s.focus();
         break;
       }
       case 'terms': openTerms(); break;
+      case 'toggleSound': setSound(!soundOn); break;
       case 'addCustom': openCustomMerchant(); break;
       case 'saveCustom': saveCustom(); break;
       case 'feedback': openFeedback(); break;
@@ -1162,7 +1250,7 @@
   function toggleCard(id) {
     if (!CARD_BY_ID[id]) return;
     const adding = !state.selectedCards.has(id);
-    if (adding) state.selectedCards.add(id);
+    if (adding) { state.selectedCards.add(id); sfx.tap(); }
     else state.selectedCards.delete(id);
     persist();
     renderCards();
@@ -1177,6 +1265,7 @@
     } else {
       const m = window.CW_DATA.MERCHANT_BY_ID[id];
       state.selectedMerchants.set(id, m ? m.avgSpend : 0);
+      sfx.tap();
     }
     persist();
     renderMerchants();
@@ -1197,6 +1286,7 @@
 
     restore();
     bindEvents();
+    syncSoundToggle();
 
     // Always start on the landing — no previous session is restored, so every
     // visit (and every visitor) sees a clean, fresh platform.
