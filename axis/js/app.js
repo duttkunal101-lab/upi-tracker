@@ -20,6 +20,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
+  const synthPan = () => 'AXISP' + Math.floor(1000 + Math.random() * 9000) + 'K';
   const wizStages = C.stages; // 1..8
 
   /* --------------------------------------------------------------- state */
@@ -231,40 +232,52 @@
   /* ---- Stage 3: KYC ---------------------------------------------------- */
   R.kyc = function () {
     if (!state.identity) {
+      const etb = state.preApproved && state.preApproved.preApproved;
       return { html: stageHead('kyc') + `
         <div class="panel">
+          ${etb ? `<div class="fasttrack">⚡ <strong>Fast-track:</strong> we recognised your existing Axis relationship and pre-filled your PAN — just verify to auto-fill the rest.</div>` : ''}
           <label class="fld">
-            <span class="fld__label">PAN</span>
+            <span class="fld__label">PAN ${etb ? afBadge('pre-filled') : ''}</span>
             <input id="pan" class="fld__input fld__input--mono" maxlength="10" placeholder="ABCDE1234F"
               value="${esc(state.pan)}" style="text-transform:uppercase" />
           </label>
           <label class="consent">
             <input type="checkbox" id="consentKyc" checked/>
-            <span>I consent to fetch my identity & address from DigiLocker / Aadhaar e-KYC and the CKYC registry to auto-fill my KYC. <a href="#" data-action="why" data-why="kyc">Why?</a></span>
+            <span>I consent to fetch my identity, address &amp; documents from DigiLocker / Aadhaar e-KYC and the CKYC registry to auto-fill my application. <a href="#" data-action="why" data-why="kyc">Why?</a></span>
           </label>
-          <button class="btn btn--primary btn--block" data-action="begin-kyc">Verify &amp; auto-fill my details →</button>
+          <button class="btn btn--primary btn--block" data-action="begin-kyc">Verify &amp; auto-fill everything →</button>
           <p class="trust">🪪 Your Aadhaar number stays masked and vaulted — we never store it in full.</p>
         </div>` };
     }
     const id = state.identity || {};
+    const docs = id.documents || [];
     return { html: stageHead('kyc') + `
       <div class="kyc-card">
         <div class="kyc-card__head">
           <div class="avatar">${esc(id.photoInitials || '🙂')}</div>
           <div>
             <div class="kyc-card__name">${esc(id.name || 'Verified')}</div>
-            <div class="kyc-card__sub">Fetched & verified ${state.ckyc && state.ckyc.found ? 'from your CKYC record' : 'via DigiLocker'} ${state.vcip ? '· V-CIP done' : ''}</div>
+            <div class="kyc-card__sub">Auto-filled &amp; verified ${state.ckyc && state.ckyc.found ? 'from your CKYC record' : 'via DigiLocker'}${state.vcip ? ' · V-CIP done' : ''}</div>
           </div>
           <span class="pill pill--ok">✓ Verified</span>
         </div>
+
+        <div class="sec-label">📄 Documents pulled &amp; verified</div>
+        <div class="docs">${docs.map(docRow).join('') || '<span class="muted">—</span>'}</div>
+
+        <div class="sec-label">🗂️ Application details ${afBadge()}</div>
         <div class="kyc-rows">
-          ${kvRow('PAN', (state.pan || '').toUpperCase())}
+          ${kvRow('Full name', id.name)}
           ${kvRow('Date of birth', id.dob)}
           ${kvRow('Gender', id.gender)}
-          ${kvRow('Aadhaar', id.aadhaarMasked + ' (masked)')}
-          ${kvRow('Address', id.address)}
+          ${kvRow('Father’s name', id.fatherName)}
+          ${kvRow('PAN', (state.pan || '').toUpperCase())}
+          ${kvRow('Email', id.email)}
+          ${kvRow('Aadhaar', (id.aadhaarMasked || '') + ' (masked)')}
+          ${kvRow('Current address', id.currentAddress || id.address)}
+          ${kvRow('Permanent address', id.permanentAddress || id.address)}
         </div>
-        <p class="muted edit-note">Something off? <a href="#" data-action="edit-kyc">Edit details</a></p>
+        <p class="muted edit-note">Everything was auto-filled from your verified documents. Something off? <a href="#" data-action="edit-kyc">Edit details</a></p>
         <button class="btn btn--primary btn--block" data-action="confirm-kyc">Confirm &amp; continue →</button>
       </div>` };
   };
@@ -308,6 +321,7 @@
           <h3 class="offer__card">${esc(card.name)}</h3>
           <div class="offer__limit">${inr(d.limit)}<span>approved credit limit</span></div>
           <p class="offer__basis">${esc(d.basis)}</p>
+          ${state.income ? `<p class="offer__verified">✓ Verified income ${inr(state.income.monthlyIncome)}/mo${state.income.employerName ? ` · ${esc(state.income.employmentType)} at ${esc(state.income.employerName)}` : ''} <span class="af">via Account Aggregator</span></p>` : ''}
         </div>
         ${kfs(d, card)}
         ${mitcAccordion()}
@@ -402,6 +416,8 @@
       <p class="stage-head__sub">${esc(s.sub)}</p></div>`;
   }
   function kvRow(k, v) { return `<div class="kv"><span class="kv__k">${esc(k)}</span><span class="kv__v">${esc(v || '—')}</span></div>`; }
+  function afBadge(label) { return `<span class="af">✨ ${esc(label || 'auto-filled')}</span>`; }
+  function docRow(d) { return `<div class="doc"><span class="doc__name">${esc(d.name)}</span><span class="doc__via">${esc(d.via)}</span><span class="doc__status">✓ ${esc(d.status)}</span></div>`; }
   function metric(big, small) { return `<div class="metric"><strong>${esc(big)}</strong><span>${esc(small)}</span></div>`; }
   function actionTile(icon, label, action, cta) {
     return `<button class="tile" data-action="${action}"><span class="tile__ic">${icon}</span><span class="tile__lb">${esc(label)}</span><span class="tile__cta">${esc(cta)}</span></button>`;
@@ -569,7 +585,10 @@
     state.otpVerified = true;
     const pa = await INT.checkPreApproved(state.mobile);
     state.preApproved = pa; save();
-    if (pa.preApproved) toast(`🎉 Good news — you have a pre-approved offer up to ${inr(pa.indicativeLimit)}!`, 'success');
+    if (pa.preApproved) {
+      if (!state.pan) state.pan = synthPan(); // ETB → PAN already on record, pre-fill it
+      toast(`🎉 Good news — you have a pre-approved offer up to ${inr(pa.indicativeLimit)}!`, 'success');
+    }
     track('otp_verified', { preApproved: pa.preApproved });
     nextStage();
   }
@@ -605,7 +624,7 @@
     state.pan = pan; save();
     const res = await runAgent('Verifying your identity', [
       { id: 'pan', icon: '🪪', label: 'Validating PAN with Protean (NSDL)', fn: () => INT.verifyPan(pan), tag: (r) => r.ok ? 'PAN valid' : 'check PAN' },
-      { id: 'dl', icon: '📂', label: 'Fetching identity & address from DigiLocker', fn: () => INT.digiLockerFetch(), tag: () => 'Fetched' },
+      { id: 'dl', icon: '📂', label: 'Pulling documents & details from DigiLocker', fn: () => INT.digiLockerFetch(pan), tag: (r) => (r.documents ? r.documents.length + ' docs' : 'Fetched') },
       { id: 'ckyc', icon: '🗂️', label: 'Checking the CKYC registry (CERSAI)', fn: () => INT.ckycPull(pan), tag: (r) => r.found ? 'CKYC found' : 'new CKYC' },
       { id: 'face', icon: '🤳', label: 'Liveness check & face match', fn: () => INT.livenessFaceMatch(), tag: (r) => 'match ' + Math.round(r.faceMatchScore * 100) + '%' },
       { id: 'vcip', icon: '🎥', label: 'Video-KYC (V-CIP) for full KYC', fn: () => INT.vcipSession(), tag: () => 'V-CIP done' },
@@ -638,6 +657,8 @@
     save();
     renderStage();
     track('assessment_done', { decision: state.decision.decision });
+    // automation: advance to the offer automatically once eligibility is ready
+    setTimeout(() => { if (state.stage === 'assessment') nextStage(); }, 1800);
   }
 
   /* ---- stage 6 logic ---- */

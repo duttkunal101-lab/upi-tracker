@@ -23,6 +23,7 @@
     { name: 'ANANYA REDDY', gender: 'Female', dob: '1998-01-30', city: 'Hyderabad', state: 'Telangana' },
     { name: 'ROHAN GUPTA', gender: 'Male', dob: '1993-09-15', city: 'New Delhi', state: 'Delhi' },
   ];
+  const FATHERS = ['Rajesh', 'Suresh', 'Vinod', 'Anil', 'Prakash', 'Mahesh'];
 
   /* Seed a stable sample identity for the session (so prefill is consistent). */
   let _identity = null;
@@ -30,12 +31,18 @@
     if (_identity) return _identity;
     const p = pick(SAMPLE_PEOPLE);
     const house = rand(1, 240);
+    const first = p.name.split(' ')[0], last = p.name.split(' ')[1] || '';
+    const addr = `${house}, MG Road, ${p.city}, ${p.state} - ${rand(100000, 899999)}`;
     _identity = {
       simulated: true,
       name: p.name,
       gender: p.gender,
       dob: p.dob,
-      address: `${house}, MG Road, ${p.city}, ${p.state} - ${rand(100000, 899999)}`,
+      fatherName: `${pick(FATHERS)} ${last}`,
+      email: `${first.toLowerCase()}.${(last || 'x').toLowerCase()}${rand(11, 99)}@gmail.com`,
+      address: addr,
+      currentAddress: addr,
+      permanentAddress: addr,
       city: p.city,
       state: p.state,
       aadhaarMasked: `XXXX XXXX ${rand(1000, 9999)}`,
@@ -44,6 +51,16 @@
     return _identity;
   }
   function resetIdentity() { _identity = null; }
+
+  /* The documents an agentic flow pulls & verifies (instead of asking for uploads). */
+  function documentsFor(id, pan) {
+    return [
+      { name: 'Aadhaar (e-KYC XML)', via: 'DigiLocker · UIDAI', ref: id.aadhaarMasked, status: 'Verified' },
+      { name: 'PAN', via: 'Protean (NSDL)', ref: (pan || '').toUpperCase() || '—', status: 'Verified' },
+      { name: 'Proof of address', via: 'DigiLocker (Aadhaar)', ref: 'as per Aadhaar', status: 'Verified' },
+      { name: 'Photograph', via: 'Aadhaar + live selfie', ref: 'face match', status: 'Verified' },
+    ];
+  }
 
   /* ---- Stage 1: mobile + pre-approved -------------------------------------- */
   async function sendOtp(mobile) {
@@ -77,13 +94,15 @@
       nameAsPerItd: ok ? sampleIdentity(pan).name : null,
     };
   }
-  async function digiLockerFetch() {
+  async function digiLockerFetch(pan) {
     await delay(1400);
-    return { simulated: true, source: 'DigiLocker', ...sampleIdentity() };
+    const id = sampleIdentity();
+    return { simulated: true, source: 'DigiLocker', ...id, documents: documentsFor(id, pan) };
   }
-  async function aadhaarOtpEkyc() {
+  async function aadhaarOtpEkyc(pan) {
     await delay(1300);
-    return { simulated: true, source: 'UIDAI e-KYC', ...sampleIdentity() };
+    const id = sampleIdentity();
+    return { simulated: true, source: 'UIDAI e-KYC', ...id, documents: documentsFor(id, pan) };
   }
   async function ckycPull() {
     await delay(1100);
@@ -121,6 +140,7 @@
       enquiries: rand(0, 3),
     };
   }
+  const EMPLOYERS = ['Infosys', 'TCS', 'HDFC Bank', 'Reliance Retail', 'Wipro', 'a private limited company'];
   async function accountAggregator(profile) {
     await delay(1600);
     const salaried = !profile || profile.employment !== 'self';
@@ -131,6 +151,9 @@
       monthlyIncome,
       avgBalance: rand(15, 120) * 1000,
       foir: rand(18, 42) / 100,
+      employmentType: salaried ? 'Salaried' : 'Self-employed',
+      employerName: salaried ? pick(EMPLOYERS) : 'Own business',
+      inferredFrom: salaried ? 'regular salary credits' : 'business inflows',
     };
   }
   async function pennyDrop() {

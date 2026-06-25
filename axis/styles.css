@@ -214,6 +214,17 @@ body {
 .kv__v { font-weight: 600; text-align: right; }
 .edit-note { font-size: 0.82rem; margin: 0.6rem 0 0.2rem; }
 
+/* auto-fill badge, document list, fast-track + verified income */
+.af { font-size: 0.64rem; font-weight: 800; color: var(--ok); background: rgba(31,138,112,0.12); border: 1px solid rgba(31,138,112,0.28); padding: 0.08rem 0.45rem; border-radius: 999px; margin-left: 0.35rem; white-space: nowrap; vertical-align: middle; }
+.sec-label { font-size: 0.76rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--burgundy-2); margin: 1.1rem 0 0.5rem; }
+.docs { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.2rem; }
+.doc { display: flex; align-items: center; gap: 0.6rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem 0.7rem; font-size: 0.85rem; }
+.doc__name { font-weight: 700; }
+.doc__via { color: var(--muted-2); font-size: 0.74rem; }
+.doc__status { margin-left: auto; color: var(--ok); font-weight: 800; font-size: 0.78rem; white-space: nowrap; }
+.fasttrack { background: linear-gradient(100deg, rgba(199,150,43,0.16), rgba(174,39,95,0.08)); border: 1px solid var(--line-2); border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; font-size: 0.86rem; margin-bottom: 1rem; }
+.offer__verified { font-size: 0.82rem; color: var(--ok); font-weight: 600; margin-top: 0.5rem; }
+
 /* assessment metrics */
 .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 0.4rem; margin-bottom: 1rem; }
 .metric { text-align: center; padding: 1rem 0.5rem; border-right: 1px solid var(--line); }
