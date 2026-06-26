@@ -84,6 +84,14 @@
   }
 
   /* ---- Stage 3: identity / KYC -------------------------------------------- */
+  /* DigiLocker consent handshake. REAL API: MeitY DigiLocker Partner API —
+   * OAuth2 authorize (redirect to digilocker.gov.in) → token → list issued docs
+   * (GET /public/oauth2/2/files/issued) → pull the signed XML (e.g. e-Aadhaar).
+   * Needs a registered DigiLocker partner client_id/secret on the bank backend. */
+  async function digiLockerConsent() {
+    await delay(650);
+    return { simulated: true, granted: true };
+  }
   async function verifyPan(pan) {
     await delay(900);
     const ok = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(String(pan || '').toUpperCase());
@@ -103,6 +111,16 @@
     await delay(1300);
     const id = sampleIdentity();
     return { simulated: true, source: 'UIDAI e-KYC', ...id, documents: documentsFor(id, pan) };
+  }
+  /* Aadhaar OTP e-KYC path. REAL API: UIDAI Aadhaar OTP (via KUA/ASA). */
+  async function aadhaarSendOtp(/* aadhaar */) { await delay(700); return { simulated: true, ok: true, hint: 'Use any 6 digits (demo OTP).' }; }
+  async function aadhaarVerifyOtp() { await delay(600); return { simulated: true, ok: true }; }
+  /* Document-upload + OCR path. REAL API: OCR/IDP vendor (e.g. IDfy, Signzy,
+   * AWS Textract) reads the uploaded Aadhaar/PAN images and extracts fields. */
+  async function ocrFetch(pan) {
+    await delay(1700);
+    const id = sampleIdentity();
+    return { simulated: true, source: 'OCR (document scan)', confidence: 0.97, ...id, documents: documentsFor(id, pan) };
   }
   async function ckycPull() {
     await delay(1100);
@@ -246,7 +264,8 @@
   window.AX_INT = {
     delay, sampleIdentity, resetIdentity,
     sendOtp, verifyOtp, checkPreApproved,
-    verifyPan, digiLockerFetch, aadhaarOtpEkyc, ckycPull, livenessFaceMatch, vcipSession,
+    digiLockerConsent, verifyPan, digiLockerFetch, aadhaarOtpEkyc, ckycPull, livenessFaceMatch, vcipSession,
+    aadhaarSendOtp, aadhaarVerifyOtp, ocrFetch,
     bureauPull, accountAggregator, pennyDrop, amlScreen, fraudCheck,
     underwrite, eSign, issueCard, enachSetup, provisionWallet, sendResumeLink,
   };

@@ -29,6 +29,7 @@
     tagline: 'Dil Se Open',
     agentName: 'Aria',
     agentRole: 'your Axis onboarding assistant',
+    logo: 'https://logo.clearbit.com/axisbank.com', // real Axis Bank logo (CDN, hotlink-friendly)
     // Axis Bank brand palette (burgundy primary, raspberry + gold accents).
     // Swap these for the official brand book values when productionising.
     colors: {
@@ -50,16 +51,16 @@
       segment: 'Everyday cashback',
       tagline: 'Flat, no-fuss cashback on the spends you make every day.',
       annualFee: 499,
-      feeWaiver: '₹499 fee waived on annual spends of ₹2,00,000+',
+      feeWaiver: '₹499 — reversed on ₹10,000 spend in 45 days; waived above ₹2L/yr',
       network: 'Visa',
       rewardUnit: 'Cashback',
       color: ['#1F8A70', '#0F5C49'],
-      bestFor: ['Bill payments 5%', 'Swiggy / Zomato / Ola 4%', 'Everything else 2%'],
+      bestFor: ['Bills 5%', 'Food & Ola 4%', 'Everything 1.5%'],
       highlights: [
         '5% cashback on bill payments & recharges via Google Pay',
-        '4% on Swiggy, Zomato and Ola',
-        '2% unlimited cashback on all other spends',
-        '4 complimentary domestic lounge visits / year',
+        '4% on Swiggy, Zomato and Ola (accelerated cashback capped ₹500/mo)',
+        '1.5% unlimited cashback on all other spends',
+        '4 complimentary domestic lounge visits/year (on ₹50k spend) + fuel-surcharge waiver',
       ],
       idealIf: ['bills', 'food', 'cabs', 'everyday', 'beginner'],
       minIncomeHint: 'Salaried ₹15,000+/month or an Axis FD',
@@ -70,16 +71,16 @@
       segment: 'Online shopping',
       tagline: 'Built for shoppers — unlimited cashback on Flipkart, Myntra & more.',
       annualFee: 500,
-      feeWaiver: '₹500 fee waived on annual spends of ₹2,00,000+',
+      feeWaiver: '₹500 — waived on annual spends above ₹3,50,000',
       network: 'Visa',
       rewardUnit: 'Cashback',
       color: ['#2874F0', '#1A4DA0'],
-      bestFor: ['Flipkart / Cleartrip 5%', 'Preferred partners 4%', 'Everything else 1.5%'],
+      bestFor: ['Flipkart 5%', 'Myntra 7.5%', 'Partners 4%'],
       highlights: [
-        '5% unlimited cashback on Flipkart & Cleartrip',
+        '5% cashback on Flipkart & Cleartrip (capped ₹4,000/quarter)',
+        '7.5% cashback on Myntra (capped ₹4,000/quarter)',
         '4% on preferred partners — Swiggy, Uber, PVR, cult.fit',
-        '1.5% cashback on all other spends',
-        '4 complimentary domestic lounge visits / year',
+        '1% on other spends + welcome ₹250 Flipkart & ₹100 Swiggy vouchers',
       ],
       idealIf: ['shopping', 'food', 'cabs', 'everyday'],
       minIncomeHint: 'Salaried ₹15,000+/month or self-employed ₹3L+/yr',
@@ -94,12 +95,12 @@
       network: 'Visa',
       rewardUnit: 'EDGE Miles',
       color: ['#0E3A5F', '#091F33'],
-      bestFor: ['Travel 5 EDGE Miles / ₹100', 'Airport lounges', 'Transferable miles'],
+      bestFor: ['Travel 5x Miles', 'Lounge access', 'Transferable miles'],
       highlights: [
-        '5 EDGE Miles per ₹100 on travel (Tier-based), 2 on everything else',
-        'Transfer EDGE Miles to airline & hotel partners',
-        'Complimentary domestic & international lounge access',
-        'Milestone bonus miles on annual spend tiers',
+        '5 EDGE Miles per ₹100 on travel (airlines, hotels, Travel EDGE); 2 on other spends',
+        'Tiered rewards — Silver → Gold → Platinum at ₹7.5L & ₹15L annual spends',
+        'Domestic & international airport lounge access (tier-based)',
+        'Transfer EDGE Miles to 20+ airline & hotel partners',
       ],
       idealIf: ['travel', 'flights', 'hotels', 'premium'],
       minIncomeHint: 'Salaried ₹9L+/yr or ITR ₹9L+/yr (self-employed)',
@@ -114,11 +115,11 @@
       network: 'Visa',
       rewardUnit: 'Cashback',
       color: ['#E40000', '#8C0000'],
-      bestFor: ['Airtel 25%', 'Utilities 10%', 'Swiggy / Zomato 10%'],
+      bestFor: ['Airtel 25%', 'Utilities 10%', 'Food 10%'],
       highlights: [
         '25% cashback on Airtel Mobile, Broadband & DTH (via Airtel Thanks)',
-        '10% on utility bill payments',
-        '10% on Swiggy, Zomato and BigBasket',
+        '10% on utility bill payments (via Airtel Thanks)',
+        '10% on Zomato, Blinkit & District (up to ₹200/partner/month)',
         '1% on all other spends',
       ],
       idealIf: ['bills', 'utilities', 'food', 'everyday'],
@@ -580,10 +581,39 @@
     'DigiLocker documents are legally at par with originals under the IT Act.',
   ];
 
+  /* live application status shown to the customer in real time, per stage */
+  const appStatus = {
+    start: 'Application started',
+    product: 'Card selected',
+    kyc: 'Identity verified (KYC)',
+    assessment: 'Eligibility checked',
+    decision: 'Offer ready',
+    agreement: 'Agreement signed',
+    issuance: 'Card issued',
+    welcome: 'Onboarding complete',
+  };
+
+  /* post-issuance card delivery tracking — "till the customer gets the card" */
+  const delivery = [
+    { key: 'issued', label: 'Card issued · virtual card live' },
+    { key: 'printed', label: 'Physical card personalised & printed' },
+    { key: 'dispatched', label: 'Dispatched via courier (trackable)' },
+    { key: 'out', label: 'Out for delivery' },
+    { key: 'delivered', label: 'Delivered & ready to activate' },
+  ];
+
+  /* documents Axis requests through the DigiLocker consent handshake */
+  const digiLockerDocs = [
+    { name: 'Aadhaar (e-KYC XML)', issuer: 'UIDAI', purpose: 'Identity, address & photo' },
+    { name: 'PAN Verification Record', issuer: 'Income Tax Dept · Protean', purpose: 'PAN & name match' },
+    { name: 'Driving Licence', issuer: 'Ministry of Road Transport', purpose: 'Additional address proof (optional)' },
+  ];
+
   /* ---------------------------------------------------------------- exports */
   window.AX_CONFIG = {
     brand, cards, profileTags, integrations, regulations,
     dataPoints, stages, legal, nudges, facts,
+    appStatus, delivery, digiLockerDocs,
     // convenience lookups
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
     cardById: cards.reduce((m, c) => (m[c.id] = c, m), {}),

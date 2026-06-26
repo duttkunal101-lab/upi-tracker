@@ -82,6 +82,7 @@
     <!-- ===================== Wizard ===================== -->
     <section class="view" data-view="wizard">
       <div class="wiz">
+        <div class="appbar" id="appbar"></div>
         <div class="stepper" id="stepper"></div>
         <div class="progress"><div class="progress__bar"><span class="progress__fill" id="progressFill"></span></div><span class="progress__note" id="progressNote"></span></div>
         <div id="stageRoot"></div>
@@ -132,6 +133,9 @@
     </header>
     <div class="blueprint__body" id="blueprintBody"></div>
   </aside>
+
+  <!-- ===================== DigiLocker consent modal ===================== -->
+  <div class="modal" id="dlModal" hidden></div>
 
   <!-- ===================== Exit-intent modal ===================== -->
   <div class="modal" id="exitModal" hidden></div>
