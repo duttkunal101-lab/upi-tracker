@@ -28,7 +28,7 @@
     product: 'Credit Card Onboarding',
     tagline: 'Dil Se Open',
     agentName: 'Aria',
-    agentRole: 'your Axis onboarding assistant',
+    agentRole: 'your AI onboarding agent',
     logo: 'https://logo.clearbit.com/axisbank.com', // real Axis Bank logo (CDN, hotlink-friendly)
     // Axis Bank brand palette (burgundy primary, raspberry + gold accents).
     // Swap these for the official brand book values when productionising.
@@ -602,6 +602,15 @@
     { key: 'delivered', label: 'Delivered & ready to activate' },
   ];
 
+  /* the agent's agenda — the autonomous plan Aria executes for a NTB customer */
+  const agentPlan = [
+    'Find your best-fit Axis card',
+    'Verify your identity — full KYC, done for you',
+    'Check your eligibility (with your consent)',
+    'Issue your card instantly',
+    'Track it all the way to your door',
+  ];
+
   /* documents Axis requests through the DigiLocker consent handshake */
   const digiLockerDocs = [
     { name: 'Aadhaar (e-KYC XML)', issuer: 'UIDAI', purpose: 'Identity, address & photo' },
@@ -613,7 +622,7 @@
   window.AX_CONFIG = {
     brand, cards, profileTags, integrations, regulations,
     dataPoints, stages, legal, nudges, facts,
-    appStatus, delivery, digiLockerDocs,
+    appStatus, delivery, digiLockerDocs, agentPlan,
     // convenience lookups
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
     cardById: cards.reduce((m, c) => (m[c.id] = c, m), {}),

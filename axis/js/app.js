@@ -35,6 +35,7 @@
     startedAt: Date.now(), done: false,
   });
   let state = fresh();
+  let _lastLead = ''; // last agent-lead message mirrored into the chat transcript
 
   function load() {
     try {
@@ -54,30 +55,6 @@
   const stageIndex = (key) => wizStages.findIndex((s) => s.key === key);
   const currentCard = () => (state.cardId ? C.cardById[state.cardId] : null);
 
-  /* ----- the agentic layer: Aria reasons & narrates her decisions ----- */
-  const _said = new Set();
-  function ariaSay(ctx) {
-    if (_said.has(ctx)) return; _said.add(ctx);
-    let t = '';
-    if (ctx === 'start') {
-      const pa = state.preApproved;
-      t = (pa && pa.preApproved)
-        ? `I can see you’re an existing Axis customer with a <strong>pre-approved offer up to ${inr(pa.indicativeLimit)}</strong>, so I’ve fast-tracked you and pre-filled your PAN. Let’s pick your card.`
-        : `Welcome! I’ll handle this end to end — recommend the right card, pull &amp; verify your KYC, run your eligibility with your consent, and get you an instant virtual card.`;
-    } else if (ctx === 'kyc-method') {
-      t = `For KYC I’d use <strong>DigiLocker</strong> — I’ll pull and verify your Aadhaar &amp; PAN in seconds. Prefer to upload documents (I’ll read them with OCR), use an Aadhaar OTP, or do a quick video call? Your choice.`;
-    } else if (ctx === 'kyc-done') {
-      const ck = state.ckyc && state.ckyc.found;
-      const how = state.kycVia === 'ocr' ? 'read your uploaded documents' : state.kycVia === 'vcip' ? 'completed your video-KYC' : state.kycVia === 'aadhaar' ? 'verified your Aadhaar e-KYC' : 'pulled your documents';
-      t = `Done — I ${how}, validated your PAN, matched your face, ${ck ? 'found your existing CKYC record so I skipped re-capture, ' : ''}and auto-filled your whole application. Just confirm it.`;
-    } else if (ctx === 'decision') {
-      const d = state.decision || {}, b = state.bureau || {}, inc = state.income || {};
-      t = (d.decision === 'approve')
-        ? `Based on your ${b.score ? `CIBIL score of ${b.score}` : 'profile'}${inc.monthlyIncome ? ` and verified income of ${inr(inc.monthlyIncome)}/mo` : ''}, I’ve approved a limit of <strong>${inr(d.limit)}</strong> — comfortably within a safe FOIR for you. Your Key Fact Statement is on the offer.`
-        : `Your credit profile is thin right now, so rather than decline I’ve lined up a <strong>secured card against an Axis Fixed Deposit</strong> — no income proof, and it builds your CIBIL score so you can upgrade later.`;
-    }
-    if (t) aria(t, true);
-  }
 
   function toast(msg, kind) {
     const t = $('#toast');
@@ -106,8 +83,6 @@
     renderStage();
     armInactivity();
     seedCopilot(key);
-    if (key === 'kyc' && !state.identity && !state.kycMethod) ariaSay('kyc-method');
-    if (key === 'decision') ariaSay('decision');
     if (isBlueprintOpen()) renderBlueprint();
     track('stage_enter', { stage: key });
     window.scrollTo({ top: 0, behavior: (opts && opts.noScroll) ? 'auto' : 'smooth' });
@@ -245,8 +220,8 @@
           ${[['salaried', 'Salaried'], ['self', 'Self-employed'], ['ntc', 'New to credit']].map(([v, l]) =>
             `<button class="seg__btn ${state.profile.employment === v ? 'is-on' : ''}" data-action="set-emp" data-emp="${v}">${l}</button>`).join('')}
         </div>
-        <button class="btn btn--primary btn--block" data-action="recommend">✨ Find my best Axis card</button>
-        <button class="btn btn--ghost btn--block" data-action="browse">Browse all cards</button>
+        <button class="btn btn--primary btn--block" data-action="recommend">✨ Let ${esc(C.brand.agentName)} recommend my card →</button>
+        <button class="btn btn--ghost btn--block" data-action="browse">Browse all cards myself</button>
       </div>`;
     } else {
       body = cardHero(rec.card, rec.reason, true) + `
@@ -607,14 +582,64 @@
     </details>`;
   }
 
+  /* The agent-led spine: Aria leads every step in the first person — what she's
+   * about to do, the decision she's making, and the regulatory reason — so the
+   * journey reads as an AI agent running the onboarding, not a form wizard. */
+  function agentLead() {
+    const s = state.stage, card = currentCard();
+    let msg = '', plan = '';
+    if (s === 'start') {
+      const pa = state.preApproved;
+      msg = (pa && pa.preApproved)
+        ? `I recognised your existing Axis relationship and a <strong>pre-approved offer up to ${inr(pa.indicativeLimit)}</strong> — I’ve fast-tracked you. Let’s verify it’s you and pick your card.`
+        : `You’re new to Axis — I’ll onboard you end to end and do the heavy lifting myself. First, your mobile number so I can verify it’s you (an RBI/TRAI requirement). New to credit? I’ve got a path for that too.`;
+      plan = `<div class="agent-lead__plan"><span>My plan for you</span><ol>${C.agentPlan.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
+    } else if (s === 'product') {
+      msg = state._rec
+        ? `I compared the Axis range against how you spend and picked the one that earns you the most. Here’s my reasoning — switch it any time.`
+        : `Now I’ll pick the Axis card that fits you best. Tell me what you spend on, or let me choose. If this is your first credit card, I’ll start you on one that builds your credit score.`;
+    } else if (s === 'kyc') {
+      if (!state.identity) msg = `As a new-to-bank customer, RBI requires <strong>full KYC</strong> — and I’ll do it for you. Choose how I should pull your documents; I recommend DigiLocker (it takes seconds).`;
+      else { const ck = state.ckyc && state.ckyc.found; msg = `Done — I pulled and verified your documents, matched your face${ck ? ', and found your CKYC record so I skipped re-capture' : ''}, and auto-filled your whole application. Just confirm it.`; }
+    } else if (s === 'assessment') {
+      msg = state.assessmentDone
+        ? `Eligibility checked — I’m putting your personalised offer together now.`
+        : `With your explicit consent (required by the CIC Act), I’ll check your credit and income to set a <strong>responsible</strong> limit. New to credit? I’ll use a secured-card path so you’re never stuck.`;
+    } else if (s === 'decision') {
+      const d = state.decision || {}, b = state.bureau || {}, inc = state.income || {};
+      msg = (d.decision === 'approve')
+        ? `On ${b.score ? `a CIBIL score of ${b.score}` : 'your profile'}${inc.monthlyIncome ? ` and verified income of ${inr(inc.monthlyIncome)}/mo` : ''}, I’ve approved <strong>${inr(d.limit)}</strong> — comfortably within a safe FOIR for you. Your Key Fact Statement is below.`
+        : `You’re new to credit, so rather than decline I’ve set you up with a <strong>secured card</strong> against an Axis Fixed Deposit — no income proof, and it builds your score. No dead ends with me.`;
+    } else if (s === 'agreement') {
+      msg = `Almost there. RBI requires your <strong>explicit consent</strong> to issue a card — please review the terms, accept, and e-sign, and I’ll create your account.`;
+    } else if (s === 'issuance') {
+      msg = `I’m issuing your ${card ? esc(card.name.replace('Axis Bank ', '').replace(' Credit Card', '')) : 'card'} now — an instant virtual card to use right away, with the physical card dispatched to you.`;
+    } else if (s === 'welcome') {
+      msg = `All done — welcome to Axis! I’ve issued your card and I’m tracking its delivery to your door. I’ll text you each update.`;
+    }
+    if (!msg) return { html: '', msg: '' };
+    const html = `<div class="agent-lead">
+      <span class="agent-lead__avatar">✨</span>
+      <div class="agent-lead__body">
+        <div class="agent-lead__name">${esc(C.brand.agentName)} · ${esc(C.brand.agentRole)} <span class="agent-lead__live"></span></div>
+        <p class="agent-lead__msg">${msg}</p>
+        ${plan}
+      </div>
+    </div>`;
+    return { html, msg };
+  }
+
   /* render the active stage into #stageRoot */
   function renderStage() {
     const root = $('#stageRoot');
     let renderer = R[state.stage];
     if (state.stage === 'product' && state._browsing) renderer = R._browse;
     const out = renderer ? renderer() : { html: '' };
-    root.innerHTML = out.html;
+    const lead = agentLead();
+    root.innerHTML = lead.html + out.html;
     if (out.mount) out.mount();
+    // mirror the agent's lead into the co-pilot as a live transcript of her reasoning
+    if (lead.msg && lead.msg !== _lastLead) { _lastLead = lead.msg; appendMsg('agent', lead.msg); }
     // gate the e-sign button on consent
     const ci = $('#consentIssue'); if (ci) ci.addEventListener('change', () => { $('#signCta').disabled = !ci.checked; });
   }
@@ -625,7 +650,7 @@
   async function onAction(action, el, ev) {
     switch (action) {
       case 'start': setStage('start'); break;
-      case 'restart': clearSave(); _said.clear(); if (INT.resetIdentity) INT.resetIdentity(); state = fresh(); setStage('landing'); break;
+      case 'restart': clearSave(); _lastLead = ''; if (INT.resetIdentity) INT.resetIdentity(); state = fresh(); setStage('landing'); break;
       case 'resume': setStage(state.stage === 'landing' ? 'start' : state.stage); break;
       case 'home': if (state.done || confirmLeave()) { /* stay */ } break;
       case 'back': prevStage(); break;
@@ -720,7 +745,6 @@
       if (!state.pan) state.pan = synthPan(); // ETB → PAN already on record, pre-fill it
       toast(`🎉 Good news — you have a pre-approved offer up to ${inr(pa.indicativeLimit)}!`, 'success');
     }
-    ariaSay('start');
     track('otp_verified', { preApproved: pa.preApproved });
     nextStage();
   }
@@ -844,7 +868,6 @@
     save();
     renderStage();
     toast('✓ Documents verified — your application is auto-filled.', 'success');
-    ariaSay('kyc-done');
     track('kyc_done', { method, ckyc: state.ckyc && state.ckyc.found });
   }
 

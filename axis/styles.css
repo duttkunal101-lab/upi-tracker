@@ -144,6 +144,18 @@ body {
 .stage-head__icon { font-size: 1.8rem; }
 .stage-head__title { font-size: 1.42rem; letter-spacing: -0.02em; margin-top: 0.2rem; }
 .stage-head__sub { color: var(--muted); font-size: 0.95rem; margin-top: 0.35rem; }
+
+/* agent-led spine — Aria leads every step in the first person */
+.agent-lead { display: flex; gap: 0.7rem; align-items: flex-start; background: linear-gradient(100deg, rgba(151,20,77,0.06), rgba(199,150,43,0.05)); border: 1px solid var(--line-2); border-left: 3px solid var(--burgundy); border-radius: 14px; padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.agent-lead__avatar { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, var(--burgundy-2), var(--plum)); color: #fff; font-size: 1.05rem; }
+.agent-lead__name { font-size: 0.73rem; font-weight: 800; color: var(--burgundy); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem; }
+.agent-lead__live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: live 1.4s ease infinite; }
+.agent-lead__msg { font-size: 0.9rem; line-height: 1.5; color: var(--ink); }
+.agent-lead__msg strong { color: var(--burgundy); }
+.agent-lead__plan { margin-top: 0.6rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.8rem; }
+.agent-lead__plan > span { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--burgundy-2); }
+.agent-lead__plan ol { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.agent-lead__plan li { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.15rem; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.4rem; box-shadow: var(--shadow-sm); }
 .panel.center { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
 
