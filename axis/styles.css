@@ -220,6 +220,8 @@ body {
 .dl__chk { color: var(--ok); font-weight: 800; }
 .dl__consent { font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.9rem; }
 .dl__sim { font-size: 0.7rem; color: var(--muted-2); text-align: center; margin-top: 0.6rem; }
+.dl-link { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 0.4rem 1rem 0.9rem; margin-bottom: 0.2rem; }
+.dl-link__lead { font-size: 0.9rem; margin: 0.7rem 0 0.8rem; line-height: 1.5; }
 
 /* card-delivery tracker */
 .deliv { display: flex; flex-direction: column; margin: 0.4rem 0 1rem; text-align: left; }

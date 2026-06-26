@@ -38,6 +38,7 @@
       name: p.name,
       gender: p.gender,
       dob: p.dob,
+      pan: `${(first[0] || 'A')}${(last[0] || 'X')}XPK${rand(1000, 9999)}A`,
       fatherName: `${pick(FATHERS)} ${last}`,
       email: `${first.toLowerCase()}.${(last || 'x').toLowerCase()}${rand(11, 99)}@gmail.com`,
       address: addr,
@@ -56,7 +57,7 @@
   function documentsFor(id, pan) {
     return [
       { name: 'Aadhaar (e-KYC XML)', via: 'DigiLocker · UIDAI', ref: id.aadhaarMasked, status: 'Verified' },
-      { name: 'PAN', via: 'Protean (NSDL)', ref: (pan || '').toUpperCase() || '—', status: 'Verified' },
+      { name: 'PAN', via: 'Protean (NSDL)', ref: ((pan || id.pan || '') + '').toUpperCase() || '—', status: 'Verified' },
       { name: 'Proof of address', via: 'DigiLocker (Aadhaar)', ref: 'as per Aadhaar', status: 'Verified' },
       { name: 'Photograph', via: 'Aadhaar + live selfie', ref: 'face match', status: 'Verified' },
     ];

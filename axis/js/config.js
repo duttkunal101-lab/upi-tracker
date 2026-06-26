@@ -410,7 +410,7 @@
       nudge: 'Most people finish this whole journey in under 6 minutes.',
     },
     {
-      key: 'product', num: 2, label: 'Your card', icon: '💳', minutes: 1,
+      key: 'product', num: 3, label: 'Your card', icon: '💳', minutes: 1,
       headline: 'Aria will pick the right Axis card for you',
       sub: 'Tap what you spend on. The agent matches you to the best-fit Axis card — change it any time.',
       customerDoes: 'Tap 1–3 lifestyle interests (or browse the full range) and pick a card.',
@@ -424,7 +424,7 @@
       nudge: 'You can switch cards later — nothing here is final.',
     },
     {
-      key: 'kyc', num: 3, label: 'Identity (KYC)', icon: '🪪', minutes: 2,
+      key: 'kyc', num: 2, label: 'Identity (KYC)', icon: '🪪', minutes: 2,
       headline: 'Verify your identity — mostly auto-filled',
       sub: 'The agent pulls your details from DigiLocker / CKYC so you just confirm them. One quick selfie.',
       customerDoes: 'Enter PAN, consent to DigiLocker, confirm pre-filled details, take a selfie (V-CIP if needed).',
@@ -585,7 +585,7 @@
   const appStatus = {
     start: 'Application started',
     product: 'Card selected',
-    kyc: 'Identity verified (KYC)',
+    kyc: 'Verifying your identity',
     assessment: 'Eligibility checked',
     decision: 'Offer ready',
     agreement: 'Agreement signed',

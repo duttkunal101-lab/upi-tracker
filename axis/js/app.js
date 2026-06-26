@@ -21,7 +21,7 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
   const synthPan = () => 'AXISP' + Math.floor(1000 + Math.random() * 9000) + 'K';
-  const wizStages = C.stages; // 1..8
+  const wizStages = C.stages.slice().sort((a, b) => a.num - b.num); // ordered by stage number
 
   /* --------------------------------------------------------------- state */
   const fresh = () => ({
@@ -248,32 +248,9 @@
       if (state.kycMethod === 'aadhaar') return { html: stageHead('kyc') + kycAadhaar() };
       if (state.kycMethod === 'ocr') return { html: stageHead('kyc') + kycOcr() };
       if (state.kycMethod === 'vcip') return { html: stageHead('kyc') + kycVcip() };
-      const etb = state.preApproved && state.preApproved.preApproved;
-      return { html: stageHead('kyc') + `
-        <div class="panel">
-          ${etb ? `<div class="fasttrack">⚡ <strong>Fast-track:</strong> we recognised your existing Axis relationship and pre-filled your PAN — just verify to auto-fill the rest.</div>` : ''}
-          <label class="fld">
-            <span class="fld__label">PAN ${etb ? afBadge('pre-filled') : ''}</span>
-            <input id="pan" class="fld__input fld__input--mono" maxlength="10" placeholder="ABCDE1234F"
-              value="${esc(state.pan)}" style="text-transform:uppercase" />
-          </label>
-          <label class="consent">
-            <input type="checkbox" id="consentKyc" checked/>
-            <span>I consent to verify my identity &amp; fetch my documents (DigiLocker / UIDAI / CKYC) to auto-fill my application. <a href="#" data-action="why" data-why="kyc">Why?</a></span>
-          </label>
-          <p class="ask">How would you like to complete KYC? <span class="muted">${esc(C.brand.agentName)} recommends DigiLocker.</span></p>
-          <div class="kyc-methods">
-            <button class="kyc-method kyc-method--reco" data-action="kyc-method" data-method="digilocker">
-              <span class="kyc-method__ic">⚡</span><span class="kyc-method__b"><strong>DigiLocker — instant auto-fetch</strong><small>I pull &amp; verify your Aadhaar + PAN in seconds</small></span><span class="kyc-method__pick">${esc(C.brand.agentName)}’s pick</span></button>
-            <button class="kyc-method" data-action="kyc-method" data-method="aadhaar">
-              <span class="kyc-method__ic">📱</span><span class="kyc-method__b"><strong>Aadhaar OTP e-KYC</strong><small>Verify via a UIDAI OTP</small></span></button>
-            <button class="kyc-method" data-action="kyc-method" data-method="ocr">
-              <span class="kyc-method__ic">📄</span><span class="kyc-method__b"><strong>Upload documents (AI OCR)</strong><small>Snap your Aadhaar &amp; PAN — I read them</small></span></button>
-            <button class="kyc-method" data-action="kyc-method" data-method="vcip">
-              <span class="kyc-method__ic">🎥</span><span class="kyc-method__b"><strong>Video KYC (V-CIP)</strong><small>Live full-KYC with an Axis officer</small></span></button>
-          </div>
-          <p class="trust">🪪 Whatever you choose, your Aadhaar stays masked &amp; vaulted.</p>
-        </div>` };
+      if (state.kycMethod === 'chooser') return { html: stageHead('kyc') + kycChooser() };
+      // DEFAULT (agent-driven): DigiLocker is linked off the verified mobile — one consent tap
+      return { html: stageHead('kyc') + kycDigiLocker() };
     }
     const id = state.identity || {};
     const docs = id.documents || [];
@@ -473,7 +450,7 @@
   function viaLabel(v) { return ({ digilocker: 'via DigiLocker', aadhaar: 'via Aadhaar e-KYC', ocr: 'from your uploaded documents (OCR)', vcip: 'via Video-KYC (V-CIP)' })[v] || 'via DigiLocker'; }
   function kycAadhaar() {
     return `<div class="panel">
-      <button class="linkback" data-action="kyc-back">← Other methods</button>
+      <button class="linkback" data-action="kyc-chooser">← Other methods</button>
       <h3 class="sub-h">📱 Aadhaar OTP e-KYC</h3>
       <p class="muted">UIDAI sends an OTP to the mobile linked to your Aadhaar; I then fetch your e-KYC.</p>
       <label class="fld"><span class="fld__label">Aadhaar number</span>
@@ -488,7 +465,7 @@
     const tile = (doc, label) => `<button class="ocr-tile ${o[doc] ? 'is-done' : ''}" data-action="ocr-upload" data-doc="${doc}">
       <span class="ocr-tile__ic">${o[doc] ? '✓' : '📷'}</span><strong>${esc(label)}</strong><small>${o[doc] ? 'Captured' : 'Tap to capture / upload'}</small></button>`;
     return `<div class="panel">
-      <button class="linkback" data-action="kyc-back">← Other methods</button>
+      <button class="linkback" data-action="kyc-chooser">← Other methods</button>
       <h3 class="sub-h">📄 Upload your documents</h3>
       <p class="muted">${esc(C.brand.agentName)} reads them automatically with OCR — no typing.</p>
       <div class="ocr-grid">${tile('aadhaar', 'Aadhaar')}${tile('pan', 'PAN')}</div>
@@ -498,7 +475,7 @@
   }
   function kycVcip() {
     return `<div class="panel">
-      <button class="linkback" data-action="kyc-back">← Other methods</button>
+      <button class="linkback" data-action="kyc-chooser">← Other methods</button>
       <h3 class="sub-h">🎥 Video KYC (V-CIP)</h3>
       <p class="muted">A short live video call with an Axis KYC officer — RBI-compliant full KYC, no branch visit.</p>
       <div class="vcip">
@@ -507,6 +484,33 @@
       </div>
       <ul class="vcip__reqs"><li>Keep your original PAN handy</li><li>Be in a well-lit place</li><li>Allow camera, mic &amp; location</li></ul>
       <button class="btn btn--primary btn--block" data-action="vcip-start">Start video KYC →</button>
+    </div>`;
+  }
+  // the agent-driven default: DigiLocker already linked off the verified mobile
+  function kycDigiLocker() {
+    const docs = C.digiLockerDocs || [];
+    return `<div class="panel">
+      <div class="dl-link">
+        <div class="dl__head"><span class="dl__brand">🔐 DigiLocker</span><span class="dl__gov">Government of India · MeitY</span></div>
+        <p class="dl-link__lead">I’ve linked DigiLocker to the mobile you just verified. Approve once and I’ll fetch &amp; verify your KYC — <strong>including your PAN</strong> — automatically.</p>
+        <div class="dl__docs">${docs.map((d) => `<div class="dl__doc"><div><strong>${esc(d.name)}</strong><div class="muted">${esc(d.issuer)} · ${esc(d.purpose)}</div></div><span class="dl__chk">✓</span></div>`).join('')}</div>
+        <label class="consent"><input type="checkbox" id="consentKyc" checked/><span>I consent to share these documents with Axis Bank for this application (DPDP Act). <a href="#" data-action="why" data-why="kyc">Why?</a></span></label>
+      </div>
+      <button class="btn btn--primary btn--block" data-action="dl-allow">Allow DigiLocker &amp; auto-fill →</button>
+      <button class="btn btn--ghost btn--block" data-action="kyc-chooser">Verify a different way</button>
+      <p class="trust">🪪 Your Aadhaar stays masked &amp; vaulted — we never store it in full.</p>
+    </div>`;
+  }
+  function kycChooser() {
+    return `<div class="panel">
+      <button class="linkback" data-action="kyc-back">← Back to DigiLocker</button>
+      <p class="ask">Choose how to complete KYC <span class="muted">— ${esc(C.brand.agentName)} recommends DigiLocker.</span></p>
+      <div class="kyc-methods">
+        <button class="kyc-method kyc-method--reco" data-action="kyc-method" data-method="digilocker"><span class="kyc-method__ic">⚡</span><span class="kyc-method__b"><strong>DigiLocker — instant auto-fetch</strong><small>I pull &amp; verify your Aadhaar + PAN in seconds</small></span><span class="kyc-method__pick">${esc(C.brand.agentName)}’s pick</span></button>
+        <button class="kyc-method" data-action="kyc-method" data-method="aadhaar"><span class="kyc-method__ic">📱</span><span class="kyc-method__b"><strong>Aadhaar OTP e-KYC</strong><small>Verify via a UIDAI OTP</small></span></button>
+        <button class="kyc-method" data-action="kyc-method" data-method="ocr"><span class="kyc-method__ic">📄</span><span class="kyc-method__b"><strong>Upload documents (AI OCR)</strong><small>Snap your Aadhaar &amp; PAN — I read them</small></span></button>
+        <button class="kyc-method" data-action="kyc-method" data-method="vcip"><span class="kyc-method__ic">🎥</span><span class="kyc-method__b"><strong>Video KYC (V-CIP)</strong><small>Live full-KYC with an Axis officer</small></span></button>
+      </div>
     </div>`;
   }
   function metric(big, small) { return `<div class="metric"><strong>${esc(big)}</strong><span>${esc(small)}</span></div>`; }
@@ -599,7 +603,9 @@
         ? `I compared the Axis range against how you spend and picked the one that earns you the most. Here’s my reasoning — switch it any time.`
         : `Now I’ll pick the Axis card that fits you best. Tell me what you spend on, or let me choose. If this is your first credit card, I’ll start you on one that builds your credit score.`;
     } else if (s === 'kyc') {
-      if (!state.identity) msg = `As a new-to-bank customer, RBI requires <strong>full KYC</strong> — and I’ll do it for you. Choose how I should pull your documents; I recommend DigiLocker (it takes seconds).`;
+      if (!state.identity) msg = state.kycMethod === 'chooser'
+        ? `No problem — pick how you’d like to verify. I recommend DigiLocker, but Aadhaar OTP, document upload (OCR) or a video call all work.`
+        : `I’ve <strong>linked your DigiLocker</strong> to the mobile you just verified — approve once and I’ll pull and verify your KYC (PAN included) and fill your whole application. RBI requires full KYC for a new relationship; I’ll handle it.`;
       else { const ck = state.ckyc && state.ckyc.found; msg = `Done — I pulled and verified your documents, matched your face${ck ? ', and found your CKYC record so I skipped re-capture' : ''}, and auto-filled your whole application. Just confirm it.`; }
     } else if (s === 'assessment') {
       msg = state.assessmentDone
@@ -672,6 +678,7 @@
       /* stage 3 */
       case 'kyc-method': chooseKycMethod(el.dataset.method); break;
       case 'kyc-back': kycBack(); break;
+      case 'kyc-chooser': state.kycMethod = 'chooser'; save(); renderStage(); break;
       case 'aadhaar-otp': await aadhaarOtp(); break;
       case 'aadhaar-verify': await aadhaarVerify(); break;
       case 'ocr-upload': ocrUpload(el.dataset.doc); break;
@@ -773,18 +780,10 @@
   }
 
   /* ---- stage 3 logic ---- */
-  function readPanConsent() {
-    const pan = (($('#pan') ? $('#pan').value : state.pan) || '').toUpperCase().trim();
-    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) { toast('Enter a valid PAN (e.g. ABCDE1234F).', 'error'); return null; }
-    if ($('#consentKyc') && !$('#consentKyc').checked) { toast('Please consent to the KYC.', 'error'); return null; }
-    state.pan = pan; save();
-    return pan;
-  }
-  // the customer picks how to do KYC — the agent recommends, but it's their choice
+  // the agent drives DigiLocker by default; the customer can still switch method
   function chooseKycMethod(method) {
-    if (readPanConsent() == null) return;
     track('kyc_method', { method });
-    if (method === 'digilocker') { showDigiLockerConsent(); return; }
+    if (method === 'digilocker') { state.kycMethod = null; save(); renderStage(); return; }
     state.kycMethod = method; save(); renderStage();
   }
   function kycBack() { state.kycMethod = null; save(); renderStage(); }
@@ -832,7 +831,8 @@
     track('digilocker_consent_shown', {});
   }
   async function dlAllow() {
-    $('#dlModal').hidden = true;
+    if ($('#consentKyc') && !$('#consentKyc').checked) { toast('Please consent to share your documents.', 'error'); return; }
+    if ($('#dlModal')) $('#dlModal').hidden = true;
     await INT.digiLockerConsent();
     await runKycFetch('digilocker');
   }
@@ -841,27 +841,31 @@
     toast('No problem — you can complete KYC by video (V-CIP) or at a branch.');
     openChannelSwitch();
   }
-  function kycSteps(method, pan) {
-    const panStep = { id: 'pan', icon: '🪪', label: 'Validating PAN with Protean (NSDL)', fn: () => INT.verifyPan(pan), tag: (r) => r.ok ? 'PAN valid' : 'check PAN' };
-    const ckyc = { id: 'ckyc', icon: '🗂️', label: 'Cross-checking the CKYC registry (CERSAI)', fn: () => INT.ckycPull(pan), tag: (r) => r.found ? 'CKYC found' : 'new CKYC' };
+  // PAN is read from whatever source the agent pulled (DigiLocker/OCR/etc.) — no typing
+  function panFrom(res) {
+    return (res.dl && res.dl.pan) || (res.ocr && res.ocr.pan) || (res.aadhaar && res.aadhaar.pan) || (res.cap && res.cap.pan) || state.pan || '';
+  }
+  function kycSteps(method) {
+    const panStep = { id: 'pan', icon: '🪪', label: 'Validating PAN with Protean (NSDL)', fn: (res) => INT.verifyPan(panFrom(res)), tag: (r) => r.ok ? 'PAN valid' : 'check PAN' };
+    const ckyc = { id: 'ckyc', icon: '🗂️', label: 'Cross-checking the CKYC registry (CERSAI)', fn: (res) => INT.ckycPull(panFrom(res)), tag: (r) => r.found ? 'CKYC found' : 'new CKYC' };
     const face = { id: 'face', icon: '🤳', label: 'Liveness check & face match', fn: () => INT.livenessFaceMatch(), tag: (r) => 'match ' + Math.round(r.faceMatchScore * 100) + '%' };
-    if (method === 'ocr') return [panStep, { id: 'ocr', icon: '📄', label: 'Reading your documents with AI (OCR)', fn: () => INT.ocrFetch(pan), tag: (r) => r.documents ? r.documents.length + ' docs read' : 'read' }, ckyc, face];
-    if (method === 'aadhaar') return [panStep, { id: 'aadhaar', icon: '📱', label: 'Fetching Aadhaar e-KYC from UIDAI', fn: () => INT.aadhaarOtpEkyc(pan), tag: () => 'e-KYC ok' }, ckyc, face];
+    if (method === 'ocr') return [{ id: 'ocr', icon: '📄', label: 'Reading your documents with AI (OCR)', fn: () => INT.ocrFetch(), tag: (r) => r.documents ? r.documents.length + ' docs read' : 'read' }, panStep, ckyc, face];
+    if (method === 'aadhaar') return [{ id: 'aadhaar', icon: '📱', label: 'Fetching Aadhaar e-KYC from UIDAI', fn: () => INT.aadhaarOtpEkyc(), tag: () => 'e-KYC ok' }, panStep, ckyc, face];
     if (method === 'vcip') return [
       { id: 'connect', icon: '🔗', label: 'Connecting you to an Axis KYC officer', fn: () => INT.delay(1100).then(() => ({ simulated: true })), tag: () => 'connected' },
-      panStep,
-      { id: 'cap', icon: '🎥', label: 'Officer capturing your identity & geo-tag', fn: () => INT.digiLockerFetch(pan), tag: () => 'captured' },
-      face,
+      { id: 'cap', icon: '🎥', label: 'Officer capturing your identity & geo-tag', fn: () => INT.digiLockerFetch(), tag: () => 'captured' },
+      panStep, face,
       { id: 'vcip', icon: '✅', label: 'Completing V-CIP', fn: () => INT.vcipSession(), tag: () => 'V-CIP done' },
       ckyc,
     ];
-    return [panStep, { id: 'dl', icon: '📂', label: 'Pulling documents from DigiLocker', fn: () => INT.digiLockerFetch(pan), tag: (r) => r.documents ? r.documents.length + ' docs' : 'Fetched' }, ckyc, face];
+    // DEFAULT digilocker: link & pull first (gets PAN too), then verify
+    return [{ id: 'dl', icon: '🔗', label: 'Linking DigiLocker & pulling your documents', fn: () => INT.digiLockerFetch(), tag: (r) => r.documents ? r.documents.length + ' docs' : 'Fetched' }, panStep, ckyc, face];
   }
   async function runKycFetch(method) {
-    const pan = state.pan;
-    const titles = { digilocker: 'Pulling & verifying your documents', aadhaar: 'Verifying via Aadhaar e-KYC', ocr: 'Reading & verifying your documents', vcip: 'Your live Video-KYC (V-CIP)' };
-    const res = await runAgent(titles[method] || 'Verifying your identity', kycSteps(method, pan));
+    const titles = { digilocker: 'Linking DigiLocker & verifying your KYC', aadhaar: 'Verifying via Aadhaar e-KYC', ocr: 'Reading & verifying your documents', vcip: 'Your live Video-KYC (V-CIP)' };
+    const res = await runAgent(titles[method] || 'Verifying your identity', kycSteps(method));
     state.identity = res.dl || res.ocr || res.aadhaar || res.cap;
+    state.pan = panFrom(res);
     state.ckyc = res.ckyc;
     state.vcip = method === 'vcip';
     state.kycVia = method;
