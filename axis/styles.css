@@ -551,3 +551,107 @@ body {
   .view[data-view="wizard"] { padding: 1rem 0.85rem 5rem; }
   .stage-head__title { font-size: 1.3rem; }
 }
+
+/* =============================================================================
+ * NORTH STAR — trust at every step · transparency tracker · limit & card clarity
+ * ========================================================================== */
+
+/* trust row — reassurance pills shown wherever the agent automates something */
+.trust-row { display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; margin-bottom: 1rem; }
+.trust-row__item { display: inline-flex; align-items: center; gap: 0.32rem; font-size: 0.72rem; font-weight: 700;
+  color: var(--burgundy); background: rgba(174,39,95,0.07); border: 1px solid rgba(174,39,95,0.18); padding: 0.26rem 0.55rem; border-radius: 999px; }
+.trust-row__ic { font-size: 0.82rem; }
+
+/* "why this is safe" disclosure */
+.why-safe { background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--radius-sm); margin: 0.2rem 0 0.9rem; overflow: hidden; }
+.why-safe summary { cursor: pointer; padding: 0.7rem 0.9rem; font-weight: 700; font-size: 0.84rem; color: var(--burgundy); list-style: none; }
+.why-safe summary::-webkit-details-marker { display: none; }
+.why-safe[open] summary { border-bottom: 1px solid var(--line); }
+.why-safe p { padding: 0.7rem 0.9rem 0.85rem; font-size: 0.85rem; color: var(--muted); line-height: 1.55; }
+
+/* full card details + credit-limit explainer (shared disclosure styling) */
+.card-det, .limit-why { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); margin: 0.2rem 0 1rem; overflow: hidden; }
+.card-det > summary, .limit-why > summary { cursor: pointer; padding: 0.85rem 1rem; font-weight: 700; font-size: 0.9rem; color: var(--ink); list-style: none; }
+.card-det > summary::-webkit-details-marker, .limit-why > summary::-webkit-details-marker { display: none; }
+.card-det > summary::after, .limit-why > summary::after { content: '⌄'; float: right; color: var(--muted); transition: transform 0.2s var(--ease); }
+.card-det[open] > summary::after, .limit-why[open] > summary::after { transform: rotate(180deg); }
+.card-det__body { padding: 0 1rem 0.9rem; }
+.card-det__list { list-style: none; display: flex; flex-direction: column; gap: 0.32rem; margin: 0.2rem 0 0.4rem; }
+.card-det__list li { font-size: 0.86rem; color: var(--muted); }
+.card-det__kv { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 0.1rem 0.8rem; }
+.limit-why__body { padding: 0.2rem 1rem 0.9rem; }
+.lw-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px dashed var(--line); font-size: 0.88rem; }
+.lw-row span { color: var(--muted); }
+.lw-row b { font-weight: 700; }
+.lw-row--out { border-bottom: none; border-top: 2px solid var(--line-2); margin-top: 0.2rem; padding-top: 0.6rem; }
+.lw-row--out b { color: var(--burgundy); font-size: 1.05rem; }
+.limit-why__body .muted { font-size: 0.8rem; margin-top: 0.55rem; }
+
+/* prominent alternative KYC methods on the DigiLocker default */
+.kyc-alts { margin: 1rem 0 0.2rem; text-align: center; }
+.kyc-alts__lb { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.5rem; }
+.kyc-alts__row { display: flex; gap: 0.5rem; }
+.kyc-alt { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font: inherit; font-size: 0.76rem; font-weight: 700;
+  cursor: pointer; background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; padding: 0.7rem 0.4rem; color: var(--ink);
+  transition: transform 0.15s var(--ease), border-color 0.2s, background 0.2s; }
+.kyc-alt:hover { transform: translateY(-2px); border-color: var(--burgundy-2); background: var(--surface-2); }
+.kyc-alt__ic { font-size: 1.3rem; }
+.linklike { font: inherit; background: none; border: none; cursor: pointer; color: var(--burgundy); font-weight: 700; font-size: 0.8rem; margin-top: 0.7rem; padding: 0; }
+
+/* richer V-CIP planning screen */
+.vcip__meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.9rem; }
+.vcip__meta-item { display: flex; align-items: center; gap: 0.45rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 0.55rem 0.5rem; }
+.vcip__meta-item span { font-size: 1.15rem; flex: none; }
+.vcip__meta-item strong { display: block; font-size: 0.76rem; }
+.vcip__meta-item small { display: block; font-size: 0.66rem; color: var(--muted); }
+.vcip__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.5rem; }
+.vcip__col-h { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--burgundy-2); margin-bottom: 0.45rem; }
+.vcip__steps { list-style: none; counter-reset: v; display: flex; flex-direction: column; gap: 0.4rem; }
+.vcip__steps li { position: relative; padding-left: 1.55rem; font-size: 0.82rem; color: var(--muted); counter-increment: v; line-height: 1.45; }
+.vcip__steps li::before { content: counter(v); position: absolute; left: 0; top: 0.05rem; width: 1.1rem; height: 1.1rem; background: var(--burgundy); color: #fff;
+  border-radius: 50%; font-size: 0.64rem; font-weight: 800; display: grid; place-items: center; }
+
+/* ---- customer tracker drawer ("Track my application") ---- */
+.appbar__track { font: inherit; font-size: 0.72rem; font-weight: 800; cursor: pointer; color: var(--burgundy);
+  background: rgba(174,39,95,0.10); border: 1px solid rgba(174,39,95,0.22); padding: 0.16rem 0.6rem; border-radius: 999px; }
+.appbar__track:active { transform: scale(0.96); }
+.tracker { position: fixed; top: 0; right: 0; z-index: 150; width: min(420px, 100vw); height: 100vh; background: var(--surface);
+  border-left: 1px solid var(--line-2); box-shadow: -20px 0 50px -30px rgba(43,10,27,0.5); display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.34s var(--ease); }
+.tracker.is-open { transform: none; }
+.tracker__head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem; border-bottom: 1px solid var(--line);
+  background: linear-gradient(100deg, rgba(151,20,77,0.08), rgba(199,150,43,0.07)); }
+.tracker__head small { display: block; color: var(--muted); font-size: 0.74rem; }
+.tracker__close { border: none; background: var(--surface-2); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--muted); }
+.tracker__body { flex: 1; overflow-y: auto; padding: 1rem 1.1rem 2rem; }
+.trk-hero { background: linear-gradient(135deg, var(--burgundy), var(--plum)); color: #fff; border-radius: 16px; padding: 1rem 1.1rem; margin-bottom: 1.2rem; }
+.trk-hero__ref { font-size: 0.82rem; opacity: 0.92; }
+.trk-hero__ref strong { letter-spacing: 0.03em; }
+.trk-hero__status { display: flex; align-items: center; gap: 0.45rem; font-weight: 800; font-size: 1.02rem; margin: 0.3rem 0 0.6rem; }
+.trk-hero__status .appbar__live { background: #6ef7b0; }
+.trk-prog { height: 7px; border-radius: 999px; background: rgba(255,255,255,0.25); overflow: hidden; }
+.trk-prog span { display: block; height: 100%; background: linear-gradient(90deg, #fff, var(--gold)); border-radius: 999px; transition: width 0.5s var(--ease); }
+.trk-hero__meta { font-size: 0.74rem; opacity: 0.92; margin-top: 0.5rem; }
+.trk-sec { margin-bottom: 1.2rem; }
+.trk-sec h4 { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--burgundy-2); margin-bottom: 0.6rem; }
+.trk-list { display: flex; flex-direction: column; }
+.trk-item { display: flex; align-items: center; gap: 0.55rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); font-size: 0.86rem; }
+.trk-item:last-child { border-bottom: none; }
+.trk-item__dot { width: 20px; height: 20px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 0.66rem;
+  background: var(--surface-2); border: 1px solid var(--line-2); color: var(--muted-2); }
+.trk-item__ic { flex: none; font-size: 0.95rem; }
+.trk-item__lb { flex: 1; min-width: 0; }
+.trk-item__dt { font-size: 0.74rem; color: var(--muted); text-align: right; font-weight: 600; flex: none; max-width: 46%; }
+.trk-item--done .trk-item__dot { background: var(--ok); color: #fff; border-color: transparent; }
+.trk-item--done .trk-item__lb { color: var(--ink); }
+.trk-item--now .trk-item__dot { background: var(--burgundy); color: #fff; border-color: transparent; animation: live 1.4s ease infinite; }
+.trk-item--now { color: var(--burgundy); font-weight: 700; }
+.trk-item--todo { color: var(--muted-2); }
+.trk-kv { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 0.1rem 0.85rem; }
+.trk-rev { font-size: 0.76rem; margin-top: 0.55rem; }
+.trk-rev a { color: var(--burgundy); }
+.trk-foot { font-size: 0.76rem; color: var(--muted); background: rgba(31,138,112,0.07); border: 1px solid rgba(31,138,112,0.18); border-radius: 12px; padding: 0.7rem 0.85rem; }
+
+@media (max-width: 520px) {
+  .vcip__cols { grid-template-columns: 1fr; }
+}

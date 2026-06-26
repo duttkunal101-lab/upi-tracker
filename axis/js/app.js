@@ -87,6 +87,7 @@
     armInactivity();
     seedCopilot(key);
     if (isBlueprintOpen()) renderBlueprint();
+    if (isTrackerOpen()) renderTracker();
     track('stage_enter', { stage: key });
     window.scrollTo({ top: 0, behavior: (opts && opts.noScroll) ? 'auto' : 'smooth' });
   }
@@ -111,7 +112,8 @@
     el.innerHTML = `<span class="appbar__live"></span>
       <span class="appbar__ref">App <strong>${esc(state.appRef)}</strong></span>
       <span class="appbar__status">${esc(status)}</span>
-      <span class="appbar__pts" title="Level: ${esc(levelName())}">✨ ${state.points || 0} pts</span>`;
+      <span class="appbar__pts" title="Level: ${esc(levelName())}">✨ ${state.points || 0} pts</span>
+      <button class="appbar__track" data-action="tracker-open" title="See live status, what's verified and your details">📋 Track</button>`;
   }
 
   /* ----------------------------- gamification ----------------------------- */
@@ -349,6 +351,7 @@
     if (!state.assessmentDone) {
       return { html: stageHead('assessment') + `
         <div class="panel">
+          ${trustRow()}
           <label class="consent">
             <input type="checkbox" id="consentBureau" checked/>
             <span>${esc(C.legal.consents.bureau)} <a href="#" data-action="why" data-why="assessment">Why?</a></span>
@@ -357,6 +360,7 @@
             <input type="checkbox" id="consentAa" checked/>
             <span>${esc(C.legal.consents.aa)}</span>
           </label>
+          ${trustWhy('assessment')}
           <button class="btn btn--primary btn--block" data-action="run-assessment">Run my eligibility check →</button>
           <p class="trust">📊 A consented check sets a responsible limit — and protects you from over-borrowing.</p>
         </div>` };
@@ -385,7 +389,9 @@
           <p class="offer__basis">${esc(d.basis)}</p>
           ${state.income ? `<p class="offer__verified">✓ Verified income ${inr(state.income.monthlyIncome)}/mo${state.income.employerName ? ` · ${esc(state.income.employmentType)} at ${esc(state.income.employerName)}` : ''} <span class="af">via Account Aggregator</span></p>` : ''}
         </div>
+        ${limitExplainer(d, state.bureau, state.income)}
         ${kfs(d, card)}
+        ${cardDetails(card)}
         ${mitcAccordion()}
         <button class="btn btn--primary btn--block" data-action="accept-offer">Accept &amp; continue →</button>
         <p class="muted center"><a href="#" data-action="channel">Talk to a specialist instead</a></p>` };
@@ -407,6 +413,7 @@
     const d = state.decision || {};
     return { html: stageHead('agreement') + `
       <div class="panel">
+        ${trustRow()}
         <div class="kfs-mini">
           ${kvRow('Card', card.name)}
           ${kvRow('Credit limit', inr(d.limit))}
@@ -415,6 +422,7 @@
         </div>
         ${mitcAccordion(true)}
         <div class="cooloff">⏳ ${esc(C.legal.coolingOff)}</div>
+        ${trustWhy('agreement')}
         <label class="consent">
           <input type="checkbox" id="consentIssue"/>
           <span>${esc(C.legal.consents.issue)} <a href="#" data-action="why" data-why="agreement">Why?</a></span>
@@ -500,6 +508,88 @@
       const dot = i < state.deliveryStep ? '✓' : (i === state.deliveryStep ? '●' : '');
       return `<div class="deliv__step ${cls}"><span class="deliv__dot">${dot}</span><span class="deliv__lb">${esc(d.label)}</span></div>`;
     }).join('');
+    if (isTrackerOpen()) renderTracker(); // keep the live tracker in sync
+  }
+
+  /* ===================================================================== *
+   *  CUSTOMER TRACKER ("Track my application") — the transparency view
+   *  Every automated step is shown with a live status the customer can see,
+   *  plus the (masked) details on file. This is what builds trust: nothing
+   *  the agent does is hidden.
+   * ===================================================================== */
+  const isTrackerOpen = () => $('#tracker') && $('#tracker').classList.contains('is-open');
+  function deliveryNowLabel() {
+    if (!state.issued) return '';
+    if (state.deliveryStep == null) return 'preparing dispatch';
+    const d = C.delivery[Math.min(state.deliveryStep, C.delivery.length - 1)];
+    return d ? d.label : '';
+  }
+  function trackerData() {
+    const s = state, id = s.identity || {}, card = currentCard();
+    const d = s.decision || {}, b = s.bureau || {}, inc = s.income || {};
+    const deliveredAll = s.deliveryStep != null && s.deliveryStep >= (C.delivery.length - 1);
+    const raw = [
+      ['📱', 'Mobile verified', s.otpVerified, s.mobile ? '+91 •••••' + s.mobile.slice(-4) : ''],
+      ['🎁', 'Pre-approved offer check', !!s.preApproved, s.preApproved ? (s.preApproved.preApproved ? 'pre-approved up to ' + inr(s.preApproved.indicativeLimit) : 'new to bank') : ''],
+      ['💳', 'Card selected', !!s.cardId, card ? shortName(card) : ''],
+      ['🪪', 'Identity verified (KYC)', !!s.identity, s.identity ? viaLabel(s.kycVia) : ''],
+      ['#️⃣', 'PAN validated', !!s.pan, (s.pan || '').toUpperCase()],
+      ['🏠', 'Address on record', !!(id.currentAddress || id.address), (id.currentAddress || id.address) ? 'as per Aadhaar' : ''],
+      ['🤳', 'Liveness & face match', !!s.identity, s.identity ? 'passed' : ''],
+      ['🗂️', 'CKYC registry', !!s.ckyc, s.ckyc ? (s.ckyc.found ? 'record matched' : 'new record created') : ''],
+      ['📈', 'Credit bureau check', !!s.bureau, s.bureau ? (b.thinFile ? 'new to credit' : 'CIBIL ' + b.score) : ''],
+      ['🏦', 'Income verified (AA)', !!s.income, s.income ? inr(inc.monthlyIncome) + '/mo' : ''],
+      ['💸', 'Bank account verified', !!s.account, s.account ? 'penny-drop · name match' : ''],
+      ['✅', 'Credit limit decided', !!s.decision, s.decision ? (d.decision === 'approve' ? inr(d.limit) + ' approved' : 'secured-card path') : ''],
+      ['✍️', 'Agreement e-signed', !!s.signed, s.signed ? 'Aadhaar eSign' : ''],
+      ['🎉', 'Card issued', !!s.issued, s.issued ? 'virtual card live' : ''],
+      ['📦', 'Card delivered to you', deliveredAll, deliveryNowLabel()],
+    ];
+    const rows = raw.map(([icon, label, done, detail]) => ({ icon, label, status: done ? 'done' : 'todo', detail }));
+    const firstTodo = rows.findIndex((r) => r.status === 'todo');
+    if (firstTodo >= 0 && !s.done) rows[firstTodo].status = 'now';
+    return rows;
+  }
+  function trackerRow(r) {
+    const mark = r.status === 'done' ? '✓' : (r.status === 'now' ? '●' : '○');
+    return `<div class="trk-item trk-item--${r.status}">
+      <span class="trk-item__dot">${mark}</span>
+      <span class="trk-item__ic">${r.icon}</span>
+      <span class="trk-item__lb">${esc(r.label)}</span>
+      <span class="trk-item__dt">${esc(r.detail)}</span>
+    </div>`;
+  }
+  function renderTracker() {
+    const host = $('#trackerBody'); if (!host) return;
+    const rows = trackerData();
+    const done = rows.filter((r) => r.status === 'done').length;
+    const status = C.appStatus[state.stage] || 'In progress';
+    const id = state.identity || {};
+    const captured = state.identity ? `
+      <div class="trk-sec"><h4>🔐 Your details on file <span class="muted">· masked &amp; encrypted</span></h4>
+        <div class="trk-kv">
+          ${kvRow('Name', id.name)}
+          ${kvRow('Date of birth', id.dob)}
+          ${kvRow('PAN', (state.pan || '').toUpperCase())}
+          ${kvRow('Aadhaar', (id.aadhaarMasked || '') + ' (masked)')}
+          ${kvRow('Mobile', state.mobile ? '+91 •••••' + state.mobile.slice(-4) : '—')}
+          ${kvRow('Email', id.email)}
+          ${kvRow('Address', id.currentAddress || id.address)}
+        </div>
+        <p class="muted trk-rev">Your full Aadhaar is never stored — only a masked, vaulted reference. <a href="#" data-action="why" data-why="kyc">How I protect this</a></p>
+      </div>` : `<div class="trk-sec"><p class="muted">Your verified details will appear here the moment KYC is done — masked and encrypted, visible only to you.</p></div>`;
+    host.innerHTML = `
+      <div class="trk-hero">
+        <div class="trk-hero__ref">Application <strong>${esc(state.appRef || '')}</strong></div>
+        <div class="trk-hero__status"><span class="appbar__live"></span> ${esc(status)}</div>
+        <div class="trk-prog"><span style="width:${Math.round((done / rows.length) * 100)}%"></span></div>
+        <div class="trk-hero__meta">${done}/${rows.length} checks complete · ✨ ${state.points || 0} pts · ${esc(levelName())}</div>
+      </div>
+      <div class="trk-sec"><h4>✅ What I’ve verified for you</h4>
+        <div class="trk-list">${rows.map(trackerRow).join('')}</div>
+      </div>
+      ${captured}
+      <p class="trk-foot">🔒 Everything is encrypted and used only for this application, under RBI &amp; DPDP rules. You can revoke any consent at any time.</p>`;
   }
 
   /* ---------- shared render fragments ---------- */
@@ -542,19 +632,46 @@
     return `<div class="panel">
       <button class="linkback" data-action="kyc-chooser">← Other methods</button>
       <h3 class="sub-h">🎥 Video KYC (V-CIP)</h3>
-      <p class="muted">A short live video call with an Axis KYC officer — RBI-compliant full KYC, no branch visit.</p>
+      <p class="muted">A short, secure video call with a trained Axis KYC officer — RBI-approved <strong>full KYC from home</strong>, in about 5 minutes. Best if DigiLocker or Aadhaar e-KYC isn’t available to you.</p>
       <div class="vcip">
-        <div class="vcip__tile vcip__tile--agent"><span class="vcip__face">👩‍💼</span><span class="vcip__lb">Axis KYC Officer</span><span class="vcip__live">● online</span></div>
+        <div class="vcip__tile vcip__tile--agent"><span class="vcip__face">👩‍💼</span><span class="vcip__lb">Priya · Axis KYC Officer</span><span class="vcip__live">● online now</span></div>
         <div class="vcip__tile vcip__tile--self"><span class="vcip__face">🙂</span><span class="vcip__lb">You</span></div>
       </div>
-      <ul class="vcip__reqs"><li>Keep your original PAN handy</li><li>Be in a well-lit place</li><li>Allow camera, mic &amp; location</li></ul>
-      <button class="btn btn--primary btn--block" data-action="vcip-start">Start video KYC →</button>
+      <div class="vcip__meta">
+        <div class="vcip__meta-item"><span>⏱️</span><div><strong>~5 min</strong><small>average call</small></div></div>
+        <div class="vcip__meta-item"><span>🔒</span><div><strong>Recorded &amp; encrypted</strong><small>RBI V-CIP norms</small></div></div>
+        <div class="vcip__meta-item"><span>📍</span><div><strong>Geo-tagged · India</strong><small>live location</small></div></div>
+      </div>
+      <div class="vcip__cols">
+        <div class="vcip__col">
+          <div class="vcip__col-h">✅ Keep ready</div>
+          <ul class="vcip__reqs">
+            <li>Your <strong>original PAN</strong> in hand</li>
+            <li>A <strong>well-lit</strong>, quiet spot</li>
+            <li>Allow <strong>camera, mic &amp; location</strong></li>
+            <li>Be ready to sign on a blank sheet</li>
+          </ul>
+        </div>
+        <div class="vcip__col">
+          <div class="vcip__col-h">📋 What the officer does</div>
+          <ol class="vcip__steps">
+            <li>Confirms you’re live (a random question)</li>
+            <li>Captures your PAN &amp; face for a match</li>
+            <li>Verifies your Aadhaar details with you</li>
+            <li>Records &amp; geo-tags the session — done</li>
+          </ol>
+        </div>
+      </div>
+      <button class="btn btn--primary btn--block" data-action="vcip-start">Connect to an officer now →</button>
+      <button class="btn btn--ghost btn--block" data-action="vcip-schedule">Schedule a slot for later</button>
+      <p class="trust">No branch visit needed — V-CIP is accepted as full KYC under the RBI KYC Master Direction.</p>
     </div>`;
   }
   // the agent-driven default: DigiLocker already linked off the verified mobile
   function kycDigiLocker() {
     const docs = C.digiLockerDocs || [];
     return `<div class="panel">
+      ${trustRow()}
       <div class="dl-link">
         <div class="dl__head"><span class="dl__brand">🔐 DigiLocker</span><span class="dl__gov">Government of India · MeitY</span></div>
         <p class="dl-link__lead">I’ve linked DigiLocker to the mobile you just verified. Approve once and I’ll fetch &amp; verify your KYC — <strong>including your PAN</strong> — automatically.</p>
@@ -562,7 +679,16 @@
         <label class="consent"><input type="checkbox" id="consentKyc" checked/><span>I consent to share these documents with Axis Bank for this application (DPDP Act). <a href="#" data-action="why" data-why="kyc">Why?</a></span></label>
       </div>
       <button class="btn btn--primary btn--block" data-action="dl-allow">Allow DigiLocker &amp; auto-fill →</button>
-      <button class="btn btn--ghost btn--block" data-action="kyc-chooser">Verify a different way</button>
+      ${trustWhy('kyc')}
+      <div class="kyc-alts">
+        <span class="kyc-alts__lb">No DigiLocker, or prefer another way? I can also:</span>
+        <div class="kyc-alts__row">
+          <button class="kyc-alt" data-action="kyc-method" data-method="ocr"><span class="kyc-alt__ic">📄</span>Upload + OCR</button>
+          <button class="kyc-alt" data-action="kyc-method" data-method="aadhaar"><span class="kyc-alt__ic">📱</span>Aadhaar OTP</button>
+          <button class="kyc-alt" data-action="kyc-method" data-method="vcip"><span class="kyc-alt__ic">🎥</span>Video-KYC</button>
+        </div>
+        <button class="linklike" data-action="kyc-chooser">Compare all verification options →</button>
+      </div>
       <p class="trust">🪪 Your Aadhaar stays masked &amp; vaulted — we never store it in full.</p>
     </div>`;
   }
@@ -605,6 +731,7 @@
         <p class="card-hero__reason">${esc(reason)}</p>
         <ul class="card-hero__rewards">${card.bestFor.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
         <div class="card-hero__fee">${card.annualFee ? inr(card.annualFee) + ' annual fee' : 'Lifetime free'} · <span class="muted">${esc(card.feeWaiver)}</span></div>
+        ${cardDetails(card)}
         <button class="btn btn--primary btn--block" data-action="choose-card" data-card="${card.id}">Choose this card →</button>
       </div>
     </div>`;
@@ -649,6 +776,55 @@
       <summary>📜 Most Important Terms &amp; Conditions</summary>
       <div class="mitc__body">${C.legal.mitc.map((m) => `<div class="kv"><span class="kv__k">${esc(m.label)}</span><span class="kv__v">${esc(m.value)}</span></div>`).join('')}</div>
     </details>`;
+  }
+
+  /* ---- trust layer: shown wherever the agent automates something sensitive -- */
+  const shortName = (c) => c.name.replace('Axis Bank ', '').replace(' Credit Card', '');
+  function trustRow() {
+    return `<div class="trust-row">${C.trust.promises.map((p) =>
+      `<span class="trust-row__item"><span class="trust-row__ic">${p.icon}</span>${esc(p.t)}</span>`).join('')}</div>`;
+  }
+  function trustWhy(key) {
+    const w = C.trust.why[key]; if (!w) return '';
+    return `<details class="why-safe"><summary>🛡️ Why this is safe — and what I do with your data</summary>
+      <p>${esc(w)}</p></details>`;
+  }
+  /* full card details — surfaced on the recommendation and the offer */
+  function cardDetails(card) {
+    return `<details class="card-det"><summary>📖 See full card details &amp; eligibility</summary>
+      <div class="card-det__body">
+        <div class="sec-label">All benefits</div>
+        <ul class="card-det__list">${card.highlights.map((h) => `<li>✦ ${esc(h)}</li>`).join('')}</ul>
+        <div class="sec-label">The essentials</div>
+        <div class="card-det__kv">
+          ${kvRow('Annual fee', card.annualFee ? inr(card.annualFee) : 'Lifetime free')}
+          ${kvRow('Fee waiver', card.feeWaiver)}
+          ${kvRow('Rewards earned in', card.rewardUnit)}
+          ${kvRow('Card network', card.network)}
+          ${kvRow('Best for', card.bestFor.join(' · '))}
+          ${kvRow('Who it suits', card.minIncomeHint)}
+        </div>
+      </div></details>`;
+  }
+  /* transparent explanation of how the credit limit was derived */
+  function limitExplainer(d, b, inc) {
+    const score = (b && b.score) || d.score;
+    const monthly = inc && inc.monthlyIncome;
+    let band = 'a responsible multiple of your income';
+    if (score >= 760) band = '≈ 3× monthly income (CIBIL 760+)';
+    else if (score >= 720) band = '≈ 2× monthly income (CIBIL 720–759)';
+    else if (score >= 690) band = '≈ 1.2× monthly income (CIBIL 690–719)';
+    const grade = score >= 760 ? 'Excellent' : score >= 720 ? 'Very good' : score >= 690 ? 'Good' : '—';
+    const foir = inc && inc.foir != null ? Math.round(inc.foir * 100) + '%' : null;
+    return `<details class="limit-why"><summary>📐 How I arrived at your ${inr(d.limit)} limit</summary>
+      <div class="limit-why__body">
+        <div class="lw-row"><span>${esc(score ? 'CIBIL score · ' + score : 'Credit profile')}</span><b>${esc(grade)}</b></div>
+        ${monthly ? `<div class="lw-row"><span>Verified monthly income</span><b>${inr(monthly)}</b></div>` : ''}
+        ${foir ? `<div class="lw-row"><span>Current obligations (FOIR)</span><b>${foir} · comfortable</b></div>` : ''}
+        <div class="lw-row"><span>Policy band applied</span><b>${esc(band)}</b></div>
+        <div class="lw-row lw-row--out"><span>Your approved limit</span><b>${inr(d.limit)}</b></div>
+        <p class="muted">I kept it within a safe FOIR so repayments stay affordable. Build a clean repayment record and I can raise it later — you can also request a lower limit if you prefer.</p>
+      </div></details>`;
   }
 
   /* The agent-led spine: Aria leads every step in the first person — what she's
@@ -750,6 +926,7 @@
       case 'ocr-upload': ocrUpload(el.dataset.doc); break;
       case 'ocr-extract': await ocrExtract(); break;
       case 'vcip-start': await vcipStart(); break;
+      case 'vcip-schedule': toast('We’ll text you a secure link to pick a V-CIP slot (simulated). Your progress is saved.', 'success'); break;
       case 'dl-allow': await dlAllow(); break;
       case 'dl-deny': dlDeny(); break;
       case 'edit-kyc': toast('In production you could edit any pre-filled field here.'); break;
@@ -779,6 +956,10 @@
       /* co-pilot */
       case 'copilot-open': openCopilot(); break;
       case 'copilot-close': $('#copilot').classList.remove('is-open'); break;
+
+      /* customer tracker */
+      case 'tracker-open': $('#tracker').classList.add('is-open'); renderTracker(); track('tracker_open', { stage: state.stage }); break;
+      case 'tracker-close': $('#tracker').classList.remove('is-open'); break;
 
       /* blueprint */
       case 'blueprint-open': toggleBlueprint(true); break;

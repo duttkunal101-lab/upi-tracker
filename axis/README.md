@@ -10,7 +10,21 @@ credit & income check, underwrites in real time, and issues an instant virtual c
 
 ## What you’re looking at
 
-- A clickable, end-to-end journey (8 stages) with an autonomous **“agent at work”** execution UX.
+- A clickable, end-to-end journey (8 stages) with an autonomous **“agent at work”** execution UX,
+  driven from just a phone number — Aria links DigiLocker in the background and auto-fills everything
+  (PAN included), so the customer mostly confirms.
+- **Trust at every automated step:** a reassurance row + a “why this is safe / what I do with your
+  data” explainer on each sensitive step (KYC, eligibility, signing).
+- A customer-facing **“Track my application”** drawer (the 📋 Track button) — a live status, a
+  verification checklist (mobile → PAN → address → bureau → income → limit → issued → delivery), and
+  the customer’s own (masked) details on file.
+- **Multiple KYC paths, all demonstrable:** DigiLocker auto-fetch (default), Aadhaar-OTP e-KYC,
+  document upload + **OCR**, and a well-planned **Video-KYC (V-CIP)** screen (officer, timings,
+  what-to-keep-ready, what the officer does, schedule-for-later).
+- **Credit-limit clarity:** a “how I arrived at your limit” breakdown (CIBIL band × verified income,
+  kept within a safe FOIR) plus full card details & eligibility on the offer.
+- **Gamification:** points, milestone badges, “card-school” education while the agent works, confetti
+  and a scratch-to-reveal welcome reward.
 - An always-on **co-pilot** chat, **drop-off nudges**, **exit-intent save-&-resume**, and a
   **“Behind the scenes”** blueprint drawer that exposes the integrations, data and RBI rules per step.
 - The regulated rails (UIDAI, DigiLocker, CKYC, CIBIL, Account Aggregator, NPCI, eSign, issuance) are
@@ -20,7 +34,7 @@ credit & income check, underwrites in real time, and issues an instant virtual c
 
 ```
 axis/
-├── index.html        # app shell + all stage containers, co-pilot, blueprint drawer
+├── index.html        # app shell + all stage containers, co-pilot, tracker + blueprint drawers
 ├── styles.css        # Axis-branded (burgundy, light) styling — hand-written
 ├── js/
 │   ├── config.js     # card catalogue, journey, integrations/data/regulatory registries, nudges

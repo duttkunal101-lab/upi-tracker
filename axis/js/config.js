@@ -602,6 +602,21 @@
     { key: 'delivered', label: 'Delivered & ready to activate' },
   ];
 
+  /* trust layer — reassurance shown wherever automation happens */
+  const trust = {
+    promises: [
+      { icon: '🔒', t: 'Bank-grade encryption' },
+      { icon: '⚖️', t: 'RBI & DPDP compliant' },
+      { icon: '✋', t: 'Your consent · revocable' },
+      { icon: '🙈', t: 'Aadhaar masked & vaulted' },
+    ],
+    why: {
+      kyc: 'I only read your KYC to confirm it’s you. Your Aadhaar number is masked and kept in a secure vault — never stored in full — and you can revoke DigiLocker access anytime. I don’t see any password.',
+      assessment: 'I check your credit bureau only with your explicit consent (CIC Act), for this application alone — and your bank data comes read-only through the RBI Account Aggregator, which you can revoke. This protects you from over-borrowing too.',
+      agreement: 'Nothing is issued without your explicit OTP consent — RBI prohibits unsolicited cards. Every fee is disclosed up-front in your Key Fact Statement, and you have a cooling-off window to cancel at no cost.',
+    },
+  };
+
   /* gamification — points, milestone badges, and "card school" knowledge */
   const gamify = {
     points: { start: 20, kyc: 40, product: 20, assessment: 30, decision: 20, agreement: 20, issuance: 50 },
@@ -635,7 +650,7 @@
   window.AX_CONFIG = {
     brand, cards, profileTags, integrations, regulations,
     dataPoints, stages, legal, nudges, facts,
-    appStatus, delivery, digiLockerDocs, agentPlan, gamify,
+    appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust,
     // convenience lookups
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
     cardById: cards.reduce((m, c) => (m[c.id] = c, m), {}),
