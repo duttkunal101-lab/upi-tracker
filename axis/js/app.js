@@ -32,6 +32,7 @@
     pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null,
     bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false,
+    points: 0, awarded: {}, scratched: false,
     startedAt: Date.now(), done: false,
   });
   let state = fresh();
@@ -72,10 +73,12 @@
   }
 
   function setStage(key, opts) {
+    const from = state.stage;
     state.stage = key;
     save();
     if (key === 'landing') { showView('landing'); renderResume(); return; }
     showView('wizard');
+    awardStage(from, key); // gamification: reward the step just completed
     if (!state.appRef) { state.appRef = 'AXC' + String(Date.now()).slice(-8); save(); }
     renderAppbar();
     renderStepper();
@@ -98,13 +101,54 @@
     else setStage('landing');
   }
 
+  function levelName() {
+    const idx = Math.min(Math.floor((state.points || 0) / 70), C.gamify.levels.length - 1);
+    return C.gamify.levels[idx];
+  }
   function renderAppbar() {
     const el = $('#appbar'); if (!el) return;
     const status = C.appStatus[state.stage] || 'In progress';
     el.innerHTML = `<span class="appbar__live"></span>
-      <span class="appbar__ref">Application <strong>${esc(state.appRef)}</strong></span>
+      <span class="appbar__ref">App <strong>${esc(state.appRef)}</strong></span>
       <span class="appbar__status">${esc(status)}</span>
-      <span class="appbar__bell" title="We’ll keep you updated on SMS &amp; WhatsApp">🔔 Live updates on</span>`;
+      <span class="appbar__pts" title="Level: ${esc(levelName())}">✨ ${state.points || 0} pts</span>`;
+  }
+
+  /* ----------------------------- gamification ----------------------------- */
+  function awardStage(from, to) {
+    if (!from || from === 'landing' || from === to) return;
+    state.awarded = state.awarded || {};
+    if (state.awarded[from]) return;
+    state.awarded[from] = true;
+    const pts = C.gamify.points[from] || 0;
+    if (pts) { state.points = (state.points || 0) + pts; floatPoints(pts); }
+    save();
+    const badge = C.gamify.badges[from];
+    if (badge) popBadge(badge);
+  }
+  function floatPoints(n) {
+    const f = document.createElement('div'); f.className = 'pts-float'; f.textContent = '+' + n + ' pts';
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 1400);
+  }
+  function popBadge(badge) {
+    const el = $('#badgePop'); if (!el) return;
+    el.innerHTML = `<div class="badge-pop__card"><span class="badge-pop__ic">${badge.icon}</span><span class="badge-pop__lb">${esc(badge.label)}</span><span class="badge-pop__sub">Achievement unlocked ✨</span></div>`;
+    el.hidden = false; el.classList.add('is-on');
+    clearTimeout(popBadge._t);
+    popBadge._t = setTimeout(() => { el.classList.remove('is-on'); setTimeout(() => { el.hidden = true; }, 320); }, 1800);
+  }
+  function confettiBurst() {
+    const host = $('#confetti'); if (!host) return;
+    const colors = ['#97144D', '#AE275F', '#C7962B', '#1F8A70', '#ffffff'];
+    let html = '';
+    for (let i = 0; i < 90; i++) {
+      const left = Math.random() * 100, delay = Math.random() * 0.5, dur = 2.4 + Math.random() * 1.8, c = colors[i % colors.length];
+      html += `<i style="left:${left}%;background:${c};animation-delay:${delay}s;animation-duration:${dur}s"></i>`;
+    }
+    host.innerHTML = html; host.hidden = false;
+    clearTimeout(confettiBurst._t);
+    confettiBurst._t = setTimeout(() => { host.hidden = true; host.innerHTML = ''; }, 4400);
   }
 
   function renderStepper() {
@@ -163,11 +207,26 @@
     clearInterval(factTimer);
     return results;
   }
+  // "card school": once a card is chosen, teach its benefits while the agent works
+  function factPool() {
+    const card = currentCard();
+    if (card) {
+      const name = card.name.replace('Axis Bank ', '').replace(' Credit Card', '');
+      return card.highlights.map((h) => `Your ${name}: ${h}`).concat(C.facts);
+    }
+    return C.facts;
+  }
   function cycleFacts() {
-    const set = () => { $('#agentFact').textContent = C.facts[Math.floor(Math.random() * C.facts.length)]; };
+    const pool = factPool(); let i = 0;
+    const lbl = $('#agentFactLbl');
+    const set = () => {
+      const card = currentCard();
+      if (lbl) lbl.textContent = (card && i % pool.length < card.highlights.length) ? '💳 About your card' : '💡 Did you know';
+      $('#agentFact').textContent = pool[i % pool.length]; i++;
+    };
     set();
     clearInterval(factTimer);
-    factTimer = setInterval(set, 2600);
+    factTimer = setInterval(set, 2400);
   }
 
   /* ===================================================================== *
@@ -379,6 +438,7 @@
           save();
           renderStage();
           toast('✓ Your virtual card is live!', 'success');
+          confettiBurst();
         },
       };
     }
@@ -408,6 +468,11 @@
         <div class="welcome__benefits">
           ${card.highlights.slice(0, 3).map((h) => `<div class="benefit">✦ ${esc(h)}</div>`).join('')}
         </div>
+        <div class="sec-label">🎁 Your welcome reward</div>
+        <button class="scratch ${state.scratched ? 'is-revealed' : ''}" data-action="scratch" aria-label="Scratch to reveal your welcome reward">
+          <span class="scratch__prize">🎉 ₹500 welcome cashback unlocked on your ${esc(card.name.replace('Axis Bank ', '').replace(' Credit Card', ''))}!</span>
+          <span class="scratch__foil"><span>✨ Tap to scratch &amp; reveal</span></span>
+        </button>
         <div class="sec-label">📦 Track your card — ${esc(state.appRef || '')}</div>
         <div class="deliv" id="deliveryTrack"></div>
         <div class="welcome__nudge">💡 ${esc(C.stageByKey.welcome.nudge)} Make a first transaction to activate your rewards — we’ll text you each delivery update.</div>
@@ -643,6 +708,7 @@
     const out = renderer ? renderer() : { html: '' };
     const lead = agentLead();
     root.innerHTML = lead.html + out.html;
+    root.classList.remove('is-in'); void root.offsetWidth; root.classList.add('is-in'); // iOS-style stage transition
     if (out.mount) out.mount();
     // mirror the agent's lead into the co-pilot as a live transcript of her reasoning
     if (lead.msg && lead.msg !== _lastLead) { _lastLead = lead.msg; appendMsg('agent', lead.msg); }
@@ -708,6 +774,7 @@
       case 'add-wallet': state._walletAdded = true; save(); toast('Added to wallet (simulated).', 'success'); renderStage(); break;
       case 'autopay': await setupAutopay(); break;
       case 'to-welcome': nextStage(); break;
+      case 'scratch': if (!state.scratched) { state.scratched = true; save(); renderStage(); confettiBurst(); } break;
 
       /* co-pilot */
       case 'copilot-open': openCopilot(); break;

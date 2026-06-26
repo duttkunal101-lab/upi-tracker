@@ -19,11 +19,12 @@
   --line-2: #dccad3;
   --ok: #1f8a70;
   --danger: #c2334d;
-  --radius: 18px;
-  --radius-sm: 12px;
-  --shadow: 0 18px 44px -22px rgba(122, 14, 62, 0.35);
-  --shadow-sm: 0 6px 18px -10px rgba(122, 14, 62, 0.28);
+  --radius: 22px;
+  --radius-sm: 14px;
+  --shadow: 0 24px 60px -26px rgba(43, 10, 27, 0.42);
+  --shadow-sm: 0 10px 26px -16px rgba(43, 10, 27, 0.30);
   --maxw: 1060px;
+  --app-w: 480px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -485,3 +486,68 @@ body {
   .metric strong { font-size: 1.15rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * iOS-level polish + gamification (overrides — kept at the end of the cascade)
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+/* App-like journey column (mobile-first; feels like an app on web too) */
+.view[data-view="wizard"] { padding: 1.4rem 1rem 4.5rem; }
+.wiz { max-width: var(--app-w); }
+.panel, .kyc-card, .offer, .kfs, .metrics, .issue-actions, .welcome, .card-hero { border-radius: var(--radius); }
+.panel { padding: 1.5rem 1.4rem; }
+
+/* smooth iOS-style stage transition on every step */
+@keyframes stageIn { from { opacity: 0; transform: translateY(16px) scale(0.985); } to { opacity: 1; transform: none; } }
+#stageRoot.is-in { animation: stageIn 0.44s var(--ease); }
+
+/* tactile buttons */
+.btn { transition: transform 0.12s var(--ease), box-shadow 0.2s, background 0.2s, border-color 0.2s, opacity 0.2s; }
+.btn:active { transform: scale(0.97); }
+.btn--block { padding: 1rem 1.4rem; font-size: 1.02rem; border-radius: 16px; margin-top: 0.75rem; }
+.btn--primary { box-shadow: 0 14px 30px -12px rgba(151, 20, 77, 0.65); }
+
+/* premium credit-card visual */
+.card-face, .vcard { box-shadow: 0 20px 38px -16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28); }
+.card-face::before, .vcard::before { content: ''; position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(130% 90% at 82% -15%, rgba(255,255,255,0.30), transparent 55%); pointer-events: none; }
+.card-face__chip { background: linear-gradient(135deg, #f6e2a0 0%, #d9b768 45%, #b48a30 100%); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 -2px 4px rgba(0,0,0,0.2); }
+.card-face__chip::after { content: ''; position: absolute; inset: 5px 6px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.22);
+  background: linear-gradient(rgba(0,0,0,0.18),rgba(0,0,0,0.18)) center/100% 1px no-repeat, linear-gradient(rgba(0,0,0,0.18),rgba(0,0,0,0.18)) center/1px 100% no-repeat; }
+.card-face__name, .card-face__bank, .card-face__net { position: relative; z-index: 2; }
+.card-face__num { position: absolute; left: 1.1rem; bottom: 2.4rem; z-index: 2; font-family: ui-monospace, Menlo, monospace; letter-spacing: 0.14em; font-size: 0.9rem; color: rgba(255,255,255,0.92); text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+
+/* app bar: points / level */
+.appbar { border-radius: 999px; }
+.appbar__pts { font-weight: 800; color: #8a6a14; background: rgba(199,150,43,0.16); border: 1px solid rgba(199,150,43,0.34); padding: 0.16rem 0.6rem; border-radius: 999px; }
+
+/* floating "+N pts" */
+.pts-float { position: fixed; top: 60px; right: 18px; z-index: 240; font-weight: 800; font-size: 0.82rem; color: var(--gold); background: var(--ink); padding: 0.3rem 0.7rem; border-radius: 999px; box-shadow: var(--shadow); animation: ptsFloat 1.4s var(--ease) forwards; }
+@keyframes ptsFloat { 0% { opacity: 0; transform: translateY(8px) scale(0.9); } 18% { opacity: 1; transform: none; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px); } }
+
+/* milestone badge pop */
+.badge-pop { position: fixed; inset: 0; z-index: 250; display: grid; place-items: center; pointer-events: none; padding: 1.5rem; }
+.badge-pop__card { background: var(--surface); border: 1px solid var(--line-2); border-radius: 24px; padding: 1.5rem 1.9rem; text-align: center; box-shadow: var(--shadow); }
+.badge-pop.is-on .badge-pop__card { animation: badgePop 1.9s var(--ease); }
+.badge-pop__ic { font-size: 2.8rem; display: block; }
+.badge-pop__lb { display: block; font-weight: 800; font-size: 1.15rem; margin-top: 0.35rem; letter-spacing: -0.01em; }
+.badge-pop__sub { display: block; font-size: 0.76rem; color: var(--muted); margin-top: 0.2rem; }
+@keyframes badgePop { 0% { opacity: 0; transform: scale(0.7); } 12% { opacity: 1; transform: scale(1.06); } 22% { transform: scale(1); } 82% { opacity: 1; } 100% { opacity: 0; transform: scale(0.96); } }
+
+/* confetti */
+.confetti { position: fixed; inset: 0; z-index: 245; pointer-events: none; overflow: hidden; }
+.confetti i { position: absolute; top: -16px; width: 9px; height: 15px; border-radius: 2px; opacity: 0.95; animation: confFall linear forwards; }
+@keyframes confFall { 0% { transform: translateY(-16px) rotate(0deg); } 100% { transform: translateY(106vh) rotate(720deg); } }
+
+/* scratch-to-reveal welcome reward */
+.scratch { position: relative; width: 100%; border: none; cursor: pointer; border-radius: 16px; overflow: hidden; min-height: 92px; display: grid; place-items: center; padding: 1rem; margin-bottom: 1.1rem; background: linear-gradient(135deg, rgba(31,138,112,0.12), rgba(199,150,43,0.14)); }
+.scratch__prize { font-weight: 800; color: var(--ok); text-align: center; padding: 0 0.4rem; font-size: 0.95rem; }
+.scratch__foil { position: absolute; inset: 0; display: grid; place-items: center; background: repeating-linear-gradient(115deg, #c9b073, #c9b073 10px, #b9975a 10px, #b9975a 20px); color: #fff; font-weight: 800; transition: opacity 0.55s var(--ease), transform 0.55s var(--ease); }
+.scratch__foil span { text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.scratch.is-revealed .scratch__foil { opacity: 0; transform: scale(1.12); pointer-events: none; }
+
+/* a touch more breathing room on phones */
+@media (max-width: 520px) {
+  .view[data-view="wizard"] { padding: 1rem 0.85rem 5rem; }
+  .stage-head__title { font-size: 1.3rem; }
+}

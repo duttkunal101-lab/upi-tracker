@@ -102,7 +102,7 @@
       <h3 class="agent-title" id="agentTitle">Working…</h3>
       <ol class="agent-steps" id="agentSteps"></ol>
       <div class="agent-bar"><span class="agent-bar__fill" id="agentBar"></span></div>
-      <div class="agent-fact"><span class="agent-fact__lb">💡 Did you know</span><span id="agentFact"></span></div>
+      <div class="agent-fact"><span class="agent-fact__lb" id="agentFactLbl">💡 Did you know</span><span id="agentFact"></span></div>
     </div>
   </div>
 
@@ -139,6 +139,10 @@
 
   <!-- ===================== Exit-intent modal ===================== -->
   <div class="modal" id="exitModal" hidden></div>
+
+  <!-- ===================== Gamification: badge pop + confetti ===================== -->
+  <div class="badge-pop" id="badgePop" hidden></div>
+  <div class="confetti" id="confetti" hidden></div>
 
   <!-- ===================== Toast ===================== -->
   <div class="toast" id="toast"></div>

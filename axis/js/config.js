@@ -602,6 +602,19 @@
     { key: 'delivered', label: 'Delivered & ready to activate' },
   ];
 
+  /* gamification — points, milestone badges, and "card school" knowledge */
+  const gamify = {
+    points: { start: 20, kyc: 40, product: 20, assessment: 30, decision: 20, agreement: 20, issuance: 50 },
+    badges: {
+      kyc: { icon: '🛡️', label: 'Identity Verified' },
+      assessment: { icon: '📊', label: 'Eligibility Cleared' },
+      decision: { icon: '⭐', label: 'Approved!' },
+      agreement: { icon: '✍️', label: 'Signed & Sealed' },
+      issuance: { icon: '💳', label: 'Card Unlocked!' },
+    },
+    levels: ['Newcomer', 'Explorer', 'Achiever', 'Cardholder'],
+  };
+
   /* the agent's agenda — the autonomous plan Aria executes for a NTB customer */
   const agentPlan = [
     'Find your best-fit Axis card',
@@ -622,7 +635,7 @@
   window.AX_CONFIG = {
     brand, cards, profileTags, integrations, regulations,
     dataPoints, stages, legal, nudges, facts,
-    appStatus, delivery, digiLockerDocs, agentPlan,
+    appStatus, delivery, digiLockerDocs, agentPlan, gamify,
     // convenience lookups
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
     cardById: cards.reduce((m, c) => (m[c.id] = c, m), {}),
