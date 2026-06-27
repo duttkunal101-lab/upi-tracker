@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v10'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v11'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -493,16 +493,60 @@
     }
     const v = state.issued.virtualCard || {};
     const card = currentCard();
+    if (state.issueScreen === 'pin') return { html: stageHead('issuance') + pinScreen() };
+    if (state.issueScreen === 'wallet') return { html: stageHead('issuance') + walletScreen(card, v) };
+    if (state.issueScreen === 'autopay') return { html: stageHead('issuance') + autopayScreen() };
     return { html: stageHead('issuance') + `
       ${virtualCardVisual(card, v)}
+      <p class="muted center" style="margin:-0.3rem 0 0.6rem">Use it online right away. A few quick set-ups:</p>
       <div class="issue-actions">
-        ${actionTile('🔢', 'Set your PIN', 'set-pin', state._pinSet ? 'Done ✓' : 'Set')}
-        ${actionTile('📲', 'Add to Google / Apple Pay', 'add-wallet', state._walletAdded ? 'Added ✓' : 'Add')}
-        ${actionTile('🔁', 'Set up autopay (e-NACH)', 'autopay', state.autopay ? 'On ✓' : 'Enable')}
+        ${actionTile('🔢', 'Set your card PIN', 'set-pin', state._pinSet ? 'Done ✓' : 'Set →')}
+        ${actionTile('📲', 'Add to Google / Apple Pay', 'add-wallet', state._walletAdded ? 'Added ✓' : 'Add →')}
+        ${actionTile('🔁', 'Autopay (never miss a due date)', 'autopay', state.autopay ? 'On ✓' : 'Enable →')}
       </div>
-      <p class="trust">📮 Your physical card (${esc(state.issued.physicalDispatch.courier)}) arrives in ~${state.issued.physicalDispatch.etaDays} days · trackable. RBI requires your consent to keep an unused card active after 30 days.</p>
+      <p class="trust">📮 Physical card via ${esc(state.issued.physicalDispatch.courier)} in ~${state.issued.physicalDispatch.etaDays} days · trackable.</p>
       <button class="btn btn--primary btn--block" data-action="to-welcome">Continue →</button>` };
   };
+  /* ---- issuance sub-screens (real PIN / wallet / autopay flows) -------- */
+  function pinScreen() {
+    return `<div class="panel">
+      <button class="linkback" data-action="issue-back">← Back</button>
+      <h3 class="sub-h">🔢 Set your 4-digit card PIN</h3>
+      <p class="muted">For ATMs and in-store payments. Keep it private — never share it.</p>
+      <label class="fld"><span class="fld__label">New PIN</span><input id="pin1" class="fld__input fld__input--mono" inputmode="numeric" maxlength="4" type="password" placeholder="••••" /></label>
+      <label class="fld"><span class="fld__label">Confirm PIN</span><input id="pin2" class="fld__input fld__input--mono" inputmode="numeric" maxlength="4" type="password" placeholder="••••" /></label>
+      <button class="btn btn--primary btn--block" data-action="pin-save">Set PIN →</button>
+      <p class="trust">🔒 Encrypted end-to-end — never seen by anyone, including Axis staff.</p>
+    </div>`;
+  }
+  function walletScreen(card, v) {
+    return `<div class="panel">
+      <button class="linkback" data-action="issue-back">← Back</button>
+      <h3 class="sub-h">📲 Add to your phone wallet</h3>
+      <p class="muted">Pay by phone — your real card number is never shared with merchants (network tokenisation).</p>
+      ${virtualCardVisual(card, v)}
+      <button class="btn btn--primary btn--block" data-action="wallet-add" data-wallet="gpay">Add to Google Pay</button>
+      <button class="btn btn--ghost btn--block" data-action="wallet-add" data-wallet="apay">Add to Apple Pay</button>
+    </div>`;
+  }
+  function autopayScreen() {
+    const amt = state._autopayAmt || 'full';
+    return `<div class="panel">
+      <button class="linkback" data-action="issue-back">← Back</button>
+      <h3 class="sub-h">🔁 Set up autopay (e-NACH)</h3>
+      <p class="muted">I’ll auto-pay your bill each month from your verified bank account — with your consent, revocable anytime.</p>
+      <div class="seg">
+        <button class="seg__btn ${amt === 'full' ? 'is-on' : ''}" data-action="autopay-amt" data-amt="full">Total amount due</button>
+        <button class="seg__btn ${amt === 'min' ? 'is-on' : ''}" data-action="autopay-amt" data-amt="min">Minimum due</button>
+      </div>
+      <div class="kfs-mini">
+        ${kvRow('Pay from', state.account ? esc(state.account.bank) : 'your verified bank account')}
+        ${kvRow('Mandate', 'NPCI e-NACH · cancel anytime')}
+      </div>
+      <label class="consent"><input type="checkbox" id="autopayConsent" checked/><span>I authorise Axis Bank to auto-debit my card dues via e-NACH.</span></label>
+      <button class="btn btn--primary btn--block" data-action="autopay-save">Confirm autopay →</button>
+    </div>`;
+  }
 
   /* ---- Stage 8: welcome ----------------------------------------------- */
   R.welcome = function () {
@@ -1113,9 +1157,14 @@
       case 'esign': await doEsign(); break;
 
       /* stage 7 */
-      case 'set-pin': state._pinSet = true; save(); toast('PIN set (simulated).', 'success'); renderStage(); break;
-      case 'add-wallet': state._walletAdded = true; save(); toast('Added to wallet (simulated).', 'success'); renderStage(); break;
-      case 'autopay': await setupAutopay(); break;
+      case 'set-pin': state.issueScreen = 'pin'; save(); renderStage(); break;
+      case 'pin-save': { const a = ($('#pin1') || {}).value || '', b = ($('#pin2') || {}).value || ''; if (!/^\d{4}$/.test(a)) { toast('Enter a 4-digit PIN.', 'error'); return; } if (a !== b) { toast('PINs don’t match.', 'error'); return; } state._pinSet = true; state.issueScreen = null; save(); renderStage(); toast('✓ Card PIN set securely.', 'success'); } break;
+      case 'add-wallet': state.issueScreen = 'wallet'; save(); renderStage(); break;
+      case 'wallet-add': state._walletAdded = true; state.issueScreen = null; save(); renderStage(); toast('✓ Card tokenised & added to ' + (el.dataset.wallet === 'apay' ? 'Apple Pay' : 'Google Pay') + '.', 'success'); break;
+      case 'autopay': state.issueScreen = 'autopay'; save(); renderStage(); break;
+      case 'autopay-amt': $$('[data-action="autopay-amt"]').forEach((b) => b.classList.toggle('is-on', b === el)); state._autopayAmt = el.dataset.amt; save(); break;
+      case 'autopay-save': if ($('#autopayConsent') && !$('#autopayConsent').checked) { toast('Please authorise the e-NACH mandate.', 'error'); return; } await setupAutopay(); state.issueScreen = null; renderStage(); break;
+      case 'issue-back': state.issueScreen = null; save(); renderStage(); break;
       case 'to-welcome': nextStage(); break;
       case 'scratch': if (!state.scratched) { state.scratched = true; save(); renderStage(); confettiBurst(); } break;
 
