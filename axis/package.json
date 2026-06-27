@@ -1,0 +1,17 @@
+{
+  "name": "axis-agentic-onboarding",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Axis Bank — agentic credit-card onboarding (standalone). Static frontend + one serverless function (\"Aria\") powered by Claude, with a built-in offline fallback so it runs with no API key.",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0"
+  }
+}
