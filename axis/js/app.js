@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v9'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v10'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -127,22 +127,13 @@
     state.awarded = state.awarded || {};
     if (state.awarded[from]) return;
     state.awarded[from] = true;
-    const size = (C.gamify.levelSize) || 60;
-    const beforeLv = Math.floor((state.points || 0) / size);
-    const pts = C.gamify.points[from] || 0;
-    if (pts) { state.points = (state.points || 0) + pts; floatPoints(pts, (C.gamify.unlocks && C.gamify.unlocks[from]) || ''); }
-    const afterLv = Math.floor((state.points || 0) / size);
+    state.points = (state.points || 0) + (C.gamify.points[from] || 0);
     save();
+    // one tasteful milestone marker per verified step — no points/levels arcade
     const badge = C.gamify.badges[from];
     if (badge) popBadge(badge);
-    if (afterLv > beforeLv) { setTimeout(() => popBadge({ icon: '⬆️', label: 'Level up · ' + levelInfo().name }), badge ? 1000 : 0); }
   }
-  function floatPoints(n, label) {
-    const f = document.createElement('div'); f.className = 'pts-float';
-    f.innerHTML = '+' + n + ' pts' + (label ? `<span>${esc(label)}</span>` : '');
-    document.body.appendChild(f);
-    setTimeout(() => f.remove(), 1800);
-  }
+  function floatPoints() {}
   function popBadge(badge) {
     const el = $('#badgePop'); if (!el) return;
     el.innerHTML = `<div class="badge-pop__card"><span class="badge-pop__ic">${badge.icon}</span><span class="badge-pop__lb">${esc(badge.label)}</span><span class="badge-pop__sub">Achievement unlocked ✨</span></div>`;
@@ -252,22 +243,25 @@
     return { html: `
       ${stageHead('start')}
       <div class="panel">
-        <label class="fld">
-          <span class="fld__label">Mobile number</span>
-          <div class="fld__inrow">
-            <span class="fld__prefix">+91</span>
-            <input id="mobile" class="fld__input" inputmode="numeric" maxlength="10"
-              placeholder="10-digit mobile number" value="${esc(state.mobile)}" autocomplete="tel-national" />
-          </div>
-        </label>
-        <label class="consent">
-          <input type="checkbox" id="consentStart" ${state.mobile ? 'checked' : ''}/>
-          <span>${esc(C.legal.consents.start)} <a href="#" data-action="why" data-why="start">Why?</a></span>
-        </label>
+        <div id="preOtp">
+          <label class="fld">
+            <span class="fld__label">Mobile number</span>
+            <div class="fld__inrow">
+              <span class="fld__prefix">+91</span>
+              <input id="mobile" class="fld__input" inputmode="numeric" maxlength="10"
+                placeholder="10-digit mobile number" value="${esc(state.mobile)}" autocomplete="tel-national" />
+            </div>
+          </label>
+          <label class="consent">
+            <input type="checkbox" id="consentStart" ${state.mobile ? 'checked' : ''}/>
+            <span>${esc(C.legal.consents.start)} <a href="#" data-action="why" data-why="start">Why?</a></span>
+          </label>
+        </div>
         <div id="otpRow" hidden>
+          <div class="sent-to">📲 OTP sent to <strong>+91 <span id="sentNum"></span></strong> · <a href="#" data-action="otp-change">change</a></div>
           <label class="fld">
             <span class="fld__label">Enter OTP <span class="muted">(demo — any 6 digits)</span></span>
-            <input id="otp" class="fld__input" inputmode="numeric" maxlength="6" placeholder="••••••" />
+            <input id="otp" class="fld__input fld__input--mono" inputmode="numeric" maxlength="6" placeholder="••••••" />
           </label>
         </div>
         <button class="btn btn--primary btn--block" id="startCta" data-action="send-otp">Send OTP →</button>
@@ -846,6 +840,14 @@
     </div>`;
   }
   function virtualCardVisual(card, v) {
+    // show the REAL card photo with a live badge + masked last-4 overlaid
+    if (card.image) {
+      return `<div class="vcard vcard--real">
+        <img class="vcard__art" src="${esc(card.image)}" alt="${esc(card.name)}" onerror="this.closest('.vcard').classList.remove('vcard--real'); this.remove();"/>
+        <span class="vcard__badge">● VIRTUAL · LIVE</span>
+        <span class="vcard__last4">•••• ${esc(v.last4 || '0000')} · exp ${esc(v.expiry || '••/••')}</span>
+      </div>`;
+    }
     return `<div class="vcard" style="${cardSwatch(card)}">
       ${cardLogo()}
       <div class="vcard__top"><span>AXIS BANK</span><span class="vcard__live">● VIRTUAL CREDIT CARD · LIVE</span></div>
@@ -1068,6 +1070,7 @@
       /* stage 1 */
       case 'send-otp': await sendOtp(); break;
       case 'verify-otp': await verifyOtp(); break;
+      case 'otp-change': { if ($('#preOtp')) $('#preOtp').hidden = false; if ($('#otpRow')) $('#otpRow').hidden = true; const b = $('#startCta'); if (b) { b.textContent = 'Send OTP →'; b.dataset.action = 'send-otp'; } } break;
 
       /* stage 2 */
       case 'toggle-tag': toggleTag(el.dataset.tag); break;
@@ -1145,6 +1148,8 @@
     state.mobile = m; save();
     const btn = $('#startCta'); btn.disabled = true; btn.textContent = 'Sending OTP…';
     await INT.sendOtp(m);
+    if ($('#preOtp')) $('#preOtp').hidden = true;       // hide the number entry once OTP is sent
+    if ($('#sentNum')) $('#sentNum').textContent = '•••••' + m.slice(-5);
     $('#otpRow').hidden = false;
     $('#otp').focus();
     btn.disabled = false; btn.textContent = 'Verify & continue →';

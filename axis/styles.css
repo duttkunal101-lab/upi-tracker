@@ -907,3 +907,12 @@ body {
 .liveness__reqs { list-style: none; display: inline-flex; flex-direction: column; gap: 0.4rem; margin: 0.2rem auto 1rem; text-align: left; }
 .liveness__reqs li { position: relative; padding-left: 1.4rem; font-size: 0.86rem; color: var(--muted); }
 .liveness__reqs li::before { content: '✓'; position: absolute; left: 0; color: var(--ok); font-weight: 800; }
+
+/* virtual card showing the REAL card photo + live badge + masked last-4 */
+.vcard--real { position: relative; aspect-ratio: 1.586/1; height: auto; min-height: 0; border-radius: 18px; overflow: hidden; padding: 0; box-shadow: var(--shadow); margin-bottom: 1rem; }
+.vcard__art { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vcard__badge { position: absolute; top: 0.7rem; left: 0.8rem; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.04em; color: #fff; background: rgba(0,0,0,0.5); padding: 0.22rem 0.55rem; border-radius: 999px; }
+.vcard__last4 { position: absolute; bottom: 0.7rem; right: 0.85rem; font-family: ui-monospace, Menlo, monospace; font-size: 0.7rem; letter-spacing: 0.06em; color: #fff; background: rgba(0,0,0,0.5); padding: 0.2rem 0.5rem; border-radius: 8px; }
+/* "OTP sent to …" line after the number is locked */
+.sent-to { font-size: 0.84rem; color: var(--muted); margin-bottom: 0.7rem; }
+.sent-to a { color: var(--burgundy); font-weight: 700; }
