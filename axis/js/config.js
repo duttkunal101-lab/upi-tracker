@@ -29,7 +29,8 @@
     tagline: 'Dil Se Open',
     agentName: 'Aria',
     agentRole: 'your AI onboarding agent',
-    logo: 'https://logo.clearbit.com/axisbank.com', // real Axis Bank logo (CDN, hotlink-friendly)
+    logo: 'assets/cards/axis-bank-logo-png_seeklogo-14775.png', // uploaded official Axis Bank logo
+    logoFallback: 'https://logo.clearbit.com/axisbank.com', // CDN fallback if the file is missing
     // Official Axis Bank mobile-banking app (verified store links)
     appLinks: {
       ios: 'https://apps.apple.com/in/app/axis-bank-mobile-banking/id699582556',
@@ -207,12 +208,20 @@
   };
   /* Clean, structured display name shown on the card face. */
   const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', 'insta-easy': 'Insta Easy' };
-  // Drop-in card artwork: put a PNG named <id>.png in axis/assets/cards/ (e.g. ace.png)
-  // and it replaces the rendered card automatically. Missing files fall back gracefully.
+  // Real uploaded card artwork (mapped by the card shown in each image). Cards without
+  // an uploaded image keep the built-in design. Drop more files in axis/assets/cards/.
+  const cardImage = {
+    ace: 'assets/cards/axis-bank-ace-credit-card.webp',
+    atlas: 'assets/cards/Axis-Atlas-1.webp',
+    flipkart: 'assets/cards/flipkart-axis-credit-card.webp',
+  };
+  // annual spend (₹) that waives the joining/annual fee — used to weigh fees vs budget
+  const cardFeeWaiverSpend = { ace: 200000, flipkart: 350000, airtel: 200000 };
   cards.forEach((c) => {
     c.rewards = cardRewards[c.id] || {};
     c.shortName = cardShortName[c.id] || c.name;
-    if (!c.image) c.image = 'assets/cards/' + c.id + '.png';
+    c.feeWaiverSpend = cardFeeWaiverSpend[c.id] || 0;
+    if (cardImage[c.id]) c.image = cardImage[c.id];
   });
 
   /* Lifestyle tags the agent asks about (minimum-click product discovery). */
