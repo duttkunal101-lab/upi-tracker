@@ -319,17 +319,17 @@
 
   /* the agent's value comparison — shows WHY this card wins for the budget */
   function valueCompare() {
-    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], gross: v.gross, net: v.net })).filter((r) => r.card);
+    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], net: v.net, fee: v.fee, waived: v.waived })).filter((r) => r.card);
     if (!ranked.length) return '';
-    const max = ranked[0].gross || 1;
+    const max = Math.max.apply(null, ranked.map((r) => r.net).concat([1]));
     return `<div class="vcompare">
-      <div class="sec-label">💡 Your value, compared across cards</div>
+      <div class="sec-label">💡 Net value to you (rewards − fee), compared</div>
       ${ranked.map((r, i) => `<div class="vcomp ${i === 0 ? 'is-top' : ''}">
-        <span class="vcomp__nm">${esc(r.card.shortName)}${i === 0 ? ' · best for you' : ''}</span>
-        <span class="vcomp__bar"><i style="width:${Math.max(6, Math.round((r.gross / max) * 100))}%"></i></span>
-        <span class="vcomp__val">${inr(r.gross)}/yr</span>
+        <span class="vcomp__nm">${esc(r.card.shortName)}${i === 0 ? ' · best' : ''}</span>
+        <span class="vcomp__bar"><i style="width:${Math.max(6, Math.round((r.net / max) * 100))}%"></i></span>
+        <span class="vcomp__val">${inr(r.net)}/yr${r.waived ? ' <em>fee waived</em>' : ''}</span>
       </div>`).join('')}
-      <p class="muted vcompare__note">Estimated annual rewards on your ${inr(budgetTotal())}/month spend. Indicative — actual value depends on each card’s caps &amp; terms.</p>
+      <p class="muted vcompare__note">Annual rewards on your ${inr(budgetTotal())}/month spend, <strong>minus each card’s fee</strong> (waived where your spend qualifies). Indicative — actual value depends on each card’s caps &amp; terms.</p>
     </div>`;
   }
 
@@ -762,7 +762,11 @@
     return `background:linear-gradient(135deg,${a},${b})`;
   }
   // real Axis Bank logo (loads live in the customer's browser; removes itself if blocked)
-  function cardLogo() { return C.brand.logo ? `<img class="card-face__logo" src="${esc(C.brand.logo)}" alt="Axis Bank" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='https://www.google.com/s2/favicons?domain=axisbank.com&amp;sz=128'}"/>` : ''; }
+  function cardLogo() {
+    if (!C.brand.logo) return '';
+    const fb = (C.brand.logoFallback) || '';
+    return `<img class="card-face__logo" src="${esc(C.brand.logo)}" alt="Axis Bank" data-fb="${esc(fb)}" onerror="if(this.dataset.done){this.remove()}else{this.dataset.done=1;this.src=this.dataset.fb||''}"/>`;
+  }
   // optional official card artwork — drop a URL or local path into a card's `image` field
   function cardArt(card) { return card.image ? `<img class="card-face__full" src="${esc(card.image)}" alt="${esc(card.name)}" onerror="this.remove()"/>` : ''; }
   // a real-credit-card layout: AXIS BANK wordmark + logo, chip, contactless, structured name, network
@@ -901,10 +905,17 @@
     });
     return Math.round(monthly * 12);
   }
+  // fee waived when the customer's ANNUAL spend meets the card's waiver threshold
+  function effectiveFee(card, annualSpend) {
+    const w = card.feeWaiverSpend || 0;
+    return (w && annualSpend >= w) ? 0 : (card.annualFee || 0);
+  }
   function rankByValue(budget) {
+    const annualSpend = SPEND_CATS.reduce((s, k) => s + (Number(budget[k]) || 0), 0) * 12;
     return C.cards.filter((c) => !c.secured).map((c) => {
       const gross = estimateAnnualValue(c, budget);
-      return { card: c, gross, net: gross - (c.annualFee || 0) };
+      const fee = effectiveFee(c, annualSpend);
+      return { card: c, gross, fee, net: gross - fee, waived: (c.annualFee || 0) > 0 && fee === 0 };
     }).sort((a, b) => b.net - a.net);
   }
   const budgetTotal = () => SPEND_CATS.reduce((s, k) => s + (Number(state.budget[k]) || 0), 0);
@@ -1128,18 +1139,20 @@
   }
   async function doRecommend() {
     if (budgetTotal() <= 0) { toast('Set at least one spend amount so I can compare cards by value.', 'error'); return; }
-    const ranked = await withAgentThinking('Comparing every Axis card against your budget', async () => {
-      await INT.delay(750);
+    const ranked = await withAgentThinking('Weighing every Axis card’s rewards & fees against your budget', async () => {
+      await INT.delay(800);
       return rankByValue(state.budget);
     });
-    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net }));
+    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net, fee: x.fee, waived: x.waived }));
     const top = ranked[0];
-    const feeNote = top.card.annualFee ? ` (≈ ${inr(top.net)} after the ${inr(top.card.annualFee)} fee)` : ' — and it’s lifetime-free';
-    const reason = `For how you spend (~${inr(budgetTotal())}/month), the ${top.card.shortName} pays you the most: about ${inr(top.gross)} back a year${feeNote}. That’s why I recommend it.`;
+    const feeBit = top.fee === 0
+      ? (top.card.annualFee ? ` Its ${inr(top.card.annualFee)} fee is waived at your spend level.` : ' And it’s lifetime-free.')
+      : ` That’s already net of its ${inr(top.card.annualFee)} annual fee.`;
+    const reason = `For how you spend (~${inr(budgetTotal())}/month), the ${top.card.shortName} gives you the most net value — about ${inr(top.net)} a year.${feeBit} That’s why I recommend it.`;
     state._rec = { card: top.card, reason, source: 'budget-value' };
     save();
     renderStage();
-    aria(`I compared all Axis cards against your ${inr(budgetTotal())}/month spend. The <strong>${esc(top.card.name)}</strong> earns you the most — ≈ ${inr(top.gross)}/year.`, true);
+    aria(`I weighed every Axis card’s rewards <em>and</em> fees against your ${inr(budgetTotal())}/month spend. The <strong>${esc(top.card.name)}</strong> nets you the most — ≈ ${inr(top.net)}/year.`, true);
     track('reco_made', { card: top.card.id, source: 'budget-value' });
   }
   function chooseCard(id) {
