@@ -342,30 +342,39 @@
   /* ---- Stage 3: KYC ---------------------------------------------------- */
   R.kyc = function () {
     if (!state.identity) {
-      if (state.kycMethod === 'aadhaar') return { html: stageHead('kyc') + kycAadhaar() };
-      if (state.kycMethod === 'ocr') return { html: stageHead('kyc') + kycOcr() };
-      if (state.kycMethod === 'vcip') return { html: stageHead('kyc') + kycVcip() };
-      if (state.kycMethod === 'chooser') return { html: stageHead('kyc') + kycChooser() };
-      // DEFAULT (agent-driven): DigiLocker is linked off the verified mobile — one consent tap
-      return { html: stageHead('kyc') + kycDigiLocker() };
+      const m = state.kycMethod;
+      if (m === 'digilocker') return { html: stageHead('kyc') + kycDigiLocker() };
+      if (m === 'aadhaar') return { html: stageHead('kyc') + kycAadhaar() };
+      if (m === 'ocr') return { html: stageHead('kyc') + kycOcr() };
+      if (m === 'vcip') return { html: stageHead('kyc') + kycVcip() };
+      // DEFAULT: the customer chooses HOW to verify — their choice, with full info
+      return { html: stageHead('kyc') + kycChooser() };
     }
+    // identity is verified → show WHAT was verified (audit), THEN the filled form
     const id = state.identity || {};
-    const docs = id.documents || [];
+    const fromDoc = state.kycVia === 'ocr';
+    const ver = [
+      ['🪪', 'Identity (Aadhaar e-KYC)', fromDoc ? 'Read from your uploaded document' : (state.vcip ? 'Captured live on the V-CIP call' : 'Fetched & verified with UIDAI')],
+      ['#️⃣', 'PAN', 'Validated with Protean (NSDL) — name matched'],
+      ['🤳', state.vcip ? 'Liveness (on video)' : 'Liveness & face match', state.vcip ? 'Officer confirmed you’re live' : 'Live selfie matched your photo ID'],
+      ['🗂️', 'CKYC registry (CERSAI)', state.ckyc && state.ckyc.found ? 'Existing record matched' : 'New CKYC record created'],
+    ];
     return { html: stageHead('kyc') + `
       <div class="kyc-card">
+        <div class="verok">
+          <div class="verok__head"><span class="verok__badge">✓ KYC verified</span><span class="verok__via">${esc(viaLabel(state.kycVia))}</span></div>
+          <p class="verok__lead">I verified your identity <strong>first</strong>, then filled your application from that verified source — nothing was assumed. Here’s exactly what I checked:</p>
+          <div class="verlist">${ver.map(([i, k, v]) => `<div class="veritem"><span class="veritem__ic">${i}</span><span class="veritem__k">${esc(k)}</span><span class="veritem__v">✓ ${esc(v)}</span></div>`).join('')}</div>
+        </div>
         <div class="kyc-card__head">
           <div class="avatar">${esc(id.photoInitials || '🙂')}</div>
           <div>
             <div class="kyc-card__name">${esc(id.name || 'Verified')}</div>
-            <div class="kyc-card__sub">Auto-filled &amp; verified ${esc(viaLabel(state.kycVia))}${state.ckyc && state.ckyc.found ? ' · CKYC matched' : ''}</div>
+            <div class="kyc-card__sub">Identity confirmed ${esc(viaLabel(state.kycVia))}</div>
           </div>
           <span class="pill pill--ok">✓ Verified</span>
         </div>
-
-        <div class="sec-label">📄 Documents pulled &amp; verified</div>
-        <div class="docs">${docs.map(docRow).join('') || '<span class="muted">—</span>'}</div>
-
-        <div class="sec-label">🗂️ Application details ${afBadge()}</div>
+        <div class="sec-label">🗂️ Your application — filled from your verified KYC ${afBadge()}</div>
         <div class="kyc-rows">
           ${kvRow('Full name', id.name)}
           ${kvRow('Date of birth', id.dob)}
@@ -377,8 +386,8 @@
           ${kvRow('Current address', id.currentAddress || id.address)}
           ${kvRow('Permanent address', id.permanentAddress || id.address)}
         </div>
-        <p class="muted edit-note">Everything was auto-filled from your verified documents. Something off? <a href="#" data-action="edit-kyc">Edit details</a></p>
-        <button class="btn btn--primary btn--block" data-action="confirm-kyc">Confirm &amp; continue →</button>
+        <p class="muted edit-note">Please check it’s correct — you’re confirming this to Axis Bank. Something off? <a href="#" data-action="edit-kyc">Edit a detail</a></p>
+        <button class="btn btn--primary btn--block" data-action="confirm-kyc">This is correct — confirm &amp; continue →</button>
       </div>` };
   };
 
@@ -711,46 +720,54 @@
     const dlm = state.dlMobile || state.mobile || '';
     const same = dlm === state.mobile;
     return `<div class="panel">
-      ${relationshipBanner()}
-      ${trustRow()}
+      <button class="linkback" data-action="kyc-chooser">← Choose a different method</button>
       <div class="dl-link">
         <div class="dl__head"><span class="dl__brand">🔐 DigiLocker</span><span class="dl__gov">Government of India · MeitY</span></div>
-        <p class="dl-link__lead">DigiLocker pulls your documents from the mobile that’s <strong>linked to your Aadhaar</strong>. Confirm that number and I’ll link it, fetch &amp; verify your KYC — <strong>PAN included</strong> — automatically.</p>
+        <p class="dl-link__lead">DigiLocker fetches your documents from the mobile that’s <strong>linked to your Aadhaar</strong>. Confirm that number, give consent, and I’ll open DigiLocker, <strong>fetch &amp; verify</strong> these documents — <strong>PAN included</strong> — and show you each one as it arrives.</p>
         <label class="fld">
           <span class="fld__label">📱 Mobile linked to your DigiLocker / Aadhaar</span>
           <div class="fld__inrow">
             <span class="fld__prefix">+91</span>
             <input id="dlMobile" class="fld__input" inputmode="numeric" maxlength="10" placeholder="10-digit Aadhaar-linked number" value="${esc(dlm)}" />
           </div>
-          <span class="fld__hint">${same ? 'Same as the number you verified ✓ — leave it as is if your Aadhaar is on this number.' : 'I’ll send the DigiLocker link here.'}</span>
+          <span class="fld__hint">${same ? 'Same as the number you verified ✓ — leave it as is if your Aadhaar is on this number.' : 'DigiLocker will send a one-time link here.'}</span>
         </label>
-        <div class="dl__docs">${docs.map((d) => `<div class="dl__doc"><div><strong>${esc(d.name)}</strong><div class="muted">${esc(d.issuer)} · ${esc(d.purpose)}</div></div><span class="dl__chk">✓</span></div>`).join('')}</div>
-        <label class="consent"><input type="checkbox" id="consentKyc" checked/><span>I consent to share these documents with Axis Bank for this application (DPDP Act). <a href="#" data-action="why" data-why="kyc">Why?</a></span></label>
+        <div class="sec-label">📄 Documents I’ll fetch from DigiLocker</div>
+        <div class="dl__docs">${docs.map((d) => `<div class="dl__doc"><div><strong>${esc(d.name)}</strong><div class="muted">${esc(d.issuer)} · ${esc(d.purpose)}</div></div><span class="dl__chk">consent</span></div>`).join('')}</div>
+        <label class="consent"><input type="checkbox" id="consentKyc" checked/><span>I consent to share these issued documents with Axis Bank for this application (DPDP Act). You can revoke this in DigiLocker anytime. <a href="#" data-action="why" data-why="kyc">Why?</a></span></label>
       </div>
-      <button class="btn btn--primary btn--block" data-action="dl-allow">Link DigiLocker &amp; auto-fill →</button>
+      <button class="btn btn--primary btn--block" data-action="dl-allow">Allow &amp; fetch from DigiLocker →</button>
       ${trustWhy('kyc')}
-      <div class="kyc-alts">
-        <span class="kyc-alts__lb">No DigiLocker, or prefer another way? I can also:</span>
-        <div class="kyc-alts__row">
-          <button class="kyc-alt" data-action="kyc-method" data-method="ocr"><span class="kyc-alt__ic">📄</span>Upload + OCR</button>
-          <button class="kyc-alt" data-action="kyc-method" data-method="aadhaar"><span class="kyc-alt__ic">📱</span>Aadhaar OTP</button>
-          <button class="kyc-alt" data-action="kyc-method" data-method="vcip"><span class="kyc-alt__ic">🎥</span>Video-KYC</button>
-        </div>
-        <button class="linklike" data-action="kyc-chooser">Compare all verification options →</button>
-      </div>
-      <p class="trust">🪪 Your Aadhaar stays masked &amp; vaulted — we never store it in full.</p>
+      <p class="trust">🪪 Your Aadhaar stays masked &amp; vaulted — we never store it in full. I verify everything before filling your form.</p>
     </div>`;
   }
   function kycChooser() {
+    const methods = [
+      { id: 'digilocker', icon: '🔐', title: 'DigiLocker auto-fetch', time: '~30 sec', need: 'Aadhaar-linked mobile', reco: true,
+        desc: 'I fetch your Aadhaar &amp; PAN straight from the Govt. DigiLocker — nothing to type or upload.' },
+      { id: 'aadhaar', icon: '📱', title: 'Aadhaar OTP e-KYC', time: '~1 min', need: 'Aadhaar-linked mobile',
+        desc: 'Enter your Aadhaar, verify a UIDAI OTP, and I pull your e-KYC.' },
+      { id: 'ocr', icon: '📄', title: 'Upload documents (OCR)', time: '~2 min', need: 'Photos of Aadhaar &amp; PAN',
+        desc: 'Snap or upload your Aadhaar &amp; PAN — AI reads the details for you to confirm. No DigiLocker needed.' },
+      { id: 'vcip', icon: '🎥', title: 'Video KYC (V-CIP)', time: '~5 min', need: 'PAN + camera, mic, location',
+        desc: 'A live video call with an Axis KYC officer — RBI-approved full KYC, done from home.' },
+    ];
     return `<div class="panel">
-      <button class="linkback" data-action="kyc-back">← Back to DigiLocker</button>
-      <p class="ask">Choose how to complete KYC <span class="muted">— ${esc(C.brand.agentName)} recommends DigiLocker.</span></p>
+      ${relationshipBanner()}
+      <p class="ask">How would you like to verify your identity? <span class="muted">It’s <strong>your choice</strong> — all four are RBI-approved KYC. ${esc(C.brand.agentName)} recommends DigiLocker for speed; pick whatever you’re comfortable with.</span></p>
       <div class="kyc-methods">
-        <button class="kyc-method kyc-method--reco" data-action="kyc-method" data-method="digilocker"><span class="kyc-method__ic">⚡</span><span class="kyc-method__b"><strong>DigiLocker — instant auto-fetch</strong><small>I pull &amp; verify your Aadhaar + PAN in seconds</small></span><span class="kyc-method__pick">${esc(C.brand.agentName)}’s pick</span></button>
-        <button class="kyc-method" data-action="kyc-method" data-method="aadhaar"><span class="kyc-method__ic">📱</span><span class="kyc-method__b"><strong>Aadhaar OTP e-KYC</strong><small>Verify via a UIDAI OTP</small></span></button>
-        <button class="kyc-method" data-action="kyc-method" data-method="ocr"><span class="kyc-method__ic">📄</span><span class="kyc-method__b"><strong>Upload documents (AI OCR)</strong><small>Snap your Aadhaar &amp; PAN — I read them</small></span></button>
-        <button class="kyc-method" data-action="kyc-method" data-method="vcip"><span class="kyc-method__ic">🎥</span><span class="kyc-method__b"><strong>Video KYC (V-CIP)</strong><small>Live full-KYC with an Axis officer</small></span></button>
+        ${methods.map((m) => `<button class="kyc-method ${m.reco ? 'kyc-method--reco' : ''}" data-action="kyc-method" data-method="${m.id}">
+          <span class="kyc-method__ic">${m.icon}</span>
+          <span class="kyc-method__b">
+            <strong>${esc(m.title)}</strong>
+            <small>${m.desc}</small>
+            <span class="kyc-method__meta">⏱ ${esc(m.time)} · need: ${m.need}</span>
+          </span>
+          <span class="kyc-method__pick">${m.reco ? esc(C.brand.agentName) + '’s pick' : 'Choose →'}</span>
+        </button>`).join('')}
       </div>
+      ${trustRow()}
+      <p class="trust">🔒 Whichever you pick, I <strong>verify before I fill anything</strong>, your Aadhaar stays masked &amp; vaulted, and you confirm every detail.</p>
     </div>`;
   }
   function metric(big, small) { return `<div class="metric"><strong>${esc(big)}</strong><span>${esc(small)}</span></div>`; }
@@ -888,7 +905,7 @@
     if (!r) return '';
     return `<div class="rel rel--${state.relationship}">
       <span class="rel__badge">${r.icon} ${esc(r.tag)} · ${r.code}</span>
-      <p class="rel__line">${esc(r.line)}</p>
+      <p class="rel__line">${r.line}</p>
     </div>`;
   }
 
@@ -952,7 +969,7 @@
       const pa = state.preApproved;
       msg = (pa && pa.preApproved)
         ? `I recognised your existing Axis relationship and a <strong>pre-approved offer up to ${inr(pa.indicativeLimit)}</strong> — I’ve fast-tracked you. Let’s verify it’s you and pick your card.`
-        : `You’re new to Axis — I’ll onboard you end to end and do the heavy lifting myself. First, your mobile number so I can verify it’s you (an RBI/TRAI requirement). New to credit? I’ve got a path for that too.`;
+        : `I’m <strong>${esc(C.brand.agentName)}</strong>, your AI onboarding agent. Share your mobile number and I’ll verify it (an RBI/TRAI requirement), then check Axis’s records to see if you’re already a customer. I’ll guide you end-to-end and <strong>explain every step</strong>, so you’re always sure you’re doing the right thing.`;
       plan = `<div class="agent-lead__plan"><span>My plan for you</span><ol>${C.agentPlan.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
     } else if (s === 'product') {
       msg = state._rec
@@ -960,10 +977,14 @@
         : `Tell me roughly what you spend each month. I’ll compute the actual rewards <strong>you’d</strong> earn on every Axis card and recommend the highest-value one for your budget — not a generic “best card”. First card? I’ll keep you to one that builds your score.`;
     } else if (s === 'kyc') {
       const rl = state.relationship && C.relationship[state.relationship];
-      if (!state.identity) msg = state.kycMethod === 'chooser'
-        ? `No problem — pick how you’d like to verify. I recommend DigiLocker, but Aadhaar OTP, document upload (OCR) or a video call all work.`
-        : `${rl ? esc(rl.line) + ' ' : ''}Confirm the mobile that’s <strong>linked to your Aadhaar</strong> and I’ll link DigiLocker to it, then pull &amp; verify your KYC — PAN included — and fill your whole application.`;
-      else { const ck = state.ckyc && state.ckyc.found; msg = `Done — I pulled and verified your documents, matched your face${ck ? ', and found your CKYC record so I skipped re-capture' : ''}, and auto-filled your whole application. Just confirm it.`; }
+      const m = state.kycMethod;
+      if (!state.identity) {
+        if (!m || m === 'chooser') msg = `${rl ? rl.line + ' ' : ''}Now, how would you like to prove it’s you? It’s <strong>your choice</strong> — DigiLocker, Aadhaar OTP, document upload or a video call, all RBI-approved. Whatever you pick, I <strong>verify first, then fill</strong> your form from the verified source — never the other way round.`;
+        else if (m === 'digilocker') msg = `Good pick. Confirm the mobile linked to your Aadhaar, give consent, and I’ll open DigiLocker and <strong>fetch each document in front of you</strong>, verify it, then fill your form. You stay in control.`;
+        else if (m === 'aadhaar') msg = `Enter your Aadhaar number; UIDAI sends an OTP to your Aadhaar-linked mobile. I verify that first, then fetch your e-KYC — nothing is filled until it’s verified.`;
+        else if (m === 'ocr') msg = `Upload or snap your Aadhaar and PAN and I’ll read them with OCR for you to check — handy if you don’t use DigiLocker. I validate them before anything is saved.`;
+        else if (m === 'vcip') msg = `A short, secure video call with an Axis KYC officer completes your full KYC from home — RBI-approved, no branch visit. I’ll get you connected and guide you through it.`;
+      } else { const ck = state.ckyc && state.ckyc.found; msg = `Verified ✓ — I checked your Aadhaar, validated your PAN${ck ? ', matched your CKYC record' : ''} and your face, <em>then</em> filled your application from those verified sources. Please confirm it’s correct before we continue.`; }
     } else if (s === 'assessment') {
       msg = state.assessmentDone
         ? `Eligibility checked — I’m putting your personalised offer together now.`
@@ -1165,7 +1186,6 @@
   // the agent drives DigiLocker by default; the customer can still switch method
   function chooseKycMethod(method) {
     track('kyc_method', { method });
-    if (method === 'digilocker') { state.kycMethod = null; save(); renderStage(); return; }
     state.kycMethod = method; save(); renderStage();
   }
   function kycBack() { state.kycMethod = null; save(); renderStage(); }

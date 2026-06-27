@@ -509,8 +509,8 @@
     },
     {
       key: 'kyc', num: 2, label: 'Identity (KYC)', icon: '🪪', minutes: 2,
-      headline: 'Verify your identity — mostly auto-filled',
-      sub: 'The agent pulls your details from DigiLocker / CKYC so you just confirm them. One quick selfie.',
+      headline: 'Verify your identity — your way',
+      sub: 'Choose how to verify: DigiLocker, Aadhaar OTP, document upload or Video-KYC. I verify first, then fill your form from the verified source.',
       customerDoes: 'Enter PAN, consent to DigiLocker, confirm pre-filled details, take a selfie (V-CIP if needed).',
       agentDoes: [
         'Validate PAN and fetch the name on record (Protean/NSDL).',
@@ -728,11 +728,11 @@
   const relationship = {
     ntb: {
       tag: 'New to Axis', code: 'NTB', icon: '🆕',
-      line: 'You’re new to Axis Bank, so I’ll complete a one-time full KYC for you — a regulatory must for a new relationship (RBI). I’ll do the heavy lifting.',
+      line: 'I checked Axis Bank’s core-banking records against your mobile number and found <strong>no existing relationship</strong> — so you’re New to Bank (NTB). RBI requires a one-time full KYC for a new customer, which I’ll guide you through.',
     },
     etb: {
       tag: 'Existing Axis customer', code: 'ETB', icon: '✓',
-      line: 'Welcome back — you’re already an Axis customer, so I can reuse your existing KYC and fast-track you with fewer steps.',
+      line: 'I matched your mobile number to an <strong>existing Axis Bank account</strong>, so you’re an Existing-to-Bank (ETB) customer — I can reuse your current KYC and fast-track you with fewer steps.',
     },
   };
 
