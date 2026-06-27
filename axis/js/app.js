@@ -14,6 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
+  const BUILD = 'v9'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -31,7 +32,7 @@
     budget: { shopping: 0, travel: 0, bills: 0, food: 0, entertainment: 0, cabs: 0, other: 5000 },
     cardId: null, valueRank: null,
     dlMobile: '', dlLinked: false, dlOtpSent: false,
-    pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null,
+    pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, livenessDone: false,
     bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false,
     points: 0, awarded: {}, scratched: false, level: 0,
@@ -42,6 +43,12 @@
 
   function load() {
     try {
+      // new build → wipe any old saved journey so every tester starts clean
+      if (localStorage.getItem('axis.build') !== BUILD) {
+        localStorage.removeItem(STORE);
+        localStorage.setItem('axis.build', BUILD);
+        return;
+      }
       const s = JSON.parse(localStorage.getItem(STORE) || 'null');
       if (s && s.stage) state = Object.assign(fresh(), s);
     } catch (_) { /* ignore */ }
@@ -343,7 +350,9 @@
       // DEFAULT: the customer chooses HOW to verify — their choice, with full info
       return { html: stageHead('kyc') + kycChooser() };
     }
-    // identity is verified → show WHAT was verified (audit), THEN the filled form
+    // documents fetched, but a live selfie (liveness + face match) is required first (RBI)
+    if (state.identity && !state.livenessDone) return { html: stageHead('kyc') + kycLiveness() };
+    // identity + liveness verified → show WHAT was verified (audit), THEN the filled form
     const id = state.identity || {};
     const fromDoc = state.kycVia === 'ocr';
     const ver = [
@@ -708,6 +717,18 @@
     </div>`;
   }
   // the agent-driven default: DigiLocker already linked off the verified mobile
+  // RBI liveness + face-match: a quick live selfie, shown as its own screen
+  function kycLiveness() {
+    const id = state.identity || {};
+    return `<div class="panel liveness">
+      <h3 class="sub-h">🤳 Quick liveness check</h3>
+      <p class="muted">One live selfie so I can confirm you’re really here and match your face to your verified ID (an RBI requirement). Look straight at the camera, good light, no cap or glasses.</p>
+      <div class="liveness__frame"><span class="liveness__ring"></span><span class="liveness__face">${esc(id.photoInitials || '🙂')}</span></div>
+      <ul class="liveness__reqs"><li>Face inside the circle</li><li>Well-lit, plain background</li><li>Blink when asked</li></ul>
+      <button class="btn btn--primary btn--block" data-action="liveness-capture">Capture my selfie →</button>
+      <p class="trust">🔒 Your selfie is used only to match your ID and is encrypted. We never post it anywhere.</p>
+    </div>`;
+  }
   function kycDigiLocker() {
     const docs = C.digiLockerDocs || [];
     const dlm = state.dlMobile || state.mobile || '';
@@ -1069,6 +1090,7 @@
       case 'vcip-schedule': toast('We’ll text you a secure link to pick a V-CIP slot (simulated). Your progress is saved.', 'success'); break;
       case 'dl-allow': await dlAllow(); break;
       case 'dl-verify-otp': await dlVerifyOtp(); break;
+      case 'liveness-capture': await livenessCapture(); break;
       case 'dl-deny': dlDeny(); break;
       case 'edit-kyc': toast('In production you could edit any pre-filled field here.'); break;
       case 'confirm-kyc': state.kycComplete = true; save(); nextStage(); break;
@@ -1251,6 +1273,17 @@
     await INT.aadhaarVerifyOtp();
     await runKycFetch('digilocker');
   }
+  async function livenessCapture() {
+    const res = await runAgent('Liveness check & face match', [
+      { id: 'cap', icon: '📸', label: 'Capturing your live selfie', fn: () => INT.delay(900), tag: () => 'captured' },
+      { id: 'live', icon: '👁️', label: 'Liveness check (anti-spoof)', fn: () => INT.delay(900), tag: () => 'live ✓' },
+      { id: 'match', icon: '🤝', label: 'Matching your face to your verified ID', fn: () => INT.livenessFaceMatch(), tag: (r) => 'match ' + Math.round((r.faceMatchScore || 0.95) * 100) + '%' },
+    ]);
+    state.face = res.match;
+    state.livenessDone = true; save();
+    renderStage();
+    toast('✓ Liveness confirmed — face matched your ID.', 'success');
+  }
   function dlDeny() {
     $('#dlModal').hidden = true;
     toast('No problem — you can complete KYC by video (V-CIP) or at a branch.');
@@ -1292,9 +1325,10 @@
     state.vcip = method === 'vcip';
     state.dlLinked = method === 'digilocker';
     state.kycVia = method;
+    state.livenessDone = method === 'vcip'; // V-CIP confirms liveness live; others do a selfie next
     save();
     renderStage();
-    toast('✓ Documents verified — your application is auto-filled.', 'success');
+    toast('✓ Documents verified — now a quick liveness selfie.', 'success');
     track('kyc_done', { method, ckyc: state.ckyc && state.ckyc.found });
   }
 
