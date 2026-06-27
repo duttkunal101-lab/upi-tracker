@@ -916,3 +916,35 @@ body {
 /* "OTP sent to …" line after the number is locked */
 .sent-to { font-size: 0.84rem; color: var(--muted); margin-bottom: 0.7rem; }
 .sent-to a { color: var(--burgundy); font-weight: 700; }
+
+/* liveness: Aadhaar photo → matched against the live selfie */
+.live-match { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin: 0.6rem 0 1.1rem; }
+.live-match__col { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; font-size: 0.74rem; color: var(--muted); font-weight: 600; }
+.live-match__pic { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; font-size: 2.2rem; overflow: hidden; }
+.live-match__pic--id { background: radial-gradient(circle at 50% 35%, #efe2e8, #e3d0d9); border: 3px solid var(--ok); color: var(--burgundy); font-weight: 800; font-size: 1.4rem; }
+.liveness__frame.live-match__pic { width: 88px; height: 88px; margin: 0; }
+.live-match__vs { font-size: 0.66rem; font-weight: 800; color: var(--burgundy); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ═══════════════════ iOS-level polish v3 ═══════════════════ */
+* { -webkit-tap-highlight-color: transparent; }
+/* softer, layered depth on surfaces */
+.panel, .kyc-card, .card-hero, .offer, .welcome, .vcardlet, .flow__step, .getapp, .mitc, .kfs, .metrics {
+  box-shadow: 0 1px 2px rgba(35,18,27,0.04), 0 10px 26px -14px rgba(35,18,27,0.16); }
+/* tactile spring on every tappable element */
+.btn:active, .chip:active, .kyc-method:active, .kyc-alt:active, .tile:active, .seg__btn:active, .store-btn:active, .step-dot:active, .appbar__track:active { transform: scale(0.965); }
+.kyc-method, .tile, .chip, .seg__btn, .kyc-alt, .card-mini, .vcardlet { transition: transform 0.14s var(--ease), background 0.2s, border-color 0.2s, box-shadow 0.25s; }
+@media (hover: hover) { .kyc-method:hover, .tile:hover, .card-mini:hover, .vcardlet:hover { transform: translateY(-2px); } }
+/* smoother, spring stage entrance */
+#stageRoot.is-in { animation: stageIn 0.5s cubic-bezier(0.22,1,0.36,1); }
+@keyframes stageIn { from { opacity: 0; transform: translateY(12px) scale(0.99); } to { opacity: 1; transform: none; } }
+/* inputs: subtle inner depth, larger, calmer focus ring */
+.fld__input { box-shadow: inset 0 1px 2px rgba(35,18,27,0.05); font-size: 1.04rem; }
+.fld__input:focus { box-shadow: inset 0 1px 2px rgba(35,18,27,0.05), 0 0 0 4px rgba(151,20,77,0.10); }
+/* primary CTA: taller iOS pill */
+.btn--block { min-height: 54px; border-radius: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.btn--primary { box-shadow: 0 1px 1px rgba(151,20,77,0.18), 0 10px 22px -10px rgba(151,20,77,0.5); }
+/* frosted chrome */
+.nav, .wizbar { backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
+/* drawers/sheets: deeper, smoother */
+.copilot, .tracker, .blueprint { box-shadow: 0 30px 80px -30px rgba(35,18,27,0.5); }
+.toast { border-radius: 16px; backdrop-filter: blur(8px); }
