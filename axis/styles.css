@@ -655,3 +655,129 @@ body {
 @media (max-width: 520px) {
   .vcip__cols { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * iOS REDESIGN v2 — calm surfaces · one restrained accent · clear hierarchy
+ * Appended last so it wins the cascade. Most of the calm comes from softening
+ * the design tokens below (every bordered/shadowed element inherits it).
+ * ═════════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #f4f1f3;            /* calmer, near-neutral canvas */
+  --surface: #ffffff;
+  --surface-2: #f6f3f5;    /* whisper-subtle fill */
+  --line: #ebe6e9;         /* lighter hairlines */
+  --line-2: #e0d8dd;
+  --ink: #23121b;
+  --muted: #7a6a72;
+  --muted-2: #a99aa3;
+  --radius: 20px;
+  --radius-sm: 14px;
+  --shadow: 0 14px 40px -22px rgba(35, 18, 27, 0.34);
+  --shadow-sm: 0 4px 18px -12px rgba(35, 18, 27, 0.22);
+  --nav-h: 54px;
+}
+body {
+  line-height: 1.5; letter-spacing: -0.006em;
+  background:
+    radial-gradient(820px 420px at 90% -10%, rgba(174, 39, 95, 0.055), transparent 60%),
+    radial-gradient(640px 380px at -8% 2%, rgba(199, 150, 43, 0.045), transparent 55%),
+    var(--bg);
+}
+
+/* ---- unified, sticky app header (appbar + stepper + progress as one card) -- */
+.wizbar { position: sticky; top: var(--nav-h); z-index: 30; background: rgba(255,255,255,0.78);
+  backdrop-filter: saturate(160%) blur(16px); -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm);
+  padding: 0.6rem 0.85rem 0.7rem; margin-bottom: 1.4rem; }
+.appbar { background: transparent; border: none; box-shadow: none; border-radius: 0; padding: 0.1rem 0.15rem 0.5rem; margin-bottom: 0.5rem; gap: 0.5rem; border-bottom: 1px solid var(--line); }
+.appbar__ref { font-size: 0.74rem; }
+.appbar__status { background: transparent; border: none; padding: 0; color: var(--burgundy); font-size: 0.74rem; }
+.appbar__pts { font-size: 0.72rem; }
+.appbar__track { box-shadow: none; }
+/* stepper → even, connected segments; labels hidden for a clean uniform track */
+.stepper { gap: 0; margin-bottom: 0.55rem; }
+.step-dot__label { display: none !important; }
+.step-dot__num { width: 18px; height: 18px; font-size: 0.62rem; border-color: var(--line-2); }
+.step-dot.is-active .step-dot__num { transform: scale(1.18); box-shadow: 0 0 0 4px rgba(151,20,77,0.12); }
+.step-line { flex: 1; min-width: 8px; height: 3px; background: var(--line); }
+.step-dot.is-done + .step-line, .step-dot.is-active + .step-line { background: linear-gradient(90deg, var(--ok), var(--line)); }
+.progress { margin: 0; justify-content: center; }
+.progress__bar { display: none; }
+.progress__note { font-size: 0.72rem; color: var(--muted-2); }
+@media (max-width: 560px) { .wizbar { position: static; top: auto; } }
+
+/* ---- refined, tactile buttons (flat iOS fills, no hover lift) ------------- */
+.btn { border-radius: 14px; font-weight: 650; letter-spacing: -0.01em; }
+.btn:hover { transform: none; }
+.btn:active { transform: scale(0.97); }
+.btn--primary { background: var(--burgundy); box-shadow: 0 10px 24px -12px rgba(151,20,77,0.5); }
+.btn--primary:hover { background: #88123f; box-shadow: 0 12px 26px -12px rgba(151,20,77,0.55); }
+.btn--ghost { background: var(--surface-2); border-color: transparent; color: var(--burgundy); }
+.btn--ghost:hover { background: #efe8ec; border-color: transparent; }
+.btn--block { padding: 0.95rem 1.4rem; min-height: 52px; border-radius: 14px; margin-top: 0.7rem; font-size: 1rem; }
+.btn--lg { border-radius: 15px; }
+
+/* ---- stage cards: unified radius / padding / soft float, fewer borders ---- */
+.panel, .kyc-card, .card-hero, .welcome { padding: 1.5rem 1.35rem; }
+.stage-head { margin-bottom: 1.4rem; }
+.stage-head__icon { font-size: 1.7rem; opacity: 0.9; }
+.stage-head__title { font-size: 1.46rem; letter-spacing: -0.025em; }
+.stage-head__sub { font-size: 0.92rem; max-width: 30rem; margin-left: auto; margin-right: auto; }
+
+/* ---- agent-lead: clean white assistant card with a single accent edge ----- */
+.agent-lead { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--burgundy);
+  box-shadow: var(--shadow-sm); border-radius: 16px; padding: 1rem 1.1rem; gap: 0.8rem; }
+.agent-lead__avatar { box-shadow: 0 6px 14px -6px rgba(151,20,77,0.6); }
+.agent-lead__msg { font-size: 0.92rem; color: var(--ink); }
+.agent-lead__plan { background: var(--surface-2); border-color: var(--line); border-radius: 12px; }
+
+/* ---- trust: quiet neutral chips (premium, not loud) ---------------------- */
+.trust-row { gap: 0.4rem; margin-bottom: 1.1rem; }
+.trust-row__item { color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); font-weight: 600; }
+.why-safe { background: var(--surface); border-color: var(--line); }
+.why-safe summary { color: var(--muted); }
+
+/* ---- offer: calm white card; the green pill + big number are the accents -- */
+.offer { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); padding: 1.6rem 1.3rem; }
+.offer--refer { background: var(--surface); }
+.offer__limit { font-size: 2.5rem; letter-spacing: -0.03em; }
+.offer__card { font-size: 1.05rem; color: var(--muted); font-weight: 700; }
+
+/* ---- calmer accents on the remaining tinted blocks ----------------------- */
+.welcome__nudge, .fasttrack { background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 12px; }
+.resume { background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--gold); }
+.dl-link { background: var(--surface-2); border-color: var(--line); border-radius: 16px; }
+.cooloff { background: var(--surface-2); border-color: var(--line); }
+.kfs { background: var(--surface-2); border: 1px solid var(--line); }
+.metrics { background: var(--surface); }
+.pill { background: var(--surface); border-color: var(--line); }
+
+/* ---- fields + chips: a touch larger, calmer focus --------------------- */
+.fld__input { border-radius: 13px; padding: 0.82rem 0.95rem; }
+.fld__input:focus { box-shadow: 0 0 0 4px rgba(151,20,77,0.10); }
+.fld__prefix { border-radius: 13px 0 0 13px; }
+.fld__inrow .fld__input { border-radius: 0 13px 13px 0; }
+.chip { border-radius: 12px; }
+.chip.is-on { background: rgba(151,20,77,0.08); }
+.seg { border-radius: 13px; }
+
+/* ---- grouped "inset list" feel for KV / docs (iOS table style) ------------ */
+.kyc-rows, .kfs, .kfs-mini, .docs { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 0.1rem 0.9rem; }
+.docs { padding: 0.55rem 0.7rem; gap: 0.45rem; }
+.doc { background: var(--surface); }
+.kv { padding: 0.66rem 0; }
+.kfs { padding: 0.3rem 1rem; }
+
+/* ---- sheets / drawers: iOS sheet polish + grabber on the chat ------------- */
+.copilot { border-radius: 22px 22px 18px 18px; }
+.copilot__head { position: relative; padding-top: 1.1rem; }
+.copilot__head::before { content: ''; position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 999px; background: var(--line-2); }
+.tracker, .blueprint { box-shadow: -24px 0 60px -34px rgba(35,18,27,0.5); }
+.copilot-launcher { border-radius: 16px; box-shadow: 0 14px 30px -14px rgba(151,20,77,0.55); }
+
+/* ---- a bit more vertical rhythm on phones -------------------------------- */
+@media (max-width: 520px) {
+  .panel, .kyc-card, .card-hero, .welcome { padding: 1.3rem 1.1rem; }
+  .stage-head__title { font-size: 1.32rem; }
+  .offer__limit { font-size: 2.2rem; }
+}
