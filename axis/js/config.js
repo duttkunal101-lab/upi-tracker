@@ -207,7 +207,13 @@
   };
   /* Clean, structured display name shown on the card face. */
   const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', 'insta-easy': 'Insta Easy' };
-  cards.forEach((c) => { c.rewards = cardRewards[c.id] || {}; c.shortName = cardShortName[c.id] || c.name; });
+  // Drop-in card artwork: put a PNG named <id>.png in axis/assets/cards/ (e.g. ace.png)
+  // and it replaces the rendered card automatically. Missing files fall back gracefully.
+  cards.forEach((c) => {
+    c.rewards = cardRewards[c.id] || {};
+    c.shortName = cardShortName[c.id] || c.name;
+    if (!c.image) c.image = 'assets/cards/' + c.id + '.png';
+  });
 
   /* Lifestyle tags the agent asks about (minimum-click product discovery). */
   const profileTags = [
