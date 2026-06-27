@@ -781,3 +781,91 @@ body {
   .stage-head__title { font-size: 1.32rem; }
   .offer__limit { font-size: 2.2rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * AGENTIC v2 — NTB/ETB · DigiLocker-link · budget value · card redesign ·
+ * gamification XP · download-app. Appended last (wins the cascade).
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+/* ---- credit-card face: real-card structure (overrides earlier absolute bits) */
+.card-face { display: flex; flex-direction: column; height: 200px; padding: 1.1rem 1.2rem; border-radius: 18px; gap: 0.4rem; }
+.card-face__top { display: flex; align-items: flex-start; justify-content: space-between; z-index: 2; }
+.card-face__bank { position: static; font-weight: 800; letter-spacing: 0.13em; font-size: 0.84rem; }
+.card-face__logo { position: static; height: 22px; max-width: 76px; }
+.card-face__chip { position: absolute; top: 3.3rem; left: 1.2rem; width: 44px; height: 33px; border-radius: 6px; z-index: 2; }
+.card-face__wave { position: absolute; top: 3.5rem; left: 4rem; width: 18px; height: 20px; z-index: 2; opacity: 0.9; }
+.card-face__wave::before, .card-face__wave::after { content: ''; position: absolute; inset: 0; border: 2px solid #fff; border-radius: 50%; clip-path: polygon(46% 0, 100% 0, 100% 100%, 46% 100%); }
+.card-face__wave::after { inset: 5px; }
+.card-face__id { position: static; margin-top: auto; z-index: 2; }
+.card-face__name { position: static; display: block; font-weight: 800; font-size: 1.4rem; letter-spacing: -0.01em; max-width: 100%; }
+.card-face__seg { font-size: 0.72rem; opacity: 0.86; font-weight: 600; }
+.card-face__foot { display: flex; align-items: flex-end; justify-content: space-between; z-index: 2; margin-top: 0.3rem; }
+.card-face__type { font-size: 0.6rem; letter-spacing: 0.2em; opacity: 0.82; font-weight: 700; }
+.card-face__net { position: static; font-style: italic; font-weight: 800; font-size: 1.05rem; }
+.card-face--sm { height: 124px; padding: 0.75rem 0.85rem; gap: 0.2rem; }
+.card-face--sm .card-face__bank { font-size: 0.62rem; letter-spacing: 0.1em; }
+.card-face--sm .card-face__logo { height: 14px; }
+.card-face--sm .card-face__chip { width: 28px; height: 21px; top: 2.1rem; left: 0.85rem; }
+.card-face--sm .card-face__wave { display: none; }
+.card-face--sm .card-face__name { font-size: 0.98rem; }
+.card-face--sm .card-face__type { font-size: 0.5rem; }
+.card-face--sm .card-face__net { font-size: 0.82rem; }
+.card-hero .card-face { height: 210px; }
+
+/* ---- NTB / ETB relationship banner --------------------------------------- */
+.rel { border-radius: 14px; padding: 0.85rem 1rem; margin-bottom: 1rem; border: 1px solid var(--line); }
+.rel--ntb { background: linear-gradient(100deg, rgba(174,39,95,0.08), rgba(199,150,43,0.06)); border-color: var(--line-2); }
+.rel--etb { background: linear-gradient(100deg, rgba(31,138,112,0.10), rgba(31,138,112,0.04)); border-color: rgba(31,138,112,0.25); }
+.rel__badge { display: inline-block; font-size: 0.72rem; font-weight: 800; padding: 0.22rem 0.62rem; border-radius: 999px; background: #fff; border: 1px solid var(--line-2); color: var(--burgundy); margin-bottom: 0.45rem; }
+.rel--etb .rel__badge { color: var(--ok); border-color: rgba(31,138,112,0.3); }
+.rel__line { font-size: 0.86rem; color: var(--ink); line-height: 1.5; }
+
+/* ---- budget capture sliders ---------------------------------------------- */
+.budget { margin: 0.4rem 0 0.7rem; }
+.bgt-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.15rem 0.7rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+.bgt-row--other { border-bottom: none; }
+.bgt-row__lb { font-size: 0.88rem; font-weight: 600; }
+.bgt-row__val { font-size: 0.86rem; font-weight: 800; color: var(--burgundy); text-align: right; min-width: 60px; font-variant-numeric: tabular-nums; }
+.bgt-row__slider { grid-column: 1 / -1; width: 100%; accent-color: var(--burgundy); height: 26px; cursor: pointer; }
+.budget__total { display: flex; justify-content: space-between; align-items: center; margin-top: 0.7rem; padding: 0.7rem 0.95rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; font-size: 0.9rem; font-weight: 600; }
+.budget__total strong { font-size: 1.15rem; color: var(--burgundy); font-variant-numeric: tabular-nums; }
+
+/* ---- the agent's value comparison ---------------------------------------- */
+.vcompare { margin: 1rem 0; }
+.vcomp { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 0.6rem; padding: 0.34rem 0; font-size: 0.82rem; }
+.vcomp__nm { font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vcomp__bar { height: 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.vcomp__bar i { display: block; height: 100%; border-radius: 999px; background: var(--line-2); transition: width 0.6s var(--ease); }
+.vcomp__val { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vcomp.is-top .vcomp__nm { color: var(--burgundy); }
+.vcomp.is-top .vcomp__bar i { background: linear-gradient(90deg, var(--burgundy), var(--gold)); }
+.vcomp.is-top .vcomp__val { color: var(--burgundy); }
+.vcompare__note { font-size: 0.74rem; margin-top: 0.45rem; }
+
+/* ---- gamification: XP / level bar in the header --------------------------- */
+.xp { flex-basis: 100%; display: flex; align-items: center; gap: 0.55rem; margin-top: 0.5rem; }
+.xp__lv { font-size: 0.7rem; font-weight: 800; color: var(--burgundy); white-space: nowrap; }
+.xp__bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.xp__bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gold), var(--burgundy-2)); transition: width 0.6s var(--ease); }
+.xp__nx { font-size: 0.64rem; color: var(--muted-2); white-space: nowrap; }
+
+/* ---- the "+N pts" float now carries an unlock line ----------------------- */
+.pts-float { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 0.4rem 0.75rem; text-align: right; }
+.pts-float span { font-size: 0.6rem; font-weight: 700; color: #fff; opacity: 0.92; max-width: 170px; letter-spacing: 0; }
+
+/* ---- field hint (e.g. DigiLocker-linked number) -------------------------- */
+.fld__hint { display: block; font-size: 0.74rem; color: var(--muted); margin-top: 0.35rem; line-height: 1.4; }
+
+/* ---- "download the Axis app" finisher ------------------------------------ */
+.getapp { background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.05rem; margin: 1.1rem 0; text-align: left; }
+.getapp__head { display: flex; gap: 0.7rem; align-items: flex-start; margin-bottom: 0.8rem; }
+.getapp__logo { flex: none; width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--burgundy), var(--plum)); color: #fff; font-weight: 800; font-size: 1.3rem; display: grid; place-items: center; }
+.getapp__head strong { font-size: 0.96rem; }
+.getapp__head .muted { display: block; font-size: 0.8rem; margin-top: 0.15rem; }
+.getapp__btns { display: flex; gap: 0.6rem; }
+.store-btn { flex: 1; display: flex; align-items: center; gap: 0.5rem; text-decoration: none; background: var(--ink); color: #fff; border-radius: 12px; padding: 0.55rem 0.7rem; transition: transform 0.14s var(--ease), opacity 0.2s; }
+.store-btn:active { transform: scale(0.97); }
+.store-btn__ic { font-size: 1.15rem; line-height: 1; }
+.store-btn__tx { display: flex; flex-direction: column; line-height: 1.12; }
+.store-btn__tx small { font-size: 0.56rem; opacity: 0.85; letter-spacing: 0.02em; }
+.store-btn__tx b { font-size: 0.9rem; font-weight: 700; }

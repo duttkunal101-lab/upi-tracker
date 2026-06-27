@@ -30,6 +30,11 @@
     agentName: 'Aria',
     agentRole: 'your AI onboarding agent',
     logo: 'https://logo.clearbit.com/axisbank.com', // real Axis Bank logo (CDN, hotlink-friendly)
+    // Official Axis Bank mobile-banking app (verified store links)
+    appLinks: {
+      ios: 'https://apps.apple.com/in/app/axis-bank-mobile-banking/id699582556',
+      android: 'https://play.google.com/store/apps/details?id=com.axis.mobile&hl=en_IN',
+    },
     // Axis Bank brand palette (burgundy primary, raspberry + gold accents).
     // Swap these for the official brand book values when productionising.
     colors: {
@@ -187,6 +192,22 @@
       secured: true,
     },
   ];
+
+  /* Per-card reward VALUE rates by spend category (indicative ₹-back per ₹1),
+   * used by the agent to compute estimated annual value for a customer's budget
+   * and recommend the highest-value card. Miles/points are valued in rupees. */
+  const cardRewards = {
+    ace:          { shopping: 0.015, travel: 0.015, bills: 0.05, food: 0.04, entertainment: 0.015, cabs: 0.04, other: 0.015 },
+    flipkart:     { shopping: 0.05,  travel: 0.015, bills: 0.015, food: 0.04, entertainment: 0.04, cabs: 0.04, other: 0.01 },
+    atlas:        { shopping: 0.02,  travel: 0.05,  bills: 0.02, food: 0.02, entertainment: 0.02, cabs: 0.02, other: 0.02 },
+    airtel:       { shopping: 0.01,  travel: 0.01,  bills: 0.10, food: 0.10, entertainment: 0.01, cabs: 0.01, other: 0.01 },
+    myzone:       { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.05, entertainment: 0.05, cabs: 0.01, other: 0.01 },
+    neo:          { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.02, entertainment: 0.02, cabs: 0.01, other: 0.005 },
+    'insta-easy': { shopping: 0.01,  travel: 0.01,  bills: 0.01, food: 0.01, entertainment: 0.01, cabs: 0.01, other: 0.01 },
+  };
+  /* Clean, structured display name shown on the card face. */
+  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', 'insta-easy': 'Insta Easy' };
+  cards.forEach((c) => { c.rewards = cardRewards[c.id] || {}; c.shortName = cardShortName[c.id] || c.name; });
 
   /* Lifestyle tags the agent asks about (minimum-click product discovery). */
   const profileTags = [
@@ -617,7 +638,7 @@
     },
   };
 
-  /* gamification — points, milestone badges, and "card school" knowledge */
+  /* gamification — points, levels, milestone badges, and "card school" knowledge */
   const gamify = {
     points: { start: 20, kyc: 40, product: 20, assessment: 30, decision: 20, agreement: 20, issuance: 50 },
     badges: {
@@ -628,6 +649,28 @@
       issuance: { icon: '💳', label: 'Card Unlocked!' },
     },
     levels: ['Newcomer', 'Explorer', 'Achiever', 'Cardholder'],
+    levelSize: 60, // points per level (start→issuance totals 200 → reaches Cardholder)
+    // a tangible "you just unlocked…" line per milestone, shown on the points pop
+    unlocks: {
+      kyc: 'Identity locked in — your data is vaulted 🔐',
+      product: 'Best-value card matched to your budget 🎯',
+      assessment: 'Eligibility cleared — limit incoming 📈',
+      decision: 'Approved! Your limit is set ⭐',
+      agreement: 'Signed & sealed ✍️',
+      issuance: 'Card unlocked — rewards now live 💳',
+    },
+  };
+
+  /* NTB / ETB — the relationship the agent detects and explains to the customer */
+  const relationship = {
+    ntb: {
+      tag: 'New to Axis', code: 'NTB', icon: '🆕',
+      line: 'You’re new to Axis Bank, so I’ll complete a one-time full KYC for you — a regulatory must for a new relationship (RBI). I’ll do the heavy lifting.',
+    },
+    etb: {
+      tag: 'Existing Axis customer', code: 'ETB', icon: '✓',
+      line: 'Welcome back — you’re already an Axis customer, so I can reuse your existing KYC and fast-track you with fewer steps.',
+    },
   };
 
   /* the agent's agenda — the autonomous plan Aria executes for a NTB customer */
@@ -650,7 +693,7 @@
   window.AX_CONFIG = {
     brand, cards, profileTags, integrations, regulations,
     dataPoints, stages, legal, nudges, facts,
-    appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust,
+    appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust, relationship,
     // convenience lookups
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
     cardById: cards.reduce((m, c) => (m[c.id] = c, m), {}),
