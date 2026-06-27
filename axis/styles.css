@@ -872,3 +872,17 @@ body {
 
 /* portrait-orientation card art (e.g. Reserve) — show the whole card, letterbox in black */
 .card-face__full--fit { object-fit: contain; background: #000; }
+
+/* ---- KYC: verify-first summary + richer method chooser ------------------- */
+.verok { background: linear-gradient(100deg, rgba(31,138,112,0.09), rgba(31,138,112,0.03)); border: 1px solid rgba(31,138,112,0.25); border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1.1rem; }
+.verok__head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.verok__badge { font-size: 0.74rem; font-weight: 800; color: #fff; background: var(--ok); padding: 0.2rem 0.6rem; border-radius: 999px; }
+.verok__via { font-size: 0.74rem; color: var(--muted); }
+.verok__lead { font-size: 0.86rem; color: var(--ink); line-height: 1.5; margin-bottom: 0.6rem; }
+.verlist { display: flex; flex-direction: column; gap: 0.45rem; }
+.veritem { display: grid; grid-template-columns: 1.3rem 1fr auto; align-items: center; gap: 0.55rem; font-size: 0.82rem; }
+.veritem__ic { text-align: center; }
+.veritem__k { color: var(--ink); font-weight: 600; }
+.veritem__v { color: var(--ok); font-weight: 700; font-size: 0.74rem; text-align: right; }
+.kyc-method__meta { display: block; font-size: 0.7rem; color: var(--muted-2); margin-top: 0.3rem; font-weight: 600; }
+.kyc-method__b small { line-height: 1.4; }
