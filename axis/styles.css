@@ -894,3 +894,16 @@ body {
 /* real card artwork on the landing hero */
 .hero__art img.art-card { object-fit: cover; padding: 0; }
 .art-card { overflow: hidden; }
+
+/* home hero cards: show the whole card (no crop) */
+.hero__art img.art-card { object-fit: contain; }
+/* liveness / selfie capture screen */
+.liveness { text-align: center; }
+.liveness__frame { position: relative; width: 180px; height: 180px; margin: 0.4rem auto 1rem; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #f6eef1, #efe2e8); display: grid; place-items: center; border: 3px solid var(--burgundy); box-shadow: var(--shadow-sm); }
+.liveness__face { font-size: 4.4rem; }
+.liveness__ring { position: absolute; inset: -3px; border-radius: 50%; border: 3px solid transparent; border-top-color: var(--burgundy); animation: spin 1.4s linear infinite; opacity: 0.0; }
+.liveness.is-scanning .liveness__ring { opacity: 1; }
+.liveness__reqs { list-style: none; display: inline-flex; flex-direction: column; gap: 0.4rem; margin: 0.2rem auto 1rem; text-align: left; }
+.liveness__reqs li { position: relative; padding-left: 1.4rem; font-size: 0.86rem; color: var(--muted); }
+.liveness__reqs li::before { content: '✓'; position: absolute; left: 0; color: var(--ok); font-weight: 800; }

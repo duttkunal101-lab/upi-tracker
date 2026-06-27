@@ -259,6 +259,7 @@
     flipkart: 'assets/cards/flipkart-axis-credit-card.webp',
     reserve: 'assets/cards/Axis-Bank-Reserve-Credit-Card.png',
     lic: 'assets/cards/lic.png',
+    airtel: 'assets/cards/airtel.png', // cropped from the uploaded collage
   };
   // annual spend (₹) that waives the joining/annual fee — used to weigh fees vs budget
   const cardFeeWaiverSpend = { ace: 200000, flipkart: 350000, airtel: 200000 };
