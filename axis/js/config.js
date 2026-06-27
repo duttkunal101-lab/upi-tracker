@@ -221,7 +221,10 @@
     c.rewards = cardRewards[c.id] || {};
     c.shortName = cardShortName[c.id] || c.name;
     c.feeWaiverSpend = cardFeeWaiverSpend[c.id] || 0;
-    if (cardImage[c.id]) c.image = cardImage[c.id];
+    // explicit uploaded art where we have it; else look for assets/cards/<id>.png
+    // (e.g. airtel.png, myzone.png, neo.png, insta-easy.png) — auto-appears on upload,
+    // falls back to the built-in design until then.
+    c.image = cardImage[c.id] || ('assets/cards/' + c.id + '.png');
   });
 
   /* Lifestyle tags the agent asks about (minimum-click product discovery). */
