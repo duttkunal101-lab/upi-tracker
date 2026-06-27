@@ -768,7 +768,7 @@
     return `<img class="card-face__logo" src="${esc(C.brand.logo)}" alt="Axis Bank" data-fb="${esc(fb)}" onerror="if(this.dataset.done){this.remove()}else{this.dataset.done=1;this.src=this.dataset.fb||''}"/>`;
   }
   // optional official card artwork — drop a URL or local path into a card's `image` field
-  function cardArt(card) { return card.image ? `<img class="card-face__full" src="${esc(card.image)}" alt="${esc(card.name)}" onerror="this.remove()"/>` : ''; }
+  function cardArt(card) { return card.image ? `<img class="card-face__full${card.portrait ? ' card-face__full--fit' : ''}" src="${esc(card.image)}" alt="${esc(card.name)}" onerror="this.remove()"/>` : ''; }
   // a real-credit-card layout: AXIS BANK wordmark + logo, chip, contactless, structured name, network
   function cardFace(card, sm) {
     return `<div class="card-face ${sm ? 'card-face--sm' : ''}" style="${cardSwatch(card)}">
@@ -808,7 +808,7 @@
   function virtualCardVisual(card, v) {
     return `<div class="vcard" style="${cardSwatch(card)}">
       ${cardLogo()}
-      <div class="vcard__top"><span>AXIS BANK</span><span class="vcard__live">● VIRTUAL · LIVE</span></div>
+      <div class="vcard__top"><span>AXIS BANK</span><span class="vcard__live">● VIRTUAL CREDIT CARD · LIVE</span></div>
       <div class="vcard__num">•••• •••• •••• ${esc(v.last4 || '0000')}</div>
       <div class="vcard__bot">
         <div><small>CARDMEMBER</small><div>${esc(v.name || 'CARDMEMBER')}</div></div>
