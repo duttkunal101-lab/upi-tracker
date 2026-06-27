@@ -271,6 +271,10 @@
     // falls back to the built-in design until then.
     c.image = cardImage[c.id] || ('assets/cards/' + c.id + '.png');
   });
+  // Active lineup = only cards we have REAL artwork for (+ the secured fallback),
+  // so every recommendation shows a real card. Upload airtel.png / myzone.png /
+  // neo.png to axis/assets/cards and add their id here to bring them back.
+  const liveCards = cards.filter((c) => cardImage[c.id] || c.secured);
 
   /* Lifestyle tags the agent asks about (minimum-click product discovery). */
   const profileTags = [
@@ -754,10 +758,10 @@
 
   /* ---------------------------------------------------------------- exports */
   window.AX_CONFIG = {
-    brand, cards, profileTags, integrations, regulations,
+    brand, cards: liveCards, profileTags, integrations, regulations,
     dataPoints, stages, legal, nudges, facts,
     appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust, relationship,
-    // convenience lookups
+    // convenience lookups (cardById spans the full catalogue for safe id lookups)
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
     cardById: cards.reduce((m, c) => (m[c.id] = c, m), {}),
   };

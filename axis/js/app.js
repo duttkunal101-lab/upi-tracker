@@ -30,7 +30,7 @@
     profile: { tags: [], employment: 'salaried' },
     budget: { shopping: 0, travel: 0, bills: 0, food: 0, entertainment: 0, cabs: 0, other: 5000 },
     cardId: null, valueRank: null,
-    dlMobile: '', dlLinked: false,
+    dlMobile: '', dlLinked: false, dlOtpSent: false,
     pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null,
     bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false,
@@ -729,7 +729,16 @@
         <div class="dl__docs">${docs.map((d) => `<div class="dl__doc"><div><strong>${esc(d.name)}</strong><div class="muted">${esc(d.issuer)} · ${esc(d.purpose)}</div></div><span class="dl__chk">consent</span></div>`).join('')}</div>
         <label class="consent"><input type="checkbox" id="consentKyc" checked/><span>I consent to share these issued documents with Axis Bank for this application (DPDP Act). You can revoke this in DigiLocker anytime. <a href="#" data-action="why" data-why="kyc">Why?</a></span></label>
       </div>
-      <button class="btn btn--primary btn--block" data-action="dl-allow">Allow &amp; fetch from DigiLocker →</button>
+      ${state.dlOtpSent ? `
+        <div class="dl-otp">
+          <p class="dl-otp__note">📲 DigiLocker sent a one-time passcode to your Aadhaar-linked mobile ••••${esc((state.dlMobile || state.mobile || '').slice(-2))}. Enter it to authorise the fetch.</p>
+          <label class="fld"><span class="fld__label">DigiLocker OTP <span class="muted">(demo: any 6 digits)</span></span>
+            <input id="dlOtp" class="fld__input fld__input--mono" inputmode="numeric" maxlength="6" placeholder="••••••" /></label>
+        </div>
+        <button class="btn btn--primary btn--block" data-action="dl-verify-otp">Verify OTP &amp; fetch my documents →</button>
+      ` : `
+        <button class="btn btn--primary btn--block" data-action="dl-allow">Allow &amp; send me a DigiLocker OTP →</button>
+      `}
       ${trustWhy('kyc')}
       <p class="trust">🪪 Your Aadhaar stays masked &amp; vaulted — we never store it in full. I verify everything before filling your form.</p>
     </div>`;
@@ -1051,7 +1060,7 @@
       /* stage 3 */
       case 'kyc-method': chooseKycMethod(el.dataset.method); break;
       case 'kyc-back': kycBack(); break;
-      case 'kyc-chooser': state.kycMethod = 'chooser'; save(); renderStage(); break;
+      case 'kyc-chooser': state.kycMethod = 'chooser'; state.dlOtpSent = false; save(); renderStage(); break;
       case 'aadhaar-otp': await aadhaarOtp(); break;
       case 'aadhaar-verify': await aadhaarVerify(); break;
       case 'ocr-upload': ocrUpload(el.dataset.doc); break;
@@ -1059,6 +1068,7 @@
       case 'vcip-start': await vcipStart(); break;
       case 'vcip-schedule': toast('We’ll text you a secure link to pick a V-CIP slot (simulated). Your progress is saved.', 'success'); break;
       case 'dl-allow': await dlAllow(); break;
+      case 'dl-verify-otp': await dlVerifyOtp(); break;
       case 'dl-deny': dlDeny(); break;
       case 'edit-kyc': toast('In production you could edit any pre-filled field here.'); break;
       case 'confirm-kyc': state.kycComplete = true; save(); nextStage(); break;
@@ -1179,9 +1189,9 @@
   // the agent drives DigiLocker by default; the customer can still switch method
   function chooseKycMethod(method) {
     track('kyc_method', { method });
-    state.kycMethod = method; save(); renderStage();
+    state.kycMethod = method; state.dlOtpSent = false; save(); renderStage();
   }
-  function kycBack() { state.kycMethod = null; save(); renderStage(); }
+  function kycBack() { state.kycMethod = null; state.dlOtpSent = false; save(); renderStage(); }
   async function aadhaarOtp() {
     const a = ($('#aadhaar').value || '').replace(/\D/g, '');
     if (a.length !== 12) { toast('Enter your 12-digit Aadhaar number.', 'error'); return; }
@@ -1230,8 +1240,15 @@
     const fld = $('#dlMobile');
     const dlm = fld ? (fld.value || '').replace(/\D/g, '') : (state.dlMobile || state.mobile);
     if (fld && dlm.length !== 10) { toast('Enter the 10-digit mobile linked to your Aadhaar.', 'error'); return; }
-    state.dlMobile = dlm || state.mobile; save();
-    if ($('#dlModal')) $('#dlModal').hidden = true;
+    state.dlMobile = dlm || state.mobile;
+    await INT.aadhaarSendOtp(state.dlMobile); // DigiLocker authenticates via an OTP to the Aadhaar-linked mobile
+    state.dlOtpSent = true; save(); renderStage();
+    toast('DigiLocker sent an OTP to your Aadhaar-linked mobile.', 'success');
+  }
+  async function dlVerifyOtp() {
+    const otp = ($('#dlOtp') ? $('#dlOtp').value : '').replace(/\D/g, '');
+    if (otp.length < 4) { toast('Enter the 6-digit DigiLocker OTP (any digits in this demo).', 'error'); return; }
+    await INT.aadhaarVerifyOtp();
     await runKycFetch('digilocker');
   }
   function dlDeny() {
