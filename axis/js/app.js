@@ -13,7 +13,7 @@
   const C = window.AX_CONFIG;
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
-  const STORE = 'axis.onboarding.v1';
+  const STORE = 'axis.onboarding.v2';
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -108,17 +108,10 @@
   function renderAppbar() {
     const el = $('#appbar'); if (!el) return;
     const status = C.appStatus[state.stage] || 'In progress';
-    const lv = levelInfo();
     el.innerHTML = `<span class="appbar__live"></span>
-      <span class="appbar__ref">App <strong>${esc(state.appRef)}</strong></span>
+      <span class="appbar__ref">Application <strong>${esc(state.appRef)}</strong></span>
       <span class="appbar__status">${esc(status)}</span>
-      <span class="appbar__pts" title="Level ${lv.idx + 1}: ${esc(lv.name)}">✨ ${state.points || 0} pts</span>
-      <button class="appbar__track" data-action="tracker-open" title="See live status, what's verified and your details">📋 Track</button>
-      <div class="xp">
-        <span class="xp__lv">⭐ ${esc(lv.name)}</span>
-        <span class="xp__bar"><i style="width:${lv.pct}%"></i></span>
-        <span class="xp__nx">${lv.atTop ? 'Top level reached' : lv.toNext + ' pts → ' + esc(lv.nextName)}</span>
-      </div>`;
+      <button class="appbar__track" data-action="tracker-open" title="See live status, what's verified and your details">📋 Track</button>`;
   }
 
   /* ----------------------------- gamification ----------------------------- */
@@ -754,7 +747,7 @@
     ];
     return `<div class="panel">
       ${relationshipBanner()}
-      <p class="ask">How would you like to verify your identity? <span class="muted">It’s <strong>your choice</strong> — all four are RBI-approved KYC. ${esc(C.brand.agentName)} recommends DigiLocker for speed; pick whatever you’re comfortable with.</span></p>
+      <p class="ask">Choose how to verify <span class="muted">— all four are RBI-approved. ${esc(C.brand.agentName)} suggests DigiLocker for speed.</span></p>
       <div class="kyc-methods">
         ${methods.map((m) => `<button class="kyc-method ${m.reco ? 'kyc-method--reco' : ''}" data-action="kyc-method" data-method="${m.id}">
           <span class="kyc-method__ic">${m.icon}</span>
@@ -969,7 +962,7 @@
       const pa = state.preApproved;
       msg = (pa && pa.preApproved)
         ? `I recognised your existing Axis relationship and a <strong>pre-approved offer up to ${inr(pa.indicativeLimit)}</strong> — I’ve fast-tracked you. Let’s verify it’s you and pick your card.`
-        : `I’m <strong>${esc(C.brand.agentName)}</strong>, your AI onboarding agent. Share your mobile number and I’ll verify it (an RBI/TRAI requirement), then check Axis’s records to see if you’re already a customer. I’ll guide you end-to-end and <strong>explain every step</strong>, so you’re always sure you’re doing the right thing.`;
+        : `I’m <strong>${esc(C.brand.agentName)}</strong> — I’ll do this application <em>for</em> you. Just your mobile number to start; I’ll handle the rest and explain each step as I go.`;
       plan = `<div class="agent-lead__plan"><span>My plan for you</span><ol>${C.agentPlan.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
     } else if (s === 'product') {
       msg = state._rec
@@ -979,7 +972,7 @@
       const rl = state.relationship && C.relationship[state.relationship];
       const m = state.kycMethod;
       if (!state.identity) {
-        if (!m || m === 'chooser') msg = `${rl ? rl.line + ' ' : ''}Now, how would you like to prove it’s you? It’s <strong>your choice</strong> — DigiLocker, Aadhaar OTP, document upload or a video call, all RBI-approved. Whatever you pick, I <strong>verify first, then fill</strong> your form from the verified source — never the other way round.`;
+        if (!m || m === 'chooser') msg = `${rl ? rl.line + ' ' : ''}<strong>How would you like to prove it’s you?</strong> Your pick — I verify first, then fill your form. Nothing’s assumed.`;
         else if (m === 'digilocker') msg = `Good pick. Confirm the mobile linked to your Aadhaar, give consent, and I’ll open DigiLocker and <strong>fetch each document in front of you</strong>, verify it, then fill your form. You stay in control.`;
         else if (m === 'aadhaar') msg = `Enter your Aadhaar number; UIDAI sends an OTP to your Aadhaar-linked mobile. I verify that first, then fetch your e-KYC — nothing is filled until it’s verified.`;
         else if (m === 'ocr') msg = `Upload or snap your Aadhaar and PAN and I’ll read them with OCR for you to check — handy if you don’t use DigiLocker. I validate them before anything is saved.`;
