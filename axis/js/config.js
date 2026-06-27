@@ -172,6 +172,47 @@
       minIncomeHint: 'Salaried ₹15,000+/month — accessible eligibility',
     },
     {
+      id: 'reserve',
+      name: 'Axis Bank Reserve Credit Card',
+      segment: 'Super-premium · invite',
+      tagline: 'An ultra-premium card for unlimited travel, lifestyle and concierge.',
+      annualFee: 50000,
+      feeWaiver: '₹50,000 joining fee — milestone EDGE Points & benefits offset it for high spenders',
+      network: 'Visa Infinite',
+      rewardUnit: 'EDGE Reward Points',
+      color: ['#0e0e0e', '#050505'],
+      bestFor: ['Unlimited lounges', '15–30 EDGE pts/₹200', 'Concierge & golf'],
+      highlights: [
+        '15 EDGE Reward Points per ₹200 spent; 30 per ₹200 on international & travel spends',
+        'Unlimited domestic & international airport lounge access (self + guest)',
+        'Complimentary golf, 24×7 concierge, BookMyShow & fine-dining privileges',
+        'Low 1.5% forex mark-up plus premium travel & purchase-protection covers',
+      ],
+      idealIf: ['premium', 'travel', 'hotels', 'flights'],
+      minIncomeHint: 'By invitation — for high-net-worth customers',
+      portrait: true,
+    },
+    {
+      id: 'lic',
+      name: 'LIC Axis Bank Credit Card',
+      segment: 'Insurance & everyday',
+      tagline: 'Co-branded with LIC — rewards on insurance premiums and everyday spends.',
+      annualFee: 0,
+      feeWaiver: 'Lifetime-free — no joining or annual fee',
+      network: 'Visa',
+      rewardUnit: 'Reward Points',
+      color: ['#7A0E3E', '#4A0A26'],
+      bestFor: ['Reward pts on LIC premiums', 'Lounge access', 'Lifetime free'],
+      highlights: [
+        'Reward Points on LIC insurance premium payments',
+        '2 Reward Points per ₹100 on everyday retail spends',
+        'Complimentary domestic airport lounge access each quarter',
+        'Fuel-surcharge waiver — and lifetime-free, no annual fee',
+      ],
+      idealIf: ['bills', 'everyday', 'beginner'],
+      minIncomeHint: 'Salaried or self-employed; popular with LIC policyholders',
+    },
+    {
       id: 'insta-easy',
       name: 'Axis Bank Insta Easy Credit Card (against Fixed Deposit)',
       segment: 'Secured · new-to-credit',
@@ -204,16 +245,20 @@
     airtel:       { shopping: 0.01,  travel: 0.01,  bills: 0.10, food: 0.10, entertainment: 0.01, cabs: 0.01, other: 0.01 },
     myzone:       { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.05, entertainment: 0.05, cabs: 0.01, other: 0.01 },
     neo:          { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.02, entertainment: 0.02, cabs: 0.01, other: 0.005 },
+    reserve:      { shopping: 0.015, travel: 0.03,  bills: 0.015, food: 0.015, entertainment: 0.015, cabs: 0.015, other: 0.015 },
+    lic:          { shopping: 0.005, travel: 0.005, bills: 0.02, food: 0.005, entertainment: 0.005, cabs: 0.005, other: 0.005 },
     'insta-easy': { shopping: 0.01,  travel: 0.01,  bills: 0.01, food: 0.01, entertainment: 0.01, cabs: 0.01, other: 0.01 },
   };
   /* Clean, structured display name shown on the card face. */
-  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', 'insta-easy': 'Insta Easy' };
+  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', reserve: 'Reserve', lic: 'LIC', 'insta-easy': 'Insta Easy' };
   // Real uploaded card artwork (mapped by the card shown in each image). Cards without
   // an uploaded image keep the built-in design. Drop more files in axis/assets/cards/.
   const cardImage = {
     ace: 'assets/cards/axis-bank-ace-credit-card.webp',
     atlas: 'assets/cards/Axis-Atlas-1.webp',
     flipkart: 'assets/cards/flipkart-axis-credit-card.webp',
+    reserve: 'assets/cards/Axis-Bank-Reserve-Credit-Card.png',
+    lic: 'assets/cards/lic.png',
   };
   // annual spend (₹) that waives the joining/annual fee — used to weigh fees vs budget
   const cardFeeWaiverSpend = { ace: 200000, flipkart: 350000, airtel: 200000 };
@@ -304,7 +349,7 @@
     'npci-pennydrop': {
       name: 'Bank account verification (penny-drop)',
       providers: 'NPCI / bank APIs (penny-drop & penny-less)',
-      purpose: 'Verify the customer’s bank account & name match for auto-debit and refunds.',
+      purpose: 'Verify the customer’s bank account & name match for auto-pay and refunds.',
       returns: 'Account validity, beneficiary name match',
     },
     'aml-screening': {
@@ -327,8 +372,8 @@
     },
     'enach': {
       name: 'e-Mandate / e-NACH (autopay)',
-      providers: 'NPCI NACH / e-Mandate (UPI Autopay, net-banking, debit card)',
-      purpose: 'Set up auto-debit for bill payment with the customer’s consent.',
+      providers: 'NPCI NACH / e-Mandate (UPI Autopay, net-banking)',
+      purpose: 'Set up auto-pay for bill payment with the customer’s consent.',
       returns: 'Active mandate (optional)',
     },
     'cms-issuer': {
@@ -366,7 +411,7 @@
   /* --------------------------------------------------------- regulatory map */
   const regulations = {
     'rbi-cc-2022': {
-      name: 'RBI Master Direction — Credit Card & Debit Card (Issuance & Conduct), 2022',
+      name: 'RBI Master Direction — Credit Card (Issuance & Conduct), 2022',
       summary: 'Explicit consent to issue, MITC/Key Fact Statement, no unsolicited cards, OTP-based activation within 30 days, billing transparency, cooling-off / look-up period.',
     },
     'kyc-md': {
@@ -424,7 +469,7 @@
     { field: 'Credit score & obligations', source: 'Credit bureau (CIBIL etc.)', mode: 'derived', consent: true },
     { field: 'Income / affordability', source: 'Account Aggregator / ITR / payslip', mode: 'derived', consent: true },
     { field: 'Employer & employment type', source: 'Account Aggregator (salary credits)', mode: 'derived', consent: true },
-    { field: 'Bank account (for auto-debit)', source: 'Penny-drop (NPCI)', mode: 'derived', consent: true },
+    { field: 'Bank account (for auto-pay)', source: 'Penny-drop (NPCI)', mode: 'derived', consent: true },
     { field: 'Spending preferences', source: 'Customer (lifestyle taps)', mode: 'asked', consent: false },
     { field: 'AML / sanctions status', source: 'Screening vendor + watchlists', mode: 'derived', consent: false },
     { field: 'Consent artifacts (timestamp, IP)', source: 'Consent capture (DPDP)', mode: 'derived', consent: true },
@@ -489,7 +534,7 @@
         'Verify your bank account with a penny-drop; screen for AML & fraud.',
         'If you’re new to credit, prepare a secured-card-against-FD path instead.',
       ],
-      dataPoints: ['Credit score & obligations', 'Income / affordability', 'Employer & employment type', 'Bank account (for auto-debit)', 'AML / sanctions status'],
+      dataPoints: ['Credit score & obligations', 'Income / affordability', 'Employer & employment type', 'Bank account (for auto-pay)', 'AML / sanctions status'],
       integrations: ['cibil-bureau', 'account-aggregator', 'npci-pennydrop', 'aml-screening', 'fraud-device'],
       regulations: ['cic-act', 'aa-depa', 'pmla', 'dpdp-2023'],
       nudge: 'A bureau check here is a “soft to hard” pull made only with your consent.',
@@ -534,7 +579,7 @@
         'Provision the card to mobile wallets via network tokenization.',
         'Set up e-NACH autopay if you opt in; respect 30-day activation consent rules.',
       ],
-      dataPoints: ['Bank account (for auto-debit)'],
+      dataPoints: ['Bank account (for auto-pay)'],
       integrations: ['cms-issuer', 'tokenization', 'enach', 'corebanking-crm'],
       regulations: ['rbi-cc-2022', 'it-localisation'],
       nudge: 'RBI requires your consent to keep the card active if it’s unused for 30 days.',

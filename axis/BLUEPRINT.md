@@ -88,7 +88,7 @@ points** captured, the **integrations** invoked, and the **regulatory** touchpoi
 - **Agent (auto):** create the account, credit line and an **instant virtual card**; dispatch the
   physical card; **tokenize** to wallets; set up **e-NACH** autopay if opted-in; respect the
   **30-day activation-consent** rule for unused cards.
-- **Data:** card account, virtual-card token, bank account (auto-debit).
+- **Data:** card account, virtual-card token, bank account (auto-pay).
 - **Integrations:** card management system / issuer processor, network + wallet tokenization,
   NPCI e-NACH, core banking.
 - **Regulatory:** RBI MD 2022 (30-day activation consent, tokenization), IT/data-localisation.
@@ -120,7 +120,7 @@ points** captured, the **integrations** invoked, and the **regulatory** touchpoi
 | 12 | AML / sanctions / PEP screening | Watchlist vendor + RBI/UN/OFAC lists | PMLA due-diligence + de-dupe |
 | 13 | Fraud & device intelligence | Device fingerprint + bureau fraud | Synthetic-identity / application fraud |
 | 14 | Aadhaar eSign | eSign ASP (NSDL/Protean) | Legally sign the agreement + MITC acceptance |
-| 15 | e-Mandate / e-NACH | NPCI NACH / UPI Autopay | Auto-debit for bill payment (optional) |
+| 15 | e-Mandate / e-NACH | NPCI NACH / UPI Autopay | Auto-pay for bill payment (optional) |
 | 16 | Card management / issuer processor | Issuer processor + card bureau | Account, credit line, virtual + physical card |
 | 17 | Network & wallet tokenization | Visa/Mastercard/RuPay + Apple/Google Pay | Secure card-on-file provisioning |
 | 18 | Core banking + CRM / CDP | Axis core + CRM | System of record + servicing + journeys |
@@ -150,7 +150,7 @@ points** captured, the **integrations** invoked, and the **regulatory** touchpoi
 | Credit score & obligations | Credit bureau | Derived | ✔ |
 | Income / affordability | Account Aggregator / ITR / payslip | Derived | ✔ |
 | Employment type | Customer | Asked | — |
-| Bank account (auto-debit) | Penny-drop (NPCI) | Derived | ✔ |
+| Bank account (auto-pay) | Penny-drop (NPCI) | Derived | ✔ |
 | Spending preferences | Customer (lifestyle taps) | Asked | — |
 | AML / sanctions status | Screening vendor | Derived | — |
 | Consent artifacts (timestamp, IP) | Consent capture (DPDP) | Derived | ✔ |
@@ -161,7 +161,7 @@ points** captured, the **integrations** invoked, and the **regulatory** touchpoi
 
 | Regulation | What it requires here |
 |---|---|
-| **RBI Master Direction — Credit Card & Debit Card (Issuance & Conduct), 2022** | Explicit consent to issue, MITC + Key Fact Statement, no unsolicited cards, OTP-based activation within 30 days, billing transparency, cooling-off / look-up period. |
+| **RBI Master Direction — Credit Card (Issuance & Conduct), 2022** | Explicit consent to issue, MITC + Key Fact Statement, no unsolicited cards, OTP-based activation within 30 days, billing transparency, cooling-off / look-up period. |
 | **RBI Master Direction — KYC, 2016 (amended)** | Customer Due Diligence via V-CIP, OVDs, CKYC, Aadhaar/OVD e-KYC, periodic updation. |
 | **Aadhaar Act & UIDAI regulations** | Consent-based Aadhaar use; number masked; stored in an Aadhaar Data Vault; no unauthorised retention. |
 | **Credit Information Companies (Regulation) Act, 2005** | Bureau queried only with explicit, purpose-specific consent. |

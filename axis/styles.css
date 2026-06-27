@@ -869,3 +869,6 @@ body {
 .store-btn__tx { display: flex; flex-direction: column; line-height: 1.12; }
 .store-btn__tx small { font-size: 0.56rem; opacity: 0.85; letter-spacing: 0.02em; }
 .store-btn__tx b { font-size: 0.9rem; font-weight: 700; }
+
+/* portrait-orientation card art (e.g. Reserve) — show the whole card, letterbox in black */
+.card-face__full--fit { object-fit: contain; background: #000; }
