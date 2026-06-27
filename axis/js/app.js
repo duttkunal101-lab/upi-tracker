@@ -26,13 +26,15 @@
   /* --------------------------------------------------------------- state */
   const fresh = () => ({
     stage: 'landing',
-    mobile: '', otpVerified: false, preApproved: null,
+    mobile: '', otpVerified: false, preApproved: null, relationship: null,
     profile: { tags: [], employment: 'salaried' },
-    cardId: null,
+    budget: { shopping: 0, travel: 0, bills: 0, food: 0, entertainment: 0, cabs: 0, other: 5000 },
+    cardId: null, valueRank: null,
+    dlMobile: '', dlLinked: false,
     pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null,
     bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false,
-    points: 0, awarded: {}, scratched: false,
+    points: 0, awarded: {}, scratched: false, level: 0,
     startedAt: Date.now(), done: false,
   });
   let state = fresh();
@@ -102,18 +104,21 @@
     else setStage('landing');
   }
 
-  function levelName() {
-    const idx = Math.min(Math.floor((state.points || 0) / 70), C.gamify.levels.length - 1);
-    return C.gamify.levels[idx];
-  }
+  function levelName() { return levelInfo().name; }
   function renderAppbar() {
     const el = $('#appbar'); if (!el) return;
     const status = C.appStatus[state.stage] || 'In progress';
+    const lv = levelInfo();
     el.innerHTML = `<span class="appbar__live"></span>
       <span class="appbar__ref">App <strong>${esc(state.appRef)}</strong></span>
       <span class="appbar__status">${esc(status)}</span>
-      <span class="appbar__pts" title="Level: ${esc(levelName())}">✨ ${state.points || 0} pts</span>
-      <button class="appbar__track" data-action="tracker-open" title="See live status, what's verified and your details">📋 Track</button>`;
+      <span class="appbar__pts" title="Level ${lv.idx + 1}: ${esc(lv.name)}">✨ ${state.points || 0} pts</span>
+      <button class="appbar__track" data-action="tracker-open" title="See live status, what's verified and your details">📋 Track</button>
+      <div class="xp">
+        <span class="xp__lv">⭐ ${esc(lv.name)}</span>
+        <span class="xp__bar"><i style="width:${lv.pct}%"></i></span>
+        <span class="xp__nx">${lv.atTop ? 'Top level reached' : lv.toNext + ' pts → ' + esc(lv.nextName)}</span>
+      </div>`;
   }
 
   /* ----------------------------- gamification ----------------------------- */
@@ -122,16 +127,21 @@
     state.awarded = state.awarded || {};
     if (state.awarded[from]) return;
     state.awarded[from] = true;
+    const size = (C.gamify.levelSize) || 60;
+    const beforeLv = Math.floor((state.points || 0) / size);
     const pts = C.gamify.points[from] || 0;
-    if (pts) { state.points = (state.points || 0) + pts; floatPoints(pts); }
+    if (pts) { state.points = (state.points || 0) + pts; floatPoints(pts, (C.gamify.unlocks && C.gamify.unlocks[from]) || ''); }
+    const afterLv = Math.floor((state.points || 0) / size);
     save();
     const badge = C.gamify.badges[from];
     if (badge) popBadge(badge);
+    if (afterLv > beforeLv) { setTimeout(() => popBadge({ icon: '⬆️', label: 'Level up · ' + levelInfo().name }), badge ? 1000 : 0); }
   }
-  function floatPoints(n) {
-    const f = document.createElement('div'); f.className = 'pts-float'; f.textContent = '+' + n + ' pts';
+  function floatPoints(n, label) {
+    const f = document.createElement('div'); f.className = 'pts-float';
+    f.innerHTML = '+' + n + ' pts' + (label ? `<span>${esc(label)}</span>` : '');
     document.body.appendChild(f);
-    setTimeout(() => f.remove(), 1400);
+    setTimeout(() => f.remove(), 1800);
   }
   function popBadge(badge) {
     const el = $('#badgePop'); if (!el) return;
@@ -270,32 +280,58 @@
     const rec = state._rec;
     let body;
     if (!rec) {
+      const catRow = (t) => `<div class="bgt-row">
+        <span class="bgt-row__lb">${t.icon} ${esc(t.label)}</span>
+        <input type="range" class="bgt-row__slider" data-budget="${t.id}" min="0" max="50000" step="1000" value="${Number(state.budget[t.id]) || 0}" aria-label="${esc(t.label)} monthly spend" />
+        <span class="bgt-row__val" data-budgetval="${t.id}">${inr(state.budget[t.id])}</span>
+      </div>`;
+      const selected = C.profileTags.filter((t) => state.profile.tags.includes(t.id));
       body = `
       <div class="panel">
-        <p class="ask">What do you spend on most? <span class="muted">Tap a few — ${C.brand.agentName} will match your card.</span></p>
+        <p class="ask">Where does your money go each month? <span class="muted">Tap your spends, then set the amounts — I’ll find the card that pays <strong>you</strong> the most.</span></p>
         <div class="chips" id="tagChips">
           ${C.profileTags.map((t) => `<button class="chip ${state.profile.tags.includes(t.id) ? 'is-on' : ''}" data-action="toggle-tag" data-tag="${t.id}">${t.icon} ${esc(t.label)}</button>`).join('')}
+        </div>
+        <div class="budget">
+          ${selected.map(catRow).join('')}
+          <div class="bgt-row bgt-row--other">
+            <span class="bgt-row__lb">🧮 Everything else</span>
+            <input type="range" class="bgt-row__slider" data-budget="other" min="0" max="100000" step="1000" value="${Number(state.budget.other) || 0}" aria-label="Everything else monthly spend" />
+            <span class="bgt-row__val" data-budgetval="other">${inr(state.budget.other)}</span>
+          </div>
+          <div class="budget__total">Your monthly spend <strong id="budgetTotal">${inr(budgetTotal())}</strong></div>
         </div>
         <p class="ask">You are…</p>
         <div class="seg">
           ${[['salaried', 'Salaried'], ['self', 'Self-employed'], ['ntc', 'New to credit']].map(([v, l]) =>
             `<button class="seg__btn ${state.profile.employment === v ? 'is-on' : ''}" data-action="set-emp" data-emp="${v}">${l}</button>`).join('')}
         </div>
-        <button class="btn btn--primary btn--block" data-action="recommend">✨ Let ${esc(C.brand.agentName)} recommend my card →</button>
+        <button class="btn btn--primary btn--block" data-action="recommend">✨ Find my best-value card →</button>
         <button class="btn btn--ghost btn--block" data-action="browse">Browse all cards myself</button>
       </div>`;
     } else {
-      body = cardHero(rec.card, rec.reason, true) + `
-        <div class="alts">
-          ${(rec.alternates || []).length ? `<p class="ask">Other good fits</p>` : ''}
-          <div class="alt-grid">
-            ${(rec.alternates || []).map((c) => cardMini(c)).join('')}
-          </div>
-          <button class="btn btn--ghost btn--block" data-action="browse">See all Axis cards</button>
-        </div>`;
+      body = cardHero(rec.card, rec.reason, true) + valueCompare() + `
+        <button class="btn btn--ghost btn--block" data-action="browse">See all Axis cards</button>
+        <button class="btn btn--ghost btn--block" data-action="reprofile">↻ Adjust my spends</button>`;
     }
     return { html: stageHead('product') + body };
   };
+
+  /* the agent's value comparison — shows WHY this card wins for the budget */
+  function valueCompare() {
+    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], gross: v.gross, net: v.net })).filter((r) => r.card);
+    if (!ranked.length) return '';
+    const max = ranked[0].gross || 1;
+    return `<div class="vcompare">
+      <div class="sec-label">💡 Your value, compared across cards</div>
+      ${ranked.map((r, i) => `<div class="vcomp ${i === 0 ? 'is-top' : ''}">
+        <span class="vcomp__nm">${esc(r.card.shortName)}${i === 0 ? ' · best for you' : ''}</span>
+        <span class="vcomp__bar"><i style="width:${Math.max(6, Math.round((r.gross / max) * 100))}%"></i></span>
+        <span class="vcomp__val">${inr(r.gross)}/yr</span>
+      </div>`).join('')}
+      <p class="muted vcompare__note">Estimated annual rewards on your ${inr(budgetTotal())}/month spend. Indicative — actual value depends on each card’s caps &amp; terms.</p>
+    </div>`;
+  }
 
   R._browse = function () {
     return { html: stageHead('product') + `
@@ -483,6 +519,7 @@
         </button>
         <div class="sec-label">📦 Track your card — ${esc(state.appRef || '')}</div>
         <div class="deliv" id="deliveryTrack"></div>
+        ${downloadAppCta()}
         <div class="welcome__nudge">💡 ${esc(C.stageByKey.welcome.nudge)} Make a first transaction to activate your rewards — we’ll text you each delivery update.</div>
         <button class="btn btn--primary btn--block" data-action="restart">Start a new application</button>
       </div>`,
@@ -530,6 +567,7 @@
     const deliveredAll = s.deliveryStep != null && s.deliveryStep >= (C.delivery.length - 1);
     const raw = [
       ['📱', 'Mobile verified', s.otpVerified, s.mobile ? '+91 •••••' + s.mobile.slice(-4) : ''],
+      ['🏦', 'Relationship checked', !!s.relationship, s.relationship && C.relationship[s.relationship] ? C.relationship[s.relationship].tag + ' · ' + C.relationship[s.relationship].code : ''],
       ['🎁', 'Pre-approved offer check', !!s.preApproved, s.preApproved ? (s.preApproved.preApproved ? 'pre-approved up to ' + inr(s.preApproved.indicativeLimit) : 'new to bank') : ''],
       ['💳', 'Card selected', !!s.cardId, card ? shortName(card) : ''],
       ['🪪', 'Identity verified (KYC)', !!s.identity, s.identity ? viaLabel(s.kycVia) : ''],
@@ -670,15 +708,26 @@
   // the agent-driven default: DigiLocker already linked off the verified mobile
   function kycDigiLocker() {
     const docs = C.digiLockerDocs || [];
+    const dlm = state.dlMobile || state.mobile || '';
+    const same = dlm === state.mobile;
     return `<div class="panel">
+      ${relationshipBanner()}
       ${trustRow()}
       <div class="dl-link">
         <div class="dl__head"><span class="dl__brand">🔐 DigiLocker</span><span class="dl__gov">Government of India · MeitY</span></div>
-        <p class="dl-link__lead">I’ve linked DigiLocker to the mobile you just verified. Approve once and I’ll fetch &amp; verify your KYC — <strong>including your PAN</strong> — automatically.</p>
+        <p class="dl-link__lead">DigiLocker pulls your documents from the mobile that’s <strong>linked to your Aadhaar</strong>. Confirm that number and I’ll link it, fetch &amp; verify your KYC — <strong>PAN included</strong> — automatically.</p>
+        <label class="fld">
+          <span class="fld__label">📱 Mobile linked to your DigiLocker / Aadhaar</span>
+          <div class="fld__inrow">
+            <span class="fld__prefix">+91</span>
+            <input id="dlMobile" class="fld__input" inputmode="numeric" maxlength="10" placeholder="10-digit Aadhaar-linked number" value="${esc(dlm)}" />
+          </div>
+          <span class="fld__hint">${same ? 'Same as the number you verified ✓ — leave it as is if your Aadhaar is on this number.' : 'I’ll send the DigiLocker link here.'}</span>
+        </label>
         <div class="dl__docs">${docs.map((d) => `<div class="dl__doc"><div><strong>${esc(d.name)}</strong><div class="muted">${esc(d.issuer)} · ${esc(d.purpose)}</div></div><span class="dl__chk">✓</span></div>`).join('')}</div>
         <label class="consent"><input type="checkbox" id="consentKyc" checked/><span>I consent to share these documents with Axis Bank for this application (DPDP Act). <a href="#" data-action="why" data-why="kyc">Why?</a></span></label>
       </div>
-      <button class="btn btn--primary btn--block" data-action="dl-allow">Allow DigiLocker &amp; auto-fill →</button>
+      <button class="btn btn--primary btn--block" data-action="dl-allow">Link DigiLocker &amp; auto-fill →</button>
       ${trustWhy('kyc')}
       <div class="kyc-alts">
         <span class="kyc-alts__lb">No DigiLocker, or prefer another way? I can also:</span>
@@ -716,16 +765,23 @@
   function cardLogo() { return C.brand.logo ? `<img class="card-face__logo" src="${esc(C.brand.logo)}" alt="Axis Bank" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='https://www.google.com/s2/favicons?domain=axisbank.com&amp;sz=128'}"/>` : ''; }
   // optional official card artwork — drop a URL or local path into a card's `image` field
   function cardArt(card) { return card.image ? `<img class="card-face__full" src="${esc(card.image)}" alt="${esc(card.name)}" onerror="this.remove()"/>` : ''; }
+  // a real-credit-card layout: AXIS BANK wordmark + logo, chip, contactless, structured name, network
+  function cardFace(card, sm) {
+    return `<div class="card-face ${sm ? 'card-face--sm' : ''}" style="${cardSwatch(card)}">
+      ${cardArt(card)}
+      <div class="card-face__top"><span class="card-face__bank">AXIS BANK</span>${cardLogo()}</div>
+      <span class="card-face__chip"></span><span class="card-face__wave" aria-hidden="true"></span>
+      <div class="card-face__id">
+        <span class="card-face__name">${esc(card.shortName || card.name)}</span>
+        ${sm ? '' : `<span class="card-face__seg">${esc(card.segment)}</span>`}
+      </div>
+      <div class="card-face__foot"><span class="card-face__type">CREDIT CARD</span><span class="card-face__net">${esc(card.network)}</span></div>
+    </div>`;
+  }
   function cardHero(card, reason, recommended) {
     return `<div class="card-hero">
       ${recommended ? `<span class="card-hero__badge">✨ ${C.brand.agentName}’s pick for you</span>` : ''}
-      <div class="card-face" style="${cardSwatch(card)}">
-        ${cardArt(card)}${cardLogo()}
-        <span class="card-face__bank">AXIS BANK</span>
-        <span class="card-face__chip"></span>
-        <span class="card-face__name">${esc(card.name.replace('Axis Bank ', '').replace(' Credit Card', ''))}</span>
-        <span class="card-face__net">${esc(card.network)}</span>
-      </div>
+      ${cardFace(card)}
       <div class="card-hero__body">
         <div class="card-hero__seg">${esc(card.segment)}</div>
         <p class="card-hero__reason">${esc(reason)}</p>
@@ -738,12 +794,7 @@
   }
   function cardMini(card, choose) {
     return `<div class="card-mini">
-      <div class="card-face card-face--sm" style="${cardSwatch(card)}">
-        ${cardArt(card)}${cardLogo()}
-        <span class="card-face__bank">AXIS</span>
-        <span class="card-face__name">${esc(card.name.replace('Axis Bank ', '').replace(' Credit Card', ''))}</span>
-        <span class="card-face__net">${esc(card.network)}</span>
-      </div>
+      ${cardFace(card, true)}
       <div class="card-mini__seg">${esc(card.segment)}</div>
       <div class="card-mini__tag">${esc(card.bestFor[0])}</div>
       <div class="card-mini__fee">${card.annualFee ? inr(card.annualFee) + '/yr' : 'Lifetime free'}</div>
@@ -827,6 +878,59 @@
       </div></details>`;
   }
 
+  /* ---- NTB / ETB relationship banner (the agent's decision, surfaced) ------- */
+  function relationshipBanner() {
+    const r = state.relationship && C.relationship[state.relationship];
+    if (!r) return '';
+    return `<div class="rel rel--${state.relationship}">
+      <span class="rel__badge">${r.icon} ${esc(r.tag)} · ${r.code}</span>
+      <p class="rel__line">${esc(r.line)}</p>
+    </div>`;
+  }
+
+  /* ---- budget-aware value model: the agent computes the best-value card ----- */
+  const SPEND_CATS = ['shopping', 'travel', 'bills', 'food', 'entertainment', 'cabs', 'other'];
+  const CAP_PER_CAT = 15000; // monthly accelerated-spend cap, keeps estimates realistic
+  function estimateAnnualValue(card, budget) {
+    const r = card.rewards || {}; const base = r.other != null ? r.other : 0.01;
+    let monthly = 0;
+    SPEND_CATS.forEach((cat) => {
+      const spend = Math.max(0, Number(budget[cat]) || 0);
+      const rate = r[cat] != null ? r[cat] : base;
+      monthly += Math.min(spend, CAP_PER_CAT) * rate + Math.max(0, spend - CAP_PER_CAT) * base;
+    });
+    return Math.round(monthly * 12);
+  }
+  function rankByValue(budget) {
+    return C.cards.filter((c) => !c.secured).map((c) => {
+      const gross = estimateAnnualValue(c, budget);
+      return { card: c, gross, net: gross - (c.annualFee || 0) };
+    }).sort((a, b) => b.net - a.net);
+  }
+  const budgetTotal = () => SPEND_CATS.reduce((s, k) => s + (Number(state.budget[k]) || 0), 0);
+
+  /* ---- gamification: level math + the "download the Axis app" finisher ------ */
+  function levelInfo() {
+    const size = (C.gamify && C.gamify.levelSize) || 60;
+    const pts = state.points || 0;
+    const idx = Math.min(Math.floor(pts / size), C.gamify.levels.length - 1);
+    const atTop = idx >= C.gamify.levels.length - 1;
+    return { idx, name: C.gamify.levels[idx], size, atTop,
+      pct: atTop ? 100 : Math.round(((pts - idx * size) / size) * 100),
+      toNext: atTop ? 0 : (idx + 1) * size - pts, nextName: atTop ? '' : C.gamify.levels[idx + 1] };
+  }
+  function downloadAppCta() {
+    const a = (C.brand.appLinks) || {};
+    return `<div class="getapp">
+      <div class="getapp__head"><span class="getapp__logo">A</span>
+        <div><strong>Don’t have the Axis Mobile app?</strong><span class="muted">Manage your new card, set spend controls, pay bills &amp; track rewards — all in one app.</span></div></div>
+      <div class="getapp__btns">
+        <a class="store-btn" href="${esc(a.ios)}" target="_blank" rel="noopener"><span class="store-btn__ic"></span><span class="store-btn__tx"><small>Download on the</small><b>App Store</b></span></a>
+        <a class="store-btn" href="${esc(a.android)}" target="_blank" rel="noopener"><span class="store-btn__ic">▶</span><span class="store-btn__tx"><small>GET IT ON</small><b>Google Play</b></span></a>
+      </div>
+    </div>`;
+  }
+
   /* The agent-led spine: Aria leads every step in the first person — what she's
    * about to do, the decision she's making, and the regulatory reason — so the
    * journey reads as an AI agent running the onboarding, not a form wizard. */
@@ -841,12 +945,13 @@
       plan = `<div class="agent-lead__plan"><span>My plan for you</span><ol>${C.agentPlan.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
     } else if (s === 'product') {
       msg = state._rec
-        ? `I compared the Axis range against how you spend and picked the one that earns you the most. Here’s my reasoning — switch it any time.`
-        : `Now I’ll pick the Axis card that fits you best. Tell me what you spend on, or let me choose. If this is your first credit card, I’ll start you on one that builds your credit score.`;
+        ? `I ran your monthly spend through <strong>every</strong> Axis card’s reward structure and ranked them by real rupee value. Here’s the winner for your budget — and the maths behind it.`
+        : `Tell me roughly what you spend each month. I’ll compute the actual rewards <strong>you’d</strong> earn on every Axis card and recommend the highest-value one for your budget — not a generic “best card”. First card? I’ll keep you to one that builds your score.`;
     } else if (s === 'kyc') {
+      const rl = state.relationship && C.relationship[state.relationship];
       if (!state.identity) msg = state.kycMethod === 'chooser'
         ? `No problem — pick how you’d like to verify. I recommend DigiLocker, but Aadhaar OTP, document upload (OCR) or a video call all work.`
-        : `I’ve <strong>linked your DigiLocker</strong> to the mobile you just verified — approve once and I’ll pull and verify your KYC (PAN included) and fill your whole application. RBI requires full KYC for a new relationship; I’ll handle it.`;
+        : `${rl ? esc(rl.line) + ' ' : ''}Confirm the mobile that’s <strong>linked to your Aadhaar</strong> and I’ll link DigiLocker to it, then pull &amp; verify your KYC — PAN included — and fill your whole application.`;
       else { const ck = state.ckyc && state.ckyc.found; msg = `Done — I pulled and verified your documents, matched your face${ck ? ', and found your CKYC record so I skipped re-capture' : ''}, and auto-filled your whole application. Just confirm it.`; }
     } else if (s === 'assessment') {
       msg = state.assessmentDone
@@ -915,6 +1020,7 @@
       case 'recommend': await doRecommend(); break;
       case 'browse': state._browsing = true; renderStage(); break;
       case 'back-rec': state._browsing = false; renderStage(); break;
+      case 'reprofile': state._rec = null; state.valueRank = null; save(); renderStage(); break;
       case 'choose-card': chooseCard(el.dataset.card); break;
 
       /* stage 3 */
@@ -994,13 +1100,20 @@
     const btn = $('#startCta'); btn.disabled = true; btn.textContent = 'Verifying…';
     await INT.verifyOtp(state.mobile, otp);
     state.otpVerified = true;
-    const pa = await INT.checkPreApproved(state.mobile);
-    state.preApproved = pa; save();
-    if (pa.preApproved) {
-      if (!state.pan) state.pan = synthPan(); // ETB → PAN already on record, pre-fill it
-      toast(`🎉 Good news — you have a pre-approved offer up to ${inr(pa.indicativeLimit)}!`, 'success');
-    }
-    track('otp_verified', { preApproved: pa.preApproved });
+    // agentic moment: Aria confirms you and DECIDES whether you're new (NTB) or existing (ETB)
+    const res = await runAgent('Verifying you with Axis Bank', [
+      { id: 'otp', icon: '📲', label: 'Confirming your mobile number (OTP)', fn: () => INT.delay(500), tag: () => 'verified' },
+      { id: 'lookup', icon: '🔎', label: 'Checking Axis records for an existing relationship', fn: () => INT.checkPreApproved(state.mobile), tag: (r) => r.preApproved ? 'existing customer' : 'new to bank' },
+    ]);
+    const pa = res.lookup || { preApproved: false };
+    state.preApproved = pa;
+    state.relationship = pa.preApproved ? 'etb' : 'ntb';
+    state.dlMobile = state.mobile; // default the DigiLocker-linked number to the verified mobile
+    if (pa.preApproved && !state.pan) state.pan = synthPan();
+    save();
+    if (pa.preApproved) toast(`🎉 You’re an existing Axis customer — pre-approved up to ${inr(pa.indicativeLimit)}!`, 'success');
+    else toast('✓ Verified — you’re New to Axis. I’ll onboard you end-to-end.', 'success');
+    track('otp_verified', { preApproved: pa.preApproved, relationship: state.relationship });
     nextStage();
   }
 
@@ -1008,18 +1121,26 @@
   function toggleTag(tag) {
     const t = state.profile.tags;
     const i = t.indexOf(tag);
-    if (i >= 0) t.splice(i, 1); else t.push(tag);
+    if (i >= 0) { t.splice(i, 1); state.budget[tag] = 0; }
+    else { t.push(tag); if (!Number(state.budget[tag])) state.budget[tag] = 8000; }
     save();
-    // just toggle the chip class without a full re-render (keeps focus/flow)
-    const chip = $(`.chip[data-tag="${tag}"]`); if (chip) chip.classList.toggle('is-on');
+    renderStage(); // reveal/hide the category's amount slider
   }
   async function doRecommend() {
-    const rec = await withAgentThinking('Matching you to the best Axis card', () =>
-      AGENT.recommend(state.profile));
-    state._rec = rec; save();
+    if (budgetTotal() <= 0) { toast('Set at least one spend amount so I can compare cards by value.', 'error'); return; }
+    const ranked = await withAgentThinking('Comparing every Axis card against your budget', async () => {
+      await INT.delay(750);
+      return rankByValue(state.budget);
+    });
+    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net }));
+    const top = ranked[0];
+    const feeNote = top.card.annualFee ? ` (≈ ${inr(top.net)} after the ${inr(top.card.annualFee)} fee)` : ' — and it’s lifetime-free';
+    const reason = `For how you spend (~${inr(budgetTotal())}/month), the ${top.card.shortName} pays you the most: about ${inr(top.gross)} back a year${feeNote}. That’s why I recommend it.`;
+    state._rec = { card: top.card, reason, source: 'budget-value' };
+    save();
     renderStage();
-    aria(`I’d go with the <strong>${esc(rec.card.name)}</strong>. ${esc(rec.reason)}`, true);
-    track('reco_made', { card: rec.card.id, source: rec.source });
+    aria(`I compared all Axis cards against your ${inr(budgetTotal())}/month spend. The <strong>${esc(top.card.name)}</strong> earns you the most — ≈ ${inr(top.gross)}/year.`, true);
+    track('reco_made', { card: top.card.id, source: 'budget-value' });
   }
   function chooseCard(id) {
     state.cardId = id; state._browsing = false; save();
@@ -1080,8 +1201,11 @@
   }
   async function dlAllow() {
     if ($('#consentKyc') && !$('#consentKyc').checked) { toast('Please consent to share your documents.', 'error'); return; }
+    const fld = $('#dlMobile');
+    const dlm = fld ? (fld.value || '').replace(/\D/g, '') : (state.dlMobile || state.mobile);
+    if (fld && dlm.length !== 10) { toast('Enter the 10-digit mobile linked to your Aadhaar.', 'error'); return; }
+    state.dlMobile = dlm || state.mobile; save();
     if ($('#dlModal')) $('#dlModal').hidden = true;
-    await INT.digiLockerConsent();
     await runKycFetch('digilocker');
   }
   function dlDeny() {
@@ -1106,16 +1230,24 @@
       { id: 'vcip', icon: '✅', label: 'Completing V-CIP', fn: () => INT.vcipSession(), tag: () => 'V-CIP done' },
       ckyc,
     ];
-    // DEFAULT digilocker: link & pull first (gets PAN too), then verify
-    return [{ id: 'dl', icon: '🔗', label: 'Linking DigiLocker & pulling your documents', fn: () => INT.digiLockerFetch(), tag: (r) => r.documents ? r.documents.length + ' docs' : 'Fetched' }, panStep, ckyc, face];
+    // DEFAULT digilocker: clear, narrated linking sequence driven by the Aadhaar-linked mobile
+    const last4 = (state.dlMobile || state.mobile || '').slice(-4);
+    return [
+      { id: 'open', icon: '🔐', label: 'Opening DigiLocker (Govt. of India · MeitY)', fn: () => INT.delay(700), tag: () => 'secure' },
+      { id: 'otp', icon: '📲', label: `Verifying your Aadhaar-linked mobile ••••${last4}`, fn: () => INT.delay(950), tag: () => 'matched' },
+      { id: 'consent', icon: '🤝', label: 'Linking DigiLocker to Axis (one-time consent)', fn: () => INT.digiLockerConsent(), tag: () => 'linked' },
+      { id: 'dl', icon: '📥', label: 'Fetching your issued documents', fn: () => INT.digiLockerFetch(), tag: (r) => r.documents ? r.documents.length + ' docs' : 'fetched' },
+      panStep, ckyc, face,
+    ];
   }
   async function runKycFetch(method) {
-    const titles = { digilocker: 'Linking DigiLocker & verifying your KYC', aadhaar: 'Verifying via Aadhaar e-KYC', ocr: 'Reading & verifying your documents', vcip: 'Your live Video-KYC (V-CIP)' };
+    const titles = { digilocker: 'Linking DigiLocker to your mobile', aadhaar: 'Verifying via Aadhaar e-KYC', ocr: 'Reading & verifying your documents', vcip: 'Your live Video-KYC (V-CIP)' };
     const res = await runAgent(titles[method] || 'Verifying your identity', kycSteps(method));
     state.identity = res.dl || res.ocr || res.aadhaar || res.cap;
     state.pan = panFrom(res);
     state.ckyc = res.ckyc;
     state.vcip = method === 'vcip';
+    state.dlLinked = method === 'digilocker';
     state.kycVia = method;
     save();
     renderStage();
@@ -1374,6 +1506,17 @@
       bumpInactivity();
     });
     document.addEventListener('keydown', () => bumpInactivity());
+
+    // live budget sliders — update the amount + running total without a re-render
+    document.addEventListener('input', (e) => {
+      const sl = e.target.closest && e.target.closest('[data-budget]');
+      if (!sl) return;
+      const cat = sl.getAttribute('data-budget');
+      state.budget[cat] = Number(sl.value) || 0;
+      const val = $(`[data-budgetval="${cat}"]`); if (val) val.textContent = inr(state.budget[cat]);
+      const tot = $('#budgetTotal'); if (tot) tot.textContent = inr(budgetTotal());
+      save();
+    });
 
     // co-pilot form
     $('#copilotForm').addEventListener('submit', (e) => {
