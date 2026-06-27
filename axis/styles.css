@@ -886,3 +886,11 @@ body {
 .veritem__v { color: var(--ok); font-weight: 700; font-size: 0.74rem; text-align: right; }
 .kyc-method__meta { display: block; font-size: 0.7rem; color: var(--muted-2); margin-top: 0.3rem; font-weight: 600; }
 .kyc-method__b small { line-height: 1.4; }
+
+/* ═══ proper credit-card proportions (ISO ID-1, 1.586:1) — fixes "weird shape" ═══ */
+.card-face, .card-hero .card-face { height: auto; aspect-ratio: 1.586 / 1; }
+.card-face--sm { height: auto; aspect-ratio: 1.586 / 1; padding: 0.8rem 0.9rem; }
+.vcard { height: auto; min-height: 0; aspect-ratio: 1.586 / 1; }
+/* real card artwork on the landing hero */
+.hero__art img.art-card { object-fit: cover; padding: 0; }
+.art-card { overflow: hidden; }
