@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v11'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v12'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -759,12 +759,15 @@
   function kycLiveness() {
     const id = state.identity || {};
     return `<div class="panel liveness">
-      <h3 class="sub-h">🤳 Quick liveness check</h3>
-      <p class="muted">One live selfie so I can confirm you’re really here and match your face to your verified ID (an RBI requirement). Look straight at the camera, good light, no cap or glasses.</p>
-      <div class="liveness__frame"><span class="liveness__ring"></span><span class="liveness__face">${esc(id.photoInitials || '🙂')}</span></div>
-      <ul class="liveness__reqs"><li>Face inside the circle</li><li>Well-lit, plain background</li><li>Blink when asked</li></ul>
-      <button class="btn btn--primary btn--block" data-action="liveness-capture">Capture my selfie →</button>
-      <p class="trust">🔒 Your selfie is used only to match your ID and is encrypted. We never post it anywhere.</p>
+      <h3 class="sub-h">🤳 Liveness &amp; face match</h3>
+      <p class="muted">I’ll match a live selfie to your <strong>Aadhaar photo</strong> (already fetched) — a quick RBI check that it’s really you.</p>
+      <div class="live-match">
+        <div class="live-match__col"><div class="live-match__pic live-match__pic--id">${esc(id.photoInitials || '🙂')}</div><span>Aadhaar photo ✓</span></div>
+        <span class="live-match__vs">match</span>
+        <div class="live-match__col"><div class="liveness__frame live-match__pic"><span class="liveness__ring"></span><span class="liveness__face">📷</span></div><span>Your live selfie</span></div>
+      </div>
+      <button class="btn btn--primary btn--block" data-action="liveness-capture">Take my selfie →</button>
+      <p class="trust">🔒 Good light, face in frame. Used only to match your ID — encrypted, never shared.</p>
     </div>`;
   }
   function kycDigiLocker() {
