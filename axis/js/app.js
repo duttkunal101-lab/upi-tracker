@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v18'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v19'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -54,7 +54,8 @@
     pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, selfieTaken: false, livenessDone: false, needsVcip: false, vcipDone: false, kycEdits: null,
     incomeMethod: 'pan', aaBank: null, bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false, autopayBank: null,
-    napAcct: '', napIfsc: '', napMode: 'enach', pushProvisioned: false, cofted: [], coftSel: null,
+    napAcct: '', napIfsc: '', napMode: 'enach', pushProvisioned: false, walletName: '', cofted: [], coftSel: null,
+    cardActivated: false, vcipScheduled: false,
     points: 0, awarded: {}, scratched: false, level: 0,
     startedAt: Date.now(), done: false,
   });
@@ -266,7 +267,7 @@
           <span class="fld__label">Enter OTP <span class="muted">(demo — any 6 digits)</span></span>
           <div class="fld__eyewrap">
             <input id="otp" class="fld__input fld__input--mono" type="password" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" />
-            <button type="button" class="fld__eye" data-action="otp-eye" aria-label="Show OTP" title="Show / hide OTP">👁️</button>
+            <button type="button" class="fld__eye" data-action="eye" data-target="otp" aria-label="Show OTP" title="Show / hide OTP">👁️</button>
           </div>
         </label>
         <button class="btn btn--primary btn--block" id="startCta" data-action="verify-otp">Verify &amp; continue →</button>
@@ -399,7 +400,7 @@
           <div class="verlist">${ver.map(([i, k, v]) => `<div class="veritem"><span class="veritem__ic">${i}</span><span class="veritem__k">${esc(k)}</span><span class="veritem__v">✓ ${esc(v)}</span></div>`).join('')}</div>
         </div>
         <div class="kyc-card__head">
-          <div class="avatar">${esc(id.photoInitials || '🙂')}</div>
+          <div class="avatar avatar--photo" title="Photo fetched from your Aadhaar">${faceMock('facemock--live')}<span class="avatar__src">Aadhaar photo</span></div>
           <div>
             <div class="kyc-card__name">${esc(id.name || 'Verified')}</div>
             <div class="kyc-card__sub">Identity confirmed ${esc(viaLabel(state.kycVia))}</div>
@@ -496,6 +497,7 @@
         ${limitExplainer(d, state.bureau, state.income)}
         ${kfs(d, card)}
         ${spendOptimizer(card)}
+        ${cardUnlocksBox(card)}
         ${cardTipsBox(card)}
         ${cardDetails(card)}
         ${mitcAccordion()}
@@ -664,6 +666,25 @@
       <p class="trust">🔒 RBI card-on-file tokenization (CoFT) — you can view or delete these tokens anytime in the Axis app.</p>
     </div>`;
   }
+  // Visa push provisioning — a real, visible flow that tokenises & pushes to the wallet
+  async function pushToWallet(wallet) {
+    const w = wallet === 'apay' ? 'Apple Pay' : 'Google Pay';
+    await runAgent('Adding your card to ' + w, [
+      { id: 'token', icon: '🔐', label: 'Visa Token Service — generating a device token', fn: () => INT.provisionWallet(), tag: () => 'token issued' },
+      { id: 'push', icon: '📲', label: 'Pushing the token into ' + w + ' (your card number is never shared)', fn: () => INT.delay(900), tag: () => 'provisioned' },
+    ]);
+    state._walletAdded = true; state.walletName = w; state.pushProvisioned = true; state.issueScreen = null; save();
+    renderStage();
+    toast('✓ ' + w + ' is ready — tap your phone to pay. Your real card number was never shared.', 'success');
+  }
+  async function activateCard() {
+    await runAgent('Activating your card', [
+      { id: 'txn', icon: '💳', label: 'Authorising a ₹1 test payment on your virtual card', fn: () => INT.delay(900), tag: () => 'approved' },
+      { id: 'act', icon: '⚡', label: 'Activating your card account (RBI first-use rule)', fn: () => INT.delay(700), tag: () => 'active' },
+    ]);
+    state.cardActivated = true; save(); renderStage();
+    toast('⚡ Card activated! Your physical card will arrive ready to use.', 'success');
+  }
   async function cardOnFileSave() {
     const chosen = $$('[data-coft]').filter((c) => c.checked).map((c) => c.getAttribute('data-coft'));
     if (!chosen.length) { toast('Pick at least one app, or go back.', 'error'); return; }
@@ -699,8 +720,10 @@
           <span class="scratch__prize">🎉 ₹500 welcome cashback unlocked on your ${esc(card.name.replace('Axis Bank ', '').replace(' Credit Card', ''))}!</span>
           <span class="scratch__foil"><span>✨ Tap to scratch &amp; reveal</span></span>
         </button>
+        ${activationBox()}
         <div class="sec-label">📦 Track your card — ${esc(state.appRef || '')}</div>
         <div class="deliv" id="deliveryTrack"></div>
+        ${phoneUpdates()}
         ${downloadAppCta()}
         <div class="welcome__nudge">💡 ${esc(C.stageByKey.welcome.nudge)} Make a first transaction to activate your rewards — we’ll text you each delivery update.</div>
         <button class="btn btn--primary btn--block" data-action="restart">Start a new application</button>
@@ -832,7 +855,7 @@
       <label class="fld"><span class="fld__label">Aadhaar number</span>
         <input id="aadhaar" class="fld__input fld__input--mono" inputmode="numeric" maxlength="12" placeholder="1234 5678 9012" /></label>
       <div id="aadhaarOtpRow" hidden><label class="fld"><span class="fld__label">OTP <span class="muted">(demo: any 6 digits)</span></span>
-        <input id="aadhaarOtp" class="fld__input" inputmode="numeric" maxlength="6" placeholder="••••••" /></label></div>
+        <div class="fld__eyewrap"><input id="aadhaarOtp" class="fld__input fld__input--mono" type="password" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" /><button type="button" class="fld__eye" data-action="eye" data-target="aadhaarOtp" aria-label="Show OTP">👁️</button></div></label></div>
       <button class="btn btn--primary btn--block" id="aadhaarCta" data-action="aadhaar-otp">Send OTP →</button>
     </div>`;
   }
@@ -1022,7 +1045,10 @@
         <div class="dl-otp">
           <p class="dl-otp__note">📲 DigiLocker sent a one-time passcode to your Aadhaar-linked mobile ••••${esc((state.dlMobile || state.mobile || '').slice(-2))}. Enter it to authorise the fetch.</p>
           <label class="fld"><span class="fld__label">DigiLocker OTP <span class="muted">(demo: any 6 digits)</span></span>
-            <input id="dlOtp" class="fld__input fld__input--mono" inputmode="numeric" maxlength="6" placeholder="••••••" /></label>
+            <div class="fld__eyewrap">
+              <input id="dlOtp" class="fld__input fld__input--mono" type="password" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" />
+              <button type="button" class="fld__eye" data-action="eye" data-target="dlOtp" aria-label="Show OTP">👁️</button>
+            </div></label>
         </div>
         <button class="btn btn--primary btn--block" data-action="dl-verify-otp">Verify OTP &amp; fetch my documents →</button>
       ` : `
@@ -1258,6 +1284,49 @@
       <div class="onlineuse__row">${ms.map((m) => `<span class="onlineuse__chip">${esc(m)}</span>`).join('')}</div>
     </div>`;
   }
+  // CVP "benefits unlocking" — what each spend milestone unlocks, with live progress
+  function cardUnlocksBox(card) {
+    const ms = (C.cardUnlocks && C.cardUnlocks[card.id]) || [];
+    if (!ms.length) return '';
+    const annual = budgetTotal() * 12;
+    return `<div class="unlocks">
+      <div class="sec-label">🔓 Unlock more as you spend — your ${esc(card.shortName)}’s benefits</div>
+      ${ms.map((m) => {
+        const done = m.at === 0 || annual >= m.at;
+        const pct = m.at > 0 ? Math.min(100, Math.round((annual / m.at) * 100)) : 100;
+        return `<div class="unlock ${done ? 'is-done' : ''}">
+          <div class="unlock__top"><span class="unlock__b">${done ? '✓ ' : ''}${esc(m.b)}</span><span class="unlock__at">${m.at ? inr(m.at) + '/yr' : 'day 1'}</span></div>
+          ${m.at ? `<div class="unlock__bar"><span style="width:${pct}%"></span></div>` : ''}</div>`;
+      }).join('')}
+      <p class="muted unlocks__note">Tracked against your ~${inr(budgetTotal())}/month. Hit a milestone and the benefit unlocks automatically.</p>
+    </div>`;
+  }
+  // simulation of the SMS/WhatsApp updates Aria sends to the customer's phone
+  function phoneUpdates() {
+    const card = currentCard();
+    const m = [['Welcome! Application ' + esc(state.appRef || '') + ' started. I’ll keep you posted. — Aria']];
+    if (state.kycComplete) m.push(['✓ KYC verified — your identity is confirmed.']);
+    if (state.decision && state.decision.decision === 'approve') m.push(['🎉 Approved! ' + inr(state.decision.limit) + ' limit on your ' + esc(card ? card.shortName : 'card') + '.']);
+    if (state.signed) m.push(['✓ Agreement e-signed. Issuing your card now.']);
+    if (state.issued) m.push(['💳 Virtual card is LIVE — use it online now. Physical card on the way (track in-app).']);
+    if (state.cardActivated) m.push(['⚡ Card activated on first use. You’re all set!']);
+    return `<div class="phone-up">
+      <div class="sec-label">📱 Updates I’m texting to your phone</div>
+      <div class="phone-up__device"><div class="phone-up__bar"><span></span>Axis Bank · SMS / WhatsApp</div>
+        <div class="phone-up__screen">${m.map((x) => `<div class="sms"><div class="sms__from">Axis Bank · now</div><div class="sms__body">${esc(x[0])}</div></div>`).join('')}</div>
+      </div>
+      <p class="muted">I text every milestone — and a secure resume link if you ever pause.</p>
+    </div>`;
+  }
+  // RBI 30-day activation — using the virtual card (or a ₹1 test) activates the account & physical card
+  function activationBox() {
+    if (state.cardActivated) {
+      return `<div class="activate is-on"><div class="sec-label">⚡ Card activated</div><p class="muted">✓ Active on first use — your virtual card works now and your physical card arrives ready to use.</p></div>`;
+    }
+    return `<div class="activate"><div class="sec-label">⚡ Activate your card</div>
+      <p class="muted">RBI lets you activate by first use. Make any payment with your virtual card and it activates instantly — and your physical card then arrives <strong>ready to use</strong>.</p>
+      <button class="btn btn--ghost btn--block" data-action="activate-test">Make a ₹1 test payment to activate →</button></div>`;
+  }
   // motivation to finish PIN / wallet / autopay set-up (progress, not arcade points)
   function setupProgress() {
     const items = [state._pinSet, state._walletAdded, state.autopay];
@@ -1338,8 +1407,12 @@
       <div class="getapp__head"><span class="getapp__logo">A</span>
         <div><strong>Don’t have the Axis Mobile app?</strong><span class="muted">Manage your new card, set spend controls, pay bills &amp; track rewards — all in one app.</span></div></div>
       <div class="getapp__btns">
-        <a class="store-btn" href="${esc(a.ios)}" target="_blank" rel="noopener"><span class="store-btn__ic"></span><span class="store-btn__tx"><small>Download on the</small><b>App Store</b></span></a>
-        <a class="store-btn" href="${esc(a.android)}" target="_blank" rel="noopener"><span class="store-btn__ic">▶</span><span class="store-btn__tx"><small>GET IT ON</small><b>Google Play</b></span></a>
+        <a class="store-btn" href="${esc(a.ios)}" target="_blank" rel="noopener" aria-label="Download on the App Store">
+          <svg class="store-btn__ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.04c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.09-2.01-3.77-2.04-1.6-.16-3.12.94-3.93.94-.81 0-2.06-.92-3.39-.9-1.74.03-3.35 1.02-4.25 2.58-1.81 3.14-.46 7.79 1.3 10.34.86 1.25 1.89 2.65 3.24 2.6 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.03 2.29-1.27 3.15-2.53.99-1.45 1.4-2.85 1.42-2.92-.03-.01-2.72-1.05-2.75-4.13zM14.6 4.54c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.28.69-3.02 1.56-.66.77-1.24 2-1.08 3.18 1.15.09 2.32-.58 3.03-1.45z"/></svg>
+          <span class="store-btn__tx"><small>Download on the</small><b>App Store</b></span></a>
+        <a class="store-btn" href="${esc(a.android)}" target="_blank" rel="noopener" aria-label="Get it on Google Play">
+          <svg class="store-btn__ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="#00D3FF" d="M3.6 2.3 13 11.7 3.6 21.1c-.37-.2-.6-.6-.6-1.08V3.38c0-.48.23-.88.6-1.08z"/><path fill="#FFCE00" d="M16.8 8.3 13 11.7l3.8 3.4 3.95-2.27c.67-.38.67-1.46 0-1.84L16.8 8.3z"/><path fill="#FF3D44" d="M3.6 2.3c.3-.16.68-.16 1.05.05L16.8 8.3 13 11.7 3.6 2.3z"/><path fill="#00F076" d="M13 11.7 16.8 15.1 4.65 21.65c-.37.2-.75.2-1.05.05L13 11.7z"/></svg>
+          <span class="store-btn__tx"><small>GET IT ON</small><b>Google Play</b></span></a>
       </div>
     </div>`;
   }
@@ -1455,7 +1528,7 @@
       case 'send-otp': await sendOtp(); break;
       case 'verify-otp': await verifyOtp(); break;
       case 'otp-change': state.otpSent = false; save(); renderStage(); break;
-      case 'otp-eye': { const o = $('#otp'); if (o) { const show = o.type === 'password'; o.type = show ? 'text' : 'password'; el.textContent = show ? '🙈' : '👁️'; el.setAttribute('aria-label', show ? 'Hide OTP' : 'Show OTP'); o.focus(); } } break;
+      case 'eye': { const o = $('#' + el.dataset.target); if (o) { const show = o.type === 'password'; o.type = show ? 'text' : 'password'; el.textContent = show ? '🙈' : '👁️'; el.setAttribute('aria-label', show ? 'Hide OTP' : 'Show OTP'); o.focus(); } } break;
 
       /* stage 2 */
       case 'toggle-tag': toggleTag(el.dataset.tag); break;
@@ -1476,7 +1549,7 @@
       case 'ocr-upload': ocrUpload(el.dataset.doc); break;
       case 'ocr-extract': await ocrExtract(); break;
       case 'vcip-start': await vcipEscalate(); break;
-      case 'vcip-schedule': toast('We’ll text you a secure link to pick a V-CIP slot (simulated). Your progress is saved.', 'success'); break;
+      case 'vcip-schedule': state.needsVcip = false; state.livenessDone = true; state.vcipScheduled = true; save(); renderStage(); toast('No problem — I’ve scheduled your V-CIP for later and texted you a slot. We’ll continue for now.', 'success'); break;
       case 'dl-allow': await dlAllow(); break;
       case 'dl-verify-otp': await dlVerifyOtp(); break;
       case 'liveness-snap': state.selfieTaken = true; save(); renderStage(); toast('📸 Selfie captured.', 'success'); break;
@@ -1504,10 +1577,11 @@
       case 'set-pin': state.issueScreen = 'pin'; save(); renderStage(); break;
       case 'pin-save': { const a = ($('#pin1') || {}).value || '', b = ($('#pin2') || {}).value || ''; if (!/^\d{4}$/.test(a)) { toast('Enter a 4-digit PIN.', 'error'); return; } if (a !== b) { toast('PINs don’t match.', 'error'); return; } state._pinSet = true; state.issueScreen = null; save(); renderStage(); toast('✓ Card PIN set securely.', 'success'); } break;
       case 'add-wallet': state.issueScreen = 'wallet'; save(); renderStage(); break;
-      case 'wallet-add': state._walletAdded = true; state.pushProvisioned = true; state.issueScreen = null; save(); renderStage(); toast('✓ Pushed to ' + (el.dataset.wallet === 'apay' ? 'Apple Pay' : 'Google Pay') + ' via Visa — your real number was never shared.', 'success'); break;
+      case 'wallet-add': await pushToWallet(el.dataset.wallet); break;
       case 'autopay': state.issueScreen = 'autopay'; save(); renderStage(); break;
       case 'coft': state.issueScreen = 'coft'; save(); renderStage(); break;
       case 'coft-save': await cardOnFileSave(); break;
+      case 'activate-test': await activateCard(); break;
       case 'autopay-bank': if ($('#napAcct')) state.napAcct = $('#napAcct').value; if ($('#napIfsc')) state.napIfsc = $('#napIfsc').value; state.autopayBank = el.dataset.bank; save(); renderStage(); break;
       case 'nach-mode': state.napMode = el.dataset.mode; if ($('#napAcct')) state.napAcct = $('#napAcct').value; if ($('#napIfsc')) state.napIfsc = $('#napIfsc').value; save(); renderStage(); break;
       case 'autopay-amt': $$('[data-action="autopay-amt"]').forEach((b) => b.classList.toggle('is-on', b === el)); state._autopayAmt = el.dataset.amt; save(); break;
@@ -1522,7 +1596,20 @@
         await setupAutopay(); state.issueScreen = null; renderStage();
       } break;
       case 'issue-back': state.issueScreen = null; save(); renderStage(); break;
-      case 'to-welcome': nextStage(); break;
+      case 'to-welcome': {
+        const setupN = [state._pinSet, state._walletAdded, state.autopay].filter(Boolean).length;
+        if (setupN < 3 && !state._setupWarned) {
+          state._setupWarned = true; save();
+          const miss = [];
+          if (!state._pinSet) miss.push('a <strong>PIN</strong> (needed at ATMs &amp; shops)');
+          if (!state._walletAdded) miss.push('<strong>tap-to-pay</strong> in your wallet');
+          if (!state.autopay) miss.push('<strong>autopay</strong> (so you never miss a due date)');
+          aria(`Before you go — you’re skipping ${miss.join(', ')}. It takes ~30 seconds and saves you hassle later. Want to finish first? (Tap Continue again to skip.)`, true);
+          toast('Tip: finish set-up so you never miss out.', '');
+          return;
+        }
+        nextStage();
+      } break;
       case 'scratch': if (!state.scratched) { state.scratched = true; save(); renderStage(); confettiBurst(); } break;
 
       /* co-pilot */
@@ -1729,24 +1816,18 @@
   function kycSteps(method) {
     const panStep = { id: 'pan', icon: '🪪', label: 'Validating PAN with Protean (NSDL)', fn: (res) => INT.verifyPan(panFrom(res)), tag: (r) => r.ok ? 'PAN valid' : 'check PAN' };
     const ckyc = { id: 'ckyc', icon: '🗂️', label: 'Cross-checking the CKYC registry (CERSAI)', fn: (res) => INT.ckycPull(panFrom(res)), tag: (r) => r.found ? 'CKYC found' : 'new CKYC' };
-    const face = { id: 'face', icon: '🤳', label: 'Liveness check & face match', fn: () => INT.livenessFaceMatch(), tag: (r) => 'match ' + Math.round(r.faceMatchScore * 100) + '%' };
-    if (method === 'ocr') return [{ id: 'ocr', icon: '📄', label: 'Reading your documents with AI (OCR)', fn: () => INT.ocrFetch(), tag: (r) => r.documents ? r.documents.length + ' docs read' : 'read' }, panStep, ckyc, face];
-    if (method === 'aadhaar') return [{ id: 'aadhaar', icon: '📱', label: 'Fetching Aadhaar e-KYC from UIDAI', fn: () => INT.aadhaarOtpEkyc(), tag: () => 'e-KYC ok' }, panStep, ckyc, face];
-    if (method === 'vcip') return [
-      { id: 'connect', icon: '🔗', label: 'Connecting you to an Axis KYC officer', fn: () => INT.delay(1100).then(() => ({ simulated: true })), tag: () => 'connected' },
-      { id: 'cap', icon: '🎥', label: 'Officer capturing your identity & geo-tag', fn: () => INT.digiLockerFetch(), tag: () => 'captured' },
-      panStep, face,
-      { id: 'vcip', icon: '✅', label: 'Completing V-CIP', fn: () => INT.vcipSession(), tag: () => 'V-CIP done' },
-      ckyc,
-    ];
+    // NOTE: face match is NOT done here — it happens on the dedicated selfie screen,
+    // only AFTER the customer actually takes a live selfie. Document fetch ≠ face match.
+    if (method === 'ocr') return [{ id: 'ocr', icon: '📄', label: 'Reading your documents with AI (OCR)', fn: () => INT.ocrFetch(), tag: (r) => r.documents ? r.documents.length + ' docs read' : 'read' }, panStep, ckyc];
+    if (method === 'aadhaar') return [{ id: 'aadhaar', icon: '📱', label: 'Fetching Aadhaar e-KYC from UIDAI', fn: () => INT.aadhaarOtpEkyc(), tag: () => 'e-KYC ok' }, panStep, ckyc];
     // DEFAULT digilocker: clear, narrated linking sequence driven by the Aadhaar-linked mobile
     const last4 = (state.dlMobile || state.mobile || '').slice(-4);
     return [
       { id: 'open', icon: '🔐', label: 'Opening DigiLocker (Govt. of India · MeitY)', fn: () => INT.delay(700), tag: () => 'secure' },
       { id: 'otp', icon: '📲', label: `Verifying your Aadhaar-linked mobile ••••${last4}`, fn: () => INT.delay(950), tag: () => 'matched' },
       { id: 'consent', icon: '🤝', label: 'Linking DigiLocker to Axis (one-time consent)', fn: () => INT.digiLockerConsent(), tag: () => 'linked' },
-      { id: 'dl', icon: '📥', label: 'Fetching your issued documents', fn: () => INT.digiLockerFetch(), tag: (r) => r.documents ? r.documents.length + ' docs' : 'fetched' },
-      panStep, ckyc, face,
+      { id: 'dl', icon: '📥', label: 'Fetching your issued documents (Aadhaar e-KYC, PAN, photo)', fn: () => INT.digiLockerFetch(), tag: (r) => r.documents ? r.documents.length + ' docs' : 'fetched' },
+      panStep, ckyc,
     ];
   }
   async function runKycFetch(method) {
@@ -1968,17 +2049,30 @@
     $('#exitModal').hidden = false;
     track('exit_intent', { stage: state.stage });
   }
+  // stage-specific FOMO — exactly what the customer loses by leaving now
+  const FOMO = {
+    start: 'You’re seconds from checking your <strong>pre-approved offer</strong> — don’t leave it on the table.',
+    kyc: 'Your KYC is almost done — finish and your card could be <strong>live in minutes</strong>.',
+    product: 'I’ve matched your <strong>best-value card</strong> — leaving now means walking away from those rewards.',
+    assessment: 'Your <strong>credit limit</strong> is one tap away — don’t stop now.',
+    decision: 'Your card is <strong>approved and waiting</strong> — claim it before you go.',
+    agreement: 'One signature stands between you and an <strong>instant virtual card</strong>.',
+    issuance: 'Don’t miss out — without finishing you <strong>can’t tap-to-pay</strong>, could <strong>miss a due date</strong>, and leave rewards unclaimed.',
+  };
   function exitModalHtml(n) {
+    const fomo = FOMO[state.stage] || n.body;
+    const s = C.stageByKey[state.stage];
     return `<div class="modal__backdrop" data-action="exit-stay"></div>
       <div class="modal__panel">
-        <div class="modal__emoji">💾</div>
-        <h3>${esc(n.title)}</h3>
-        <p>${esc(n.body)}</p>
+        <div class="modal__emoji">⏳</div>
+        <h3>Don’t miss out — you’re almost there!</h3>
+        <p class="fomo-line">${fomo}</p>
+        <p class="muted">${esc(n.body)}</p>
         <div class="chan">
           ${['WhatsApp', 'SMS', 'Email'].map((c) => `<button class="chan__btn" data-action="channel-pick" data-ch="${c}">${c}</button>`).join('')}
         </div>
-        <button class="btn btn--primary btn--block" data-action="exit-save">Save &amp; send me a link</button>
-        <button class="btn btn--ghost btn--block" data-action="exit-stay">${esc(n.stay)}</button>
+        <button class="btn btn--primary btn--block" data-action="exit-stay">← Continue${s ? ' my ' + esc(s.label) : ''}</button>
+        <button class="btn btn--ghost btn--block" data-action="exit-save">Save &amp; send me a link instead</button>
       </div>`;
   }
   async function saveAndSend() {

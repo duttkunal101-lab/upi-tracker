@@ -1280,3 +1280,47 @@ body {
 .resume__cta { display: flex; align-items: center; gap: 0.8rem; }
 .resume__cta .btn { flex: 1; }
 .resume__over { font-size: 0.82rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+
+/* =============================================================================
+ * GRAND v9 — store badges · CVP unlocks · phone-update sim · activation ·
+ *  document photo · FOMO
+ * ========================================================================== */
+/* real App Store / Google Play badge logos */
+.store-btn { display: inline-flex; align-items: center; gap: 0.55rem; }
+.store-btn__ic { width: 24px; height: 24px; flex: none; }
+.store-btn:first-child .store-btn__ic { color: #fff; }
+
+/* document photo in the application */
+.avatar--photo { overflow: visible; background: radial-gradient(circle at 50% 40%, #f3e3ea, #e7d3dc); position: relative; display: grid; place-items: center; }
+.avatar--photo .facemock { width: 84%; height: 84%; }
+.avatar__src { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); font-size: 0.58rem; font-weight: 800; color: var(--burgundy); white-space: nowrap; background: #fff; border: 1px solid var(--line-2); border-radius: 999px; padding: 0.05rem 0.4rem; }
+
+/* CVP benefit unlocks */
+.unlocks { background: linear-gradient(180deg, rgba(199,150,43,0.07), rgba(199,150,43,0)); border: 1px solid rgba(199,150,43,0.3); border-radius: 14px; padding: 0.6rem 0.85rem 0.8rem; margin: 0.4rem 0; }
+.unlock { padding: 0.4rem 0; border-bottom: 1px solid rgba(199,150,43,0.16); }
+.unlock:last-of-type { border-bottom: 0; }
+.unlock__top { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
+.unlock__b { font-weight: 700; font-size: 0.88rem; }
+.unlock__at { font-size: 0.74rem; font-weight: 800; color: var(--gold); white-space: nowrap; }
+.unlock__bar { height: 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; margin-top: 0.35rem; }
+.unlock__bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gold), var(--burgundy-2)); }
+.unlock.is-done .unlock__b { color: var(--ok); }
+.unlock.is-done .unlock__bar span { background: var(--ok); }
+.unlocks__note { font-size: 0.78rem; margin-top: 0.5rem; }
+
+/* phone-update simulation */
+.phone-up__device { background: #0f0a0d; border-radius: 20px; padding: 0.5rem; box-shadow: var(--shadow-sm); border: 1px solid #2a1620; }
+.phone-up__bar { display: flex; align-items: center; gap: 0.4rem; color: #cdb6c1; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.5rem 0.5rem; }
+.phone-up__bar span { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(31,138,112,0.25); }
+.phone-up__screen { background: #f2f4f7; border-radius: 14px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.sms { background: #fff; border-radius: 12px; border-top-left-radius: 4px; padding: 0.5rem 0.7rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.sms__from { font-size: 0.66rem; font-weight: 800; color: var(--burgundy); margin-bottom: 0.15rem; }
+.sms__body { font-size: 0.86rem; line-height: 1.35; color: #1a1116; }
+
+/* card activation */
+.activate { background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; padding: 0.7rem 0.9rem; margin: 0.6rem 0; }
+.activate.is-on { border-color: rgba(31,138,112,0.4); background: rgba(31,138,112,0.05); }
+.activate .sec-label { margin-top: 0; }
+
+/* FOMO line in exit modal */
+.fomo-line { font-size: 1rem; font-weight: 600; color: var(--ink); margin-bottom: 0.5rem; }
