@@ -100,6 +100,7 @@
       feeWaiver: 'Milestone EDGE Miles & annual benefits offset the fee for frequent travellers',
       network: 'Visa',
       rewardUnit: 'EDGE Miles',
+      premium: true,
       color: ['#0E3A5F', '#091F33'],
       bestFor: ['Travel 5x Miles', 'Lounge access', 'Transferable miles'],
       highlights: [
@@ -191,6 +192,29 @@
       idealIf: ['premium', 'travel', 'hotels', 'flights'],
       minIncomeHint: 'By invitation — for high-net-worth customers',
       portrait: true,
+      premium: true,
+    },
+    {
+      id: 'burgundy',
+      name: 'Axis Bank Burgundy Private Credit Card',
+      segment: 'Ultra-premium · invite',
+      tagline: 'The flagship card for Burgundy Private clients — unlimited luxury, travel and concierge.',
+      annualFee: 50000,
+      feeWaiver: '₹50,000 joining fee — milestone benefits & EDGE Points offset it for high spenders',
+      network: 'Visa Infinite',
+      rewardUnit: 'EDGE Reward Points',
+      color: ['#0a0a0a', '#000000'],
+      bestFor: ['Unlimited lounges', '10–25 EDGE pts/₹200', '24×7 luxury concierge'],
+      highlights: [
+        '10 EDGE Reward Points per ₹200 spent; up to 25 on premium categories',
+        'Unlimited domestic & international lounge access for you and a guest',
+        'Dedicated 24×7 luxury concierge, golf, fine-dining & hotel privileges',
+        'Low 1.5% forex mark-up, premium travel insurance & purchase protection',
+      ],
+      idealIf: ['premium', 'travel', 'hotels', 'flights'],
+      minIncomeHint: 'By invitation — for Axis Burgundy Private clients',
+      portrait: true,
+      premium: true,
     },
     {
       id: 'lic',
@@ -246,11 +270,25 @@
     myzone:       { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.05, entertainment: 0.05, cabs: 0.01, other: 0.01 },
     neo:          { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.02, entertainment: 0.02, cabs: 0.01, other: 0.005 },
     reserve:      { shopping: 0.015, travel: 0.03,  bills: 0.015, food: 0.015, entertainment: 0.015, cabs: 0.015, other: 0.015 },
+    burgundy:     { shopping: 0.02,  travel: 0.035, bills: 0.02, food: 0.02, entertainment: 0.02, cabs: 0.02, other: 0.02 },
     lic:          { shopping: 0.005, travel: 0.005, bills: 0.02, food: 0.005, entertainment: 0.005, cabs: 0.005, other: 0.005 },
     'insta-easy': { shopping: 0.01,  travel: 0.01,  bills: 0.01, food: 0.01, entertainment: 0.01, cabs: 0.01, other: 0.01 },
   };
   /* Clean, structured display name shown on the card face. */
-  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', reserve: 'Reserve', lic: 'LIC', 'insta-easy': 'Insta Easy' };
+  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', reserve: 'Reserve', burgundy: 'Burgundy Private', lic: 'LIC', 'insta-easy': 'Insta Easy' };
+  /* Top merchants where each card saves the most — shown once the virtual card is live. */
+  const cardMerchants = {
+    ace:      [{ m: 'Google Pay bills', s: '5% cashback', i: '🧾' }, { m: 'Swiggy', s: '4% back', i: '🍔' }, { m: 'Zomato', s: '4% back', i: '🍕' }, { m: 'Ola', s: '4% back', i: '🚕' }],
+    flipkart: [{ m: 'Flipkart', s: '5% cashback', i: '🛒' }, { m: 'Myntra', s: '7.5% back', i: '👗' }, { m: 'Swiggy', s: '4% back', i: '🍔' }, { m: 'Cleartrip', s: '5% back', i: '✈️' }],
+    atlas:    [{ m: 'Airlines & hotels', s: '5 EDGE Miles/₹100', i: '✈️' }, { m: 'Travel EDGE', s: '5x Miles', i: '🏨' }, { m: 'Lounges', s: 'Free access', i: '🛋️' }, { m: 'Dining', s: '2x Miles', i: '🍽️' }],
+    airtel:   [{ m: 'Airtel Thanks', s: '25% cashback', i: '📶' }, { m: 'Utility bills', s: '10% back', i: '💡' }, { m: 'Zomato', s: '10% back', i: '🍕' }, { m: 'Blinkit', s: '10% back', i: '🛍️' }],
+    reserve:  [{ m: 'Airport lounges', s: 'Unlimited', i: '🛋️' }, { m: 'International spends', s: '30 pts/₹200', i: '🌍' }, { m: 'Golf & concierge', s: 'Complimentary', i: '⛳' }, { m: 'Fine dining', s: 'Privileges', i: '🍽️' }],
+    burgundy: [{ m: 'Airport lounges', s: 'Unlimited +guest', i: '🛋️' }, { m: 'Luxury concierge', s: '24×7', i: '🎩' }, { m: 'Travel & hotels', s: '25 pts/₹200', i: '🏨' }, { m: 'Golf worldwide', s: 'Complimentary', i: '⛳' }],
+    myzone:   [{ m: 'SonyLIV', s: 'Free Premium', i: '🎬' }, { m: 'Movies (BOGO)', s: 'Buy1Get1', i: '🎟️' }, { m: 'Partner dining', s: '15% off', i: '🍽️' }, { m: 'Everyday', s: '4 pts/₹200', i: '💳' }],
+    neo:      [{ m: 'Zomato', s: 'up to 40% off', i: '🍕' }, { m: 'Blinkit', s: 'up to 40% off', i: '🛍️' }, { m: 'Tata Play', s: 'Discounts', i: '📺' }, { m: 'Myntra', s: 'Offers', i: '👗' }],
+    lic:      [{ m: 'LIC premiums', s: 'Reward Points', i: '🛡️' }, { m: 'Everyday retail', s: '2 pts/₹100', i: '🛒' }, { m: 'Lounges', s: 'Quarterly', i: '🛋️' }, { m: 'Fuel', s: 'Surcharge waiver', i: '⛽' }],
+    'insta-easy': [{ m: 'Everyday spends', s: 'EDGE Points', i: '💳' }, { m: 'Online & EMI', s: 'Full features', i: '🛒' }, { m: 'Fuel', s: 'Surcharge waiver', i: '⛽' }, { m: 'Build credit', s: 'Reports to CIBIL', i: '📈' }],
+  };
   // Real uploaded card artwork (mapped by the card shown in each image). Cards without
   // an uploaded image keep the built-in design. Drop more files in axis/assets/cards/.
   const cardImage = {
@@ -258,15 +296,21 @@
     atlas: 'assets/cards/Axis-Atlas-1.webp',
     flipkart: 'assets/cards/flipkart-axis-credit-card.webp',
     reserve: 'assets/cards/Axis-Bank-Reserve-Credit-Card.png',
+    burgundy: 'assets/cards/burgundy.png', // cropped from the uploaded "One Card" banner
     lic: 'assets/cards/lic.png',
     airtel: 'assets/cards/airtel.png', // cropped from the uploaded collage
   };
   // annual spend (₹) that waives the joining/annual fee — used to weigh fees vs budget
   const cardFeeWaiverSpend = { ace: 200000, flipkart: 350000, airtel: 200000 };
+  // notional ₹ value of a premium card's PERKS (unlimited lounges, concierge, golf,
+  // insurance) — premium cards earn their keep here, not on cashback rate. Used only
+  // when the customer says they're happy to pay a fee for perks.
+  const cardPerkValue = { atlas: 18000, reserve: 60000, burgundy: 90000 };
   cards.forEach((c) => {
     c.rewards = cardRewards[c.id] || {};
     c.shortName = cardShortName[c.id] || c.name;
     c.feeWaiverSpend = cardFeeWaiverSpend[c.id] || 0;
+    c.perkValue = cardPerkValue[c.id] || 0;
     // explicit uploaded art where we have it; else look for assets/cards/<id>.png
     // (e.g. airtel.png, myzone.png, neo.png, insta-easy.png) — auto-appears on upload,
     // falls back to the built-in design until then.
@@ -760,7 +804,7 @@
   /* ---------------------------------------------------------------- exports */
   window.AX_CONFIG = {
     brand, cards: liveCards, profileTags, integrations, regulations,
-    dataPoints, stages, legal, nudges, facts,
+    dataPoints, stages, legal, nudges, facts, cardMerchants,
     appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust, relationship,
     // convenience lookups (cardById spans the full catalogue for safe id lookups)
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),

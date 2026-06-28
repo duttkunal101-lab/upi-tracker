@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v14'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v15'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -26,6 +26,12 @@
   const synthPan = () => 'AXISP' + Math.floor(1000 + Math.random() * 9000) + 'K';
   const wizStages = C.stages.slice().sort((a, b) => a.num - b.num); // ordered by stage number
   // gamification done properly: named MILESTONES tied to real verified progress (no arcade points)
+  // banks the customer can pick from for an Account-Aggregator income pull (they choose + consent)
+  const AA_BANKS = [
+    { id: 'hdfc', name: 'HDFC Bank', mk: 'H' }, { id: 'sbi', name: 'SBI', mk: 'S' },
+    { id: 'icici', name: 'ICICI Bank', mk: 'I' }, { id: 'kotak', name: 'Kotak', mk: 'K' },
+    { id: 'pnb', name: 'PNB', mk: 'P' }, { id: 'bob', name: 'Bank of Baroda', mk: 'B' },
+  ];
   const MISSION = [
     { key: 'start', icon: '📱', name: 'Verified' },
     { key: 'kyc', icon: '🛡️', name: 'Identity' },
@@ -45,9 +51,10 @@
     okWithFees: false, cardId: null, valueRank: null,
     autofillDone: false,
     dlMobile: '', dlLinked: false, dlOtpSent: false,
-    pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, livenessDone: false,
-    bureau: null, income: null, account: null, assessmentDone: false,
-    decision: null, signed: false, issued: null, autopay: false,
+    pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, selfieTaken: false, livenessDone: false,
+    incomeMethod: 'pan', aaBank: null, bureau: null, income: null, account: null, assessmentDone: false,
+    decision: null, signed: false, issued: null, autopay: false, autopayBank: null,
+    pushProvisioned: false,
     points: 0, awarded: {}, scratched: false, level: 0,
     startedAt: Date.now(), done: false,
   });
@@ -332,13 +339,13 @@
 
   /* the agent's value comparison — shows WHY this card wins for the budget */
   function valueCompare() {
-    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], gross: v.gross, net: v.net, fee: v.fee, annualFee: v.annualFee, waived: v.waived })).filter((r) => r.card);
+    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], gross: v.gross, net: v.net, perk: v.perk, total: v.total, fee: v.fee, annualFee: v.annualFee, waived: v.waived })).filter((r) => r.card);
     if (!ranked.length) return '';
-    const key = state.okWithFees ? 'gross' : 'net';
+    const key = state.okWithFees ? 'total' : 'net';
     const max = Math.max.apply(null, ranked.map((r) => r[key]).concat([1]));
-    const feeTag = (r) => r.annualFee ? (r.waived ? `fee ${inr(r.annualFee)} · waived` : `${inr(r.annualFee)} fee`) : 'lifetime free';
+    const feeTag = (r) => r.annualFee ? (r.waived ? `fee ${inr(r.annualFee)} · waived` : `${inr(r.annualFee)} fee${r.perk ? ' · +' + inr(r.perk) + ' perks' : ''}`) : 'lifetime free';
     return `<div class="vcompare">
-      <div class="sec-label">💡 ${state.okWithFees ? 'Yearly rewards value — fees shown' : 'Net value to you (rewards − fee)'}</div>
+      <div class="sec-label">💡 ${state.okWithFees ? 'Yearly value — rewards + perks, fees shown' : 'Net value to you (rewards − fee)'}</div>
       ${ranked.map((r, i) => `<div class="vcomp ${i === 0 ? 'is-top' : ''}">
         <span class="vcomp__nm">${esc(r.card.shortName)}${i === 0 ? ' · best' : ''}</span>
         <span class="vcomp__bar"><i style="width:${Math.max(6, Math.round((r[key] / max) * 100))}%"></i></span>
@@ -414,6 +421,8 @@
   /* ---- Stage 4: assessment -------------------------------------------- */
   R.assessment = function () {
     if (!state.assessmentDone) {
+      const m = state.incomeMethod;
+      const aaPicked = state.aaBank && AA_BANKS.find((b) => b.id === state.aaBank);
       return { html: stageHead('assessment') + `
         <div class="panel">
           ${trustRow()}
@@ -421,12 +430,22 @@
             <input type="checkbox" id="consentBureau" checked/>
             <span>${esc(C.legal.consents.bureau)} <a href="#" data-action="why" data-why="assessment">Why?</a></span>
           </label>
-          <label class="consent">
-            <input type="checkbox" id="consentAa" checked/>
-            <span>${esc(C.legal.consents.aa)}</span>
-          </label>
+          <p class="ask">How should I verify your income? <span class="muted">No bank can share your data on its own — you choose &amp; consent.</span></p>
+          <div class="seg seg--income">
+            <button class="seg__btn ${m === 'pan' ? 'is-on' : ''}" data-action="income-method" data-m="pan">🧾 Via my PAN (ITR)</button>
+            <button class="seg__btn ${m === 'aa' ? 'is-on' : ''}" data-action="income-method" data-m="aa">🏦 Share a bank statement</button>
+          </div>
+          ${m === 'pan' ? `
+            <div class="info-note">🧾 I’ll read your latest filed <strong>ITR / Form 26AS</strong> via your PAN ${state.pan ? '<strong>' + esc(state.pan) + '</strong>' : ''} from the Income-Tax records — no bank statement, no typing. New to filing? Switch to a bank statement instead.</div>
+          ` : `
+            <p class="ask">Which bank account should I read? <span class="muted">via the RBI Account Aggregator — read-only &amp; revocable. Other banks can’t share without this.</span></p>
+            <div class="bank-grid">
+              ${AA_BANKS.map((b) => `<button class="bank-chip ${state.aaBank === b.id ? 'is-on' : ''}" data-action="aa-bank" data-bank="${b.id}"><span class="bank-chip__mk">${esc(b.mk)}</span>${esc(b.name)}</button>`).join('')}
+            </div>
+            <label class="consent"><input type="checkbox" id="consentAa" checked/><span>${esc(C.legal.consents.aa)}</span></label>
+          `}
           ${trustWhy('assessment')}
-          <button class="btn btn--primary btn--block" data-action="run-assessment">Run my eligibility check →</button>
+          <button class="btn btn--primary btn--block" data-action="run-assessment">${m === 'aa' && !aaPicked ? 'Pick a bank to continue' : 'Run my eligibility check →'}</button>
           <p class="trust">📊 A consented check sets a responsible limit — and protects you from over-borrowing.</p>
         </div>` };
     }
@@ -452,10 +471,11 @@
           <h3 class="offer__card">${esc(card.name)}</h3>
           <div class="offer__limit">${inr(d.limit)}<span>approved credit limit</span></div>
           <p class="offer__basis">${esc(d.basis)}</p>
-          ${state.income ? `<p class="offer__verified">✓ Verified income ${inr(state.income.monthlyIncome)}/mo${state.income.employerName ? ` · ${esc(state.income.employmentType)} at ${esc(state.income.employerName)}` : ''} <span class="af">via Account Aggregator</span></p>` : ''}
+          ${state.income ? `<p class="offer__verified">✓ Verified income ${inr(state.income.monthlyIncome)}/mo${state.income.employerName ? ` · ${esc(state.income.employmentType)} at ${esc(state.income.employerName)}` : ''} <span class="af">via ${esc(state.income.via || 'verified source')}</span></p>` : ''}
         </div>
         ${limitExplainer(d, state.bureau, state.income)}
         ${kfs(d, card)}
+        ${spendOptimizer(card)}
         ${cardDetails(card)}
         ${mitcAccordion()}
         <button class="btn btn--primary btn--block" data-action="accept-offer">Accept &amp; continue →</button>
@@ -522,12 +542,14 @@
     if (state.issueScreen === 'autopay') return { html: stageHead('issuance') + autopayScreen() };
     return { html: stageHead('issuance') + `
       ${virtualCardVisual(card, v)}
-      <p class="muted center" style="margin:-0.3rem 0 0.6rem">Use it online right away. A few quick set-ups:</p>
+      <p class="muted center" style="margin:-0.3rem 0 0.7rem">Use it online right away. Let’s finish setting it up:</p>
+      ${setupProgress()}
       <div class="issue-actions">
         ${actionTile('🔢', 'Set your card PIN', 'set-pin', state._pinSet ? 'Done ✓' : 'Set →')}
         ${actionTile('📲', 'Add to Google / Apple Pay', 'add-wallet', state._walletAdded ? 'Added ✓' : 'Add →')}
-        ${actionTile('🔁', 'Autopay (never miss a due date)', 'autopay', state.autopay ? 'On ✓' : 'Enable →')}
+        ${actionTile('🔁', 'Autopay — never miss a due date', 'autopay', state.autopay ? 'On ✓' : 'Enable →')}
       </div>
+      ${topMerchants(card)}
       <p class="trust">📮 Physical card via ${esc(state.issued.physicalDispatch.courier)} in ~${state.issued.physicalDispatch.etaDays} days · trackable.</p>
       <button class="btn btn--primary btn--block" data-action="to-welcome">Continue →</button>` };
   };
@@ -547,28 +569,35 @@
     return `<div class="panel">
       <button class="linkback" data-action="issue-back">← Back</button>
       <h3 class="sub-h">📲 Add to your phone wallet</h3>
-      <p class="muted">Pay by phone — your real card number is never shared with merchants (network tokenisation).</p>
+      <p class="muted">One tap — <strong>Visa push provisioning</strong> tokenises your card through the Visa Token Service and pushes it straight into your wallet. Your real card number is never shared with merchants.</p>
       ${virtualCardVisual(card, v)}
-      <button class="btn btn--primary btn--block" data-action="wallet-add" data-wallet="gpay">Add to Google Pay</button>
-      <button class="btn btn--ghost btn--block" data-action="wallet-add" data-wallet="apay">Add to Apple Pay</button>
+      <div class="pushprov"><span class="pushprov__v">VISA</span><span>Secure push provisioning · Visa Token Service — no typing your card number</span></div>
+      <button class="btn btn--primary btn--block" data-action="wallet-add" data-wallet="gpay">Push to Google Pay →</button>
+      <button class="btn btn--ghost btn--block" data-action="wallet-add" data-wallet="apay">Push to Apple Pay →</button>
     </div>`;
   }
   function autopayScreen() {
     const amt = state._autopayAmt || 'full';
+    const bank = AA_BANKS.find((b) => b.id === state.autopayBank);
     return `<div class="panel">
       <button class="linkback" data-action="issue-back">← Back</button>
       <h3 class="sub-h">🔁 Set up autopay (e-NACH)</h3>
-      <p class="muted">I’ll auto-pay your bill each month from your verified bank account — with your consent, revocable anytime.</p>
+      <p class="muted">Auto-pay your bill each month from <strong>any bank account</strong> — an NPCI e-NACH / UPI-Autopay mandate works across banks (it needn’t be Axis), with your consent and revocable anytime.</p>
+      <p class="ask">Pay from which bank?</p>
+      <div class="bank-grid">
+        ${AA_BANKS.map((b) => `<button class="bank-chip ${state.autopayBank === b.id ? 'is-on' : ''}" data-action="autopay-bank" data-bank="${b.id}"><span class="bank-chip__mk">${esc(b.mk)}</span>${esc(b.name)}</button>`).join('')}
+      </div>
+      <p class="ask">How much each month?</p>
       <div class="seg">
         <button class="seg__btn ${amt === 'full' ? 'is-on' : ''}" data-action="autopay-amt" data-amt="full">Total amount due</button>
         <button class="seg__btn ${amt === 'min' ? 'is-on' : ''}" data-action="autopay-amt" data-amt="min">Minimum due</button>
       </div>
       <div class="kfs-mini">
-        ${kvRow('Pay from', state.account ? esc(state.account.bank) : 'your verified bank account')}
-        ${kvRow('Mandate', 'NPCI e-NACH · cancel anytime')}
+        ${kvRow('Pay from', bank ? esc(bank.name) : 'pick a bank above')}
+        ${kvRow('Mandate', 'NPCI e-NACH · works across banks · cancel anytime')}
       </div>
-      <label class="consent"><input type="checkbox" id="autopayConsent" checked/><span>I authorise Axis Bank to auto-debit my card dues via e-NACH.</span></label>
-      <button class="btn btn--primary btn--block" data-action="autopay-save">Confirm autopay →</button>
+      <label class="consent"><input type="checkbox" id="autopayConsent" checked/><span>I authorise an e-NACH mandate on the selected account to auto-pay my Axis card dues.</span></label>
+      <button class="btn btn--primary btn--block" data-action="autopay-save">${bank ? 'Confirm autopay →' : 'Pick a bank to continue'}</button>
     </div>`;
   }
 
@@ -783,18 +812,43 @@
   }
   // the agent-driven default: DigiLocker already linked off the verified mobile
   // RBI liveness + face-match: a quick live selfie, shown as its own screen
+  // a neutral mock human face (no camera icon, no initials) — used in the selfie frame
+  function faceMock(cls) {
+    return `<svg viewBox="0 0 80 80" class="facemock ${cls || ''}" aria-hidden="true">
+      <circle cx="40" cy="32" r="13.5" fill="#caa9b7"/>
+      <path d="M17 70 C17 55 28 49 40 49 C52 49 63 55 63 70 Z" fill="#caa9b7"/>
+    </svg>`;
+  }
   function kycLiveness() {
-    const id = state.identity || {};
+    if (!state.selfieTaken) {
+      // STEP 1 — actually TAKE the selfie first (camera viewfinder with a live face)
+      return `<div class="panel liveness">
+        <h3 class="sub-h">🤳 Take a quick selfie</h3>
+        <p class="muted">RBI needs a live photo to confirm it’s really you. Look at the camera and capture — I’ll match it to your Aadhaar photo next.</p>
+        <div class="selfie-stage">
+          <div class="selfie-cam">
+            <span class="selfie-cam__scan"></span>
+            ${faceMock('facemock--live')}
+            <span class="selfie-cam__corner selfie-cam__corner--tl"></span><span class="selfie-cam__corner selfie-cam__corner--tr"></span>
+            <span class="selfie-cam__corner selfie-cam__corner--bl"></span><span class="selfie-cam__corner selfie-cam__corner--br"></span>
+          </div>
+          <span class="selfie-cam__hint">● Live · position your face in the frame</span>
+        </div>
+        <button class="btn btn--primary btn--block" data-action="liveness-snap">📸 Capture my selfie</button>
+        <p class="trust">🔒 Good light, face in frame. Encrypted, used only to match your ID — never shared.</p>
+      </div>`;
+    }
+    // STEP 2 — selfie captured → NOW match it to the already-fetched Aadhaar photo
     return `<div class="panel liveness">
-      <h3 class="sub-h">🤳 Liveness &amp; face match</h3>
-      <p class="muted">I’ll match a live selfie to your <strong>Aadhaar photo</strong> (already fetched) — a quick RBI check that it’s really you.</p>
+      <h3 class="sub-h">🤝 Match your selfie to your Aadhaar photo</h3>
+      <p class="muted">Got your selfie ✓. Now I’ll check it against the <strong>Aadhaar photo</strong> I already fetched — a quick RBI liveness + face match.</p>
       <div class="live-match">
-        <div class="live-match__col"><div class="live-match__pic live-match__pic--id">${esc(id.photoInitials || '🙂')}</div><span>Aadhaar photo ✓</span></div>
-        <span class="live-match__vs">match</span>
-        <div class="live-match__col"><div class="liveness__frame live-match__pic"><span class="liveness__ring"></span><span class="liveness__face">📷</span></div><span>Your live selfie</span></div>
+        <div class="live-match__col"><div class="live-match__pic live-match__pic--id">${faceMock()}</div><span>Aadhaar photo ✓</span></div>
+        <span class="live-match__vs">↔</span>
+        <div class="live-match__col"><div class="live-match__pic live-match__pic--selfie">${faceMock('facemock--live')}<span class="selfie-tick">✓</span></div><span>Your selfie ✓</span></div>
       </div>
-      <button class="btn btn--primary btn--block" data-action="liveness-capture">Take my selfie →</button>
-      <p class="trust">🔒 Good light, face in frame. Used only to match your ID — encrypted, never shared.</p>
+      <button class="btn btn--primary btn--block" data-action="liveness-capture">Match my face →</button>
+      <p class="trust">🔒 Liveness anti-spoof + face match. Encrypted, never shared.</p>
     </div>`;
   }
   /* THE agentic moment: Aria fills the whole application herself, field by field,
@@ -1060,6 +1114,48 @@
     </div>`;
   }
 
+  /* ---- spend optimisation, top merchants & setup motivation ----------------- */
+  const CAT_LABEL = { shopping: '🛍️ Shopping', travel: '✈️ Travel', bills: '🧾 Bills', food: '🍽️ Food & dining', entertainment: '🎬 Movies & OTT', cabs: '🚕 Cabs' };
+  // per-category yearly earnings on THIS card for the customer's stated budget
+  function spendBreakdown(card) {
+    const r = card.rewards || {}; const base = r.other != null ? r.other : 0.01;
+    return SPEND_CATS.filter((c) => c !== 'other').map((cat) => {
+      const spend = Math.max(0, Number(state.budget[cat]) || 0);
+      const rate = r[cat] != null ? r[cat] : base;
+      return { cat, monthly: spend, earn: Math.round(Math.min(spend, CAP_PER_CAT) * rate * 12) };
+    }).filter((x) => x.monthly > 0 && x.earn > 0).sort((a, b) => b.earn - a.earn);
+  }
+  // "how this card optimises YOUR spend" — shown during onboarding (on the offer)
+  function spendOptimizer(card) {
+    const rows = spendBreakdown(card).slice(0, 3);
+    if (!rows.length) return '';
+    const total = spendBreakdown(card).reduce((s, x) => s + x.earn, 0);
+    return `<div class="optimize">
+      <div class="sec-label">📈 How your ${esc(card.shortName)} optimises <em>your</em> spend</div>
+      ${rows.map((r) => `<div class="opt-row"><span class="opt-row__c">${CAT_LABEL[r.cat] || r.cat}</span><span class="opt-row__s muted">${inr(r.monthly)}/mo</span><b class="opt-row__e">+${inr(r.earn)}/yr</b></div>`).join('')}
+      <div class="opt-total">Your estimated rewards <strong>≈ ${inr(total)}/year</strong> — real money back on what you already spend.</div>
+    </div>`;
+  }
+  // top merchants where this card saves the most — shown once the card is live
+  function topMerchants(card) {
+    const ms = (C.cardMerchants && C.cardMerchants[card.id]) || [];
+    if (!ms.length) return '';
+    return `<div class="merchants">
+      <div class="sec-label">🏷️ Top places you’ll save with this card</div>
+      <div class="merch-grid">${ms.map((x) => `<div class="merch"><span class="merch__i">${x.i}</span><div class="merch__b"><strong>${esc(x.m)}</strong><span>${esc(x.s)}</span></div></div>`).join('')}</div>
+    </div>`;
+  }
+  // motivation to finish PIN / wallet / autopay set-up (progress, not arcade points)
+  function setupProgress() {
+    const items = [state._pinSet, state._walletAdded, state.autopay];
+    const done = items.filter(Boolean).length;
+    return `<div class="setupbar ${done === 3 ? 'is-complete' : ''}">
+      <div class="setupbar__top"><strong>${done === 3 ? '🎉 Card fully set up' : 'Finish setting up your card'}</strong><span class="setupbar__count">${done}/3</span></div>
+      <div class="setupbar__track"><span style="width:${Math.round(done / 3 * 100)}%"></span></div>
+      <p class="muted setupbar__note">${done === 3 ? 'All set — PIN, wallet &amp; autopay done. You’re ready to spend smart.' : 'Do all three: a PIN to pay anywhere, your wallet for tap-to-pay, autopay so you never miss a due date.'}</p>
+    </div>`;
+  }
+
   /* ---- budget-aware value model: the agent computes the best-value card ----- */
   const SPEND_CATS = ['shopping', 'travel', 'bills', 'food', 'entertainment', 'cabs', 'other'];
   const CAP_PER_CAT = 15000; // monthly accelerated-spend cap, keeps estimates realistic
@@ -1086,10 +1182,11 @@
     const ranked = pool.map((c) => {
       const gross = estimateAnnualValue(c, budget);
       const fee = effectiveFee(c, annualSpend);
-      return { card: c, gross, fee, net: gross - fee, annualFee: c.annualFee || 0, waived: (c.annualFee || 0) > 0 && fee === 0 };
+      const perk = state.okWithFees ? (c.perkValue || 0) : 0; // premium perks count only when paying for them
+      return { card: c, gross, fee, perk, net: gross - fee, total: gross + perk, annualFee: c.annualFee || 0, waived: (c.annualFee || 0) > 0 && fee === 0 };
     });
-    // happy to pay a fee → rank by rewards/perks (gross); otherwise by honest net value
-    const key = state.okWithFees ? 'gross' : 'net';
+    // happy to pay a fee → rank by rewards + perk value (total); otherwise by honest net value
+    const key = state.okWithFees ? 'total' : 'net';
     return ranked.sort((a, b) => b[key] - a[key]);
   }
   const budgetTotal = () => SPEND_CATS.reduce((s, k) => s + (Number(state.budget[k]) || 0), 0);
@@ -1170,7 +1267,7 @@
     } else if (s === 'assessment') {
       msg = state.assessmentDone
         ? `Eligibility checked — I’m putting your personalised offer together now.`
-        : `With your explicit consent (required by the CIC Act), I’ll check your credit and income to set a <strong>responsible</strong> limit. New to credit? I’ll use a secured-card path so you’re never stuck.`;
+        : `With your consent (CIC Act), I’ll check your credit, and verify income <strong>the way you choose</strong> — your PAN/ITR, or a bank statement you pick and approve. No bank shares anything on its own. New to credit? I’ll switch you to a secured-card path, never a dead end.`;
     } else if (s === 'decision') {
       const d = state.decision || {}, b = state.bureau || {}, inc = state.income || {};
       msg = (d.decision === 'approve')
@@ -1267,12 +1364,15 @@
       case 'vcip-schedule': toast('We’ll text you a secure link to pick a V-CIP slot (simulated). Your progress is saved.', 'success'); break;
       case 'dl-allow': await dlAllow(); break;
       case 'dl-verify-otp': await dlVerifyOtp(); break;
+      case 'liveness-snap': state.selfieTaken = true; save(); renderStage(); toast('📸 Selfie captured.', 'success'); break;
       case 'liveness-capture': await livenessCapture(); break;
       case 'dl-deny': dlDeny(); break;
       case 'edit-kyc': toast('In production you could edit any pre-filled field here.'); break;
       case 'confirm-kyc': state.kycComplete = true; save(); nextStage(); break;
 
       /* stage 4 */
+      case 'income-method': state.incomeMethod = el.dataset.m; save(); renderStage(); break;
+      case 'aa-bank': state.aaBank = el.dataset.bank; save(); renderStage(); break;
       case 'run-assessment': await runAssessment(); break;
       case 'to-decision': nextStage(); break;
 
@@ -1290,10 +1390,11 @@
       case 'set-pin': state.issueScreen = 'pin'; save(); renderStage(); break;
       case 'pin-save': { const a = ($('#pin1') || {}).value || '', b = ($('#pin2') || {}).value || ''; if (!/^\d{4}$/.test(a)) { toast('Enter a 4-digit PIN.', 'error'); return; } if (a !== b) { toast('PINs don’t match.', 'error'); return; } state._pinSet = true; state.issueScreen = null; save(); renderStage(); toast('✓ Card PIN set securely.', 'success'); } break;
       case 'add-wallet': state.issueScreen = 'wallet'; save(); renderStage(); break;
-      case 'wallet-add': state._walletAdded = true; state.issueScreen = null; save(); renderStage(); toast('✓ Card tokenised & added to ' + (el.dataset.wallet === 'apay' ? 'Apple Pay' : 'Google Pay') + '.', 'success'); break;
+      case 'wallet-add': state._walletAdded = true; state.pushProvisioned = true; state.issueScreen = null; save(); renderStage(); toast('✓ Pushed to ' + (el.dataset.wallet === 'apay' ? 'Apple Pay' : 'Google Pay') + ' via Visa — your real number was never shared.', 'success'); break;
       case 'autopay': state.issueScreen = 'autopay'; save(); renderStage(); break;
+      case 'autopay-bank': state.autopayBank = el.dataset.bank; save(); renderStage(); break;
       case 'autopay-amt': $$('[data-action="autopay-amt"]').forEach((b) => b.classList.toggle('is-on', b === el)); state._autopayAmt = el.dataset.amt; save(); break;
-      case 'autopay-save': if ($('#autopayConsent') && !$('#autopayConsent').checked) { toast('Please authorise the e-NACH mandate.', 'error'); return; } await setupAutopay(); state.issueScreen = null; renderStage(); break;
+      case 'autopay-save': if (!state.autopayBank) { toast('Pick the bank to pay from.', 'error'); return; } if ($('#autopayConsent') && !$('#autopayConsent').checked) { toast('Please authorise the e-NACH mandate.', 'error'); return; } await setupAutopay(); state.issueScreen = null; renderStage(); break;
       case 'issue-back': state.issueScreen = null; save(); renderStage(); break;
       case 'to-welcome': nextStage(); break;
       case 'scratch': if (!state.scratched) { state.scratched = true; save(); renderStage(); confettiBurst(); } break;
@@ -1370,13 +1471,14 @@
       await INT.delay(800);
       return rankByValue(state.budget);
     });
-    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net, fee: x.fee, annualFee: x.annualFee, waived: x.waived }));
+    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net, perk: x.perk, total: x.total, fee: x.fee, annualFee: x.annualFee, waived: x.waived }));
     const top = ranked[0];
     const feeBit = top.annualFee === 0 ? ' And it’s lifetime-free.'
       : top.fee === 0 ? ` Its ${inr(top.annualFee)} fee is waived at your spend level.`
       : ` That’s after its ${inr(top.annualFee)} annual fee — which you said you’re happy to pay for the perks.`;
+    const perkBit = (state.okWithFees && top.perk) ? ` including ≈ ${inr(top.perk)} of lounge, concierge &amp; travel perks` : '';
     const headline = state.okWithFees
-      ? `earns you the most rewards &amp; perks — about ${inr(top.gross)} a year`
+      ? `gives you the most rewards &amp; perks — about ${inr(top.total)} a year${perkBit}`
       : `gives you the most net value — about ${inr(top.net)} a year`;
     const reason = `For how you spend (~${inr(budgetTotal())}/month), the ${top.card.shortName} ${headline}.${feeBit} That’s why I recommend it.`;
     state._rec = { card: top.card, reason, source: 'budget-value' };
@@ -1519,16 +1621,21 @@
   /* ---- stage 4 logic ---- */
   async function runAssessment() {
     if (!$('#consentBureau').checked) { toast('Bureau consent is required to assess eligibility.', 'error'); return; }
+    const viaAa = state.incomeMethod === 'aa';
+    if (viaAa && !state.aaBank) { toast('Pick which bank account I should read for income.', 'error'); return; }
+    const bank = AA_BANKS.find((b) => b.id === state.aaBank);
+    // income comes from the customer's CHOSEN source — never an automatic bank pull
+    const incomeStep = viaAa
+      ? { id: 'inc', icon: '🏦', label: `Reading your ${bank ? bank.name : 'bank'} statement via Account Aggregator (your consent)`, fn: () => INT.accountAggregator(state.profile), tag: (r) => inr(r.monthlyIncome) + '/mo' }
+      : { id: 'inc', icon: '🧾', label: 'Fetching income from your ITR via PAN (Income-Tax records)', fn: () => INT.incomeFromPan(state.pan, state.profile), tag: (r) => inr(r.monthlyIncome) + '/mo' };
     const res = await runAgent('Checking your eligibility', [
       { id: 'bureau', icon: '📈', label: 'Fetching your credit bureau record (with consent)', fn: () => INT.bureauPull(state.profile), tag: (r) => r.thinFile ? 'new to credit' : 'CIBIL ' + r.score },
-      { id: 'aa', icon: '🏦', label: 'Assessing income via Account Aggregator', fn: () => INT.accountAggregator(state.profile), tag: (r) => inr(r.monthlyIncome) + '/mo' },
-      { id: 'penny', icon: '💸', label: 'Verifying your bank account (penny-drop)', fn: () => INT.pennyDrop(), tag: (r) => r.nameMatch + ' match' },
+      incomeStep,
       { id: 'aml', icon: '🛡️', label: 'AML / sanctions / PEP screening', fn: () => INT.amlScreen(), tag: () => 'clear' },
       { id: 'fraud', icon: '🔍', label: 'Fraud & device intelligence', fn: () => INT.fraudCheck(), tag: () => 'low risk' },
     ]);
     state.bureau = res.bureau;
-    state.income = res.aa;
-    state.account = res.penny;
+    state.income = res.inc;
     state.assessmentDone = true;
     state.decision = INT.underwrite({
       card: currentCard(), bureau: state.bureau, income: state.income, employment: state.profile.employment,
@@ -1555,9 +1662,14 @@
 
   /* ---- stage 7 logic ---- */
   async function setupAutopay() {
-    await INT.enachSetup();
+    const bank = AA_BANKS.find((b) => b.id === state.autopayBank);
+    const res = await runAgent('Setting up autopay', [
+      { id: 'penny', icon: '💸', label: `Verifying your ${bank ? bank.name : 'bank'} account (penny-drop)`, fn: () => INT.pennyDrop(bank ? bank.name : ''), tag: (r) => r.nameMatch + ' match' },
+      { id: 'enach', icon: '🔁', label: 'Registering your NPCI e-NACH mandate (cross-bank)', fn: () => INT.enachSetup(), tag: () => 'mandate active' },
+    ]);
+    state.account = res.penny; // the verified account the mandate debits
     state.autopay = true; save();
-    toast('Autopay set up via e-NACH (simulated).', 'success');
+    toast('✓ Autopay set up — e-NACH mandate active on your ' + (bank ? bank.name : 'bank') + '.', 'success');
     renderStage();
   }
 
