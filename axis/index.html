@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <!-- ===================== Top bar ===================== -->
@@ -32,17 +32,16 @@
     <section class="view view--landing is-active" data-view="landing">
       <div class="hero">
         <div class="hero__content">
-          <span class="pill">🤖 AI agent-led onboarding · new to Axis Bank</span>
-          <h1 class="hero__title">New to Axis? Get your first<br /><span class="grad">credit card, agent-led</span></h1>
+          <span class="pill"><img class="pill__aria" src="assets/aria.svg" alt="" /> Meet Aria · your AI onboarding agent</span>
+          <h1 class="hero__title">Your first credit card,<br /><span class="grad">led start-to-finish by AI</span></h1>
           <p class="hero__sub">
-            Meet <strong>Aria</strong>, your AI onboarding agent. She <strong>leads the whole journey</strong> —
-            recommends your card, verifies your KYC herself, checks your eligibility with your consent, and issues an
-            <strong>instant virtual card</strong>. New to credit? She’ll build you a path. Fully aligned with RBI, KYC &amp; DPDP.
+            Aria recommends your card, does your KYC, checks eligibility with your consent and issues an
+            <strong>instant virtual card</strong> — in about 6 minutes. RBI &amp; DPDP-compliant.
           </p>
           <div id="resumeBanner" class="resume" hidden></div>
           <div class="hero__cta">
-            <button class="btn btn--primary btn--lg" data-action="start">Get my credit card →</button>
-            <span class="hero__note">~6 minutes · No paperwork · Your data stays protected</span>
+            <button class="btn btn--primary btn--lg" data-action="start">Start with Aria →</button>
+            <span class="hero__note">~6 min · No paperwork · Data protected</span>
           </div>
           <div class="trust-strip">
             <span>🔒 Bank-grade security</span><span>🪪 Aadhaar masked &amp; vaulted</span><span>⚖️ RBI-regulated</span>
@@ -51,7 +50,7 @@
         <div class="hero__art" aria-hidden="true">
           <img class="art-card art-card--1" src="assets/cards/flipkart-axis-credit-card.webp" alt="Axis credit card" loading="lazy" />
           <img class="art-card art-card--2" src="assets/cards/axis-bank-ace-credit-card.webp" alt="Axis credit card" loading="lazy" />
-          <div class="art-orb">✨<span>Aria</span></div>
+          <div class="art-orb"><img class="aria-img" src="assets/aria.svg" alt="Aria" /><span>Aria · online</span></div>
         </div>
       </div>
 
@@ -100,7 +99,7 @@
   <div class="agent-overlay" id="agentOverlay" hidden>
     <div class="agent-box">
       <div class="agent-chip"><span class="agent-chip__live"></span><span id="agentName">Aria is working</span></div>
-      <div class="agent-orb"><span class="agent-orb__ring"></span><span class="agent-orb__ring"></span><span>✨</span></div>
+      <div class="agent-orb aria-orb"><span class="agent-orb__ring"></span><span class="agent-orb__ring"></span><img class="aria-img" src="assets/aria.svg" alt="Aria" /></div>
       <h3 class="agent-title" id="agentTitle">Working…</h3>
       <ol class="agent-steps" id="agentSteps"></ol>
       <div class="agent-bar"><span class="agent-bar__fill" id="agentBar"></span></div>
@@ -110,14 +109,14 @@
 
   <!-- ===================== Co-pilot (chat with Aria) ===================== -->
   <button class="copilot-launcher" id="copilotLauncher" data-action="copilot-open" aria-label="Chat with Aria">
-    <span class="copilot-launcher__face">💬</span>
+    <span class="copilot-launcher__face aria-orb"><img class="aria-img" src="assets/aria.svg" alt="Aria" /></span>
     <span class="copilot-launcher__txt">Ask Aria</span>
   </button>
   <div class="copilot-nudge" id="copilotNudge" data-action="copilot-open" hidden></div>
 
   <aside class="copilot" id="copilot" aria-label="Aria — onboarding assistant">
     <header class="copilot__head">
-      <div class="copilot__id"><span class="copilot__avatar">✨</span><div><strong>Aria</strong><small>Axis onboarding assistant</small></div></div>
+      <div class="copilot__id"><span class="copilot__avatar aria-orb"><img class="aria-img" src="assets/aria.svg" alt="Aria" /></span><div><strong>Aria</strong><small>Axis onboarding assistant</small></div></div>
       <button class="copilot__close" data-action="copilot-close" aria-label="Close">✕</button>
     </header>
     <div class="copilot__log" id="copilotLog"></div>
@@ -155,6 +154,9 @@
   <div class="badge-pop" id="badgePop" hidden></div>
   <div class="confetti" id="confetti" hidden></div>
 
+  <!-- ===================== Fixed bottom action bar (phones) ===================== -->
+  <div class="actionbar" id="actionbar"></div>
+
   <!-- ===================== Toast ===================== -->
   <div class="toast" id="toast"></div>
 
@@ -165,9 +167,9 @@
     fully agentic, RBI/DPDP-aligned onboarding — open “Behind the scenes” to see every integration and rule.</p>
   </footer>
 
-  <script src="js/config.js?v=13"></script>
-  <script src="js/integrations.js?v=13"></script>
-  <script src="js/agent.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/config.js?v=14"></script>
+  <script src="js/integrations.js?v=14"></script>
+  <script src="js/agent.js?v=14"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>

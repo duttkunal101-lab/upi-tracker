@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Aria, your AI onboarding agent">
+  <defs>
+    <radialGradient id="ariaHead" cx="38%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#C84B86"/>
+      <stop offset="46%" stop-color="#AE275F"/>
+      <stop offset="100%" stop-color="#7A0E3E"/>
+    </radialGradient>
+    <linearGradient id="ariaVisor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b0712"/>
+      <stop offset="100%" stop-color="#3a0f24"/>
+    </linearGradient>
+    <radialGradient id="ariaEye" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#eafcff"/>
+      <stop offset="55%" stop-color="#7fe9ff"/>
+      <stop offset="100%" stop-color="#34c6ef"/>
+    </radialGradient>
+    <radialGradient id="ariaSpark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF6DA"/>
+      <stop offset="55%" stop-color="#F2C94C"/>
+      <stop offset="100%" stop-color="#C7962B"/>
+    </radialGradient>
+    <linearGradient id="ariaShine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- antenna + spark -->
+  <line x1="60" y1="20" x2="60" y2="9" stroke="#C7962B" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M60 0.5 60 9 M55.7 4.7 64.3 4.7" stroke="#F2C94C" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="60" cy="4.7" r="4.6" fill="url(#ariaSpark)"/>
+
+  <!-- side concierge pods (headset) -->
+  <rect x="10.5" y="50" width="13" height="26" rx="6.5" fill="url(#ariaHead)"/>
+  <rect x="96.5" y="50" width="13" height="26" rx="6.5" fill="url(#ariaHead)"/>
+  <circle cx="17" cy="63" r="3.1" fill="#FFC3DD" opacity="0.8"/>
+  <circle cx="103" cy="63" r="3.1" fill="#FFC3DD" opacity="0.8"/>
+
+  <!-- head -->
+  <rect x="20" y="20" width="80" height="80" rx="30" fill="url(#ariaHead)"/>
+  <rect x="20" y="20" width="80" height="44" rx="30" fill="url(#ariaShine)" opacity="0.5"/>
+
+  <!-- visor -->
+  <rect x="30" y="40" width="60" height="40" rx="20" fill="url(#ariaVisor)"/>
+  <rect x="30" y="40" width="60" height="16" rx="8" fill="#ffffff" opacity="0.06"/>
+
+  <!-- eyes -->
+  <circle cx="47" cy="60" r="8.4" fill="url(#ariaEye)"/>
+  <circle cx="73" cy="60" r="8.4" fill="url(#ariaEye)"/>
+  <circle cx="44.4" cy="57" r="2.6" fill="#ffffff"/>
+  <circle cx="70.4" cy="57" r="2.6" fill="#ffffff"/>
+
+  <!-- smile -->
+  <path d="M50 73 Q60 79 70 73" stroke="#7fe9ff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.92"/>
+
+  <!-- cheeks -->
+  <circle cx="35.5" cy="72" r="3.4" fill="#FF6FA5" opacity="0.5"/>
+  <circle cx="84.5" cy="72" r="3.4" fill="#FF6FA5" opacity="0.5"/>
+</svg>
