@@ -1185,3 +1185,36 @@ body {
 .setupbar__note { font-size: 0.8rem; }
 .setupbar.is-complete { border-color: rgba(31,138,112,0.4); background: rgba(31,138,112,0.05); }
 .setupbar.is-complete .setupbar__count { color: var(--ok); }
+
+/* =============================================================================
+ * GRAND v7 — OTP reveal · fee budget · real NACH · card tips · online use ·
+ *  portrait virtual card
+ * ========================================================================== */
+.fld__eyewrap { position: relative; }
+.fld__eyewrap .fld__input { padding-right: 46px; }
+.fld__eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent;
+  font-size: 1.15rem; cursor: pointer; padding: 6px; line-height: 1; border-radius: 8px; opacity: 0.75; }
+.fld__eye:hover { opacity: 1; background: var(--surface-2); }
+
+.feebudget { background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 14px; padding: 0.8rem 0.95rem; margin-bottom: 0.9rem; }
+.feebudget .bgt-row__slider { width: 100%; }
+.feebudget__val { margin-top: 0.4rem; font-size: 0.9rem; }
+.feebudget__val strong { color: var(--burgundy); font-variant-numeric: tabular-nums; }
+
+.tips { background: linear-gradient(180deg, rgba(199,150,43,0.08), rgba(199,150,43,0)); border: 1px solid rgba(199,150,43,0.3);
+  border-radius: 14px; padding: 0.55rem 0.9rem 0.8rem; margin: 0.4rem 0; }
+.tips__list { list-style: none; margin: 0.2rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.42rem; }
+.tips__list li { position: relative; padding-left: 1.5rem; font-size: 0.9rem; line-height: 1.4; }
+.tips__list li::before { content: '💡'; position: absolute; left: 0; top: 0; font-size: 0.85rem; }
+
+.onlineuse { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0.7rem 0.9rem; margin: 0.6rem 0; }
+.onlineuse__p { font-size: 0.84rem; margin: 0.1rem 0 0.6rem; }
+.onlineuse__row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.onlineuse__chip { font-size: 0.76rem; font-weight: 700; color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: 999px; padding: 0.28rem 0.7rem; }
+
+.seg--nach .seg__btn { font-size: 0.82rem; }
+
+.vcard--portrait { aspect-ratio: 0.63 / 1 !important; max-width: 232px; margin-left: auto; margin-right: auto; background: #0a0a0a; }
+.vcard--portrait .vcard__art { object-fit: cover; object-position: center; }
+.vcard--portrait .vcard__last4 { left: 12px; right: 12px; bottom: 12px; }
