@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v17'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v18'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -51,10 +51,10 @@
     okWithFees: false, feeBudget: 0, cardId: null, valueRank: null,
     autofillDone: false,
     dlMobile: '', dlLinked: false, dlOtpSent: false,
-    pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, selfieTaken: false, livenessDone: false,
+    pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, selfieTaken: false, livenessDone: false, needsVcip: false, vcipDone: false, kycEdits: null,
     incomeMethod: 'pan', aaBank: null, bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false, autopayBank: null,
-    napAcct: '', napIfsc: '', napMode: 'enach', pushProvisioned: false,
+    napAcct: '', napIfsc: '', napMode: 'enach', pushProvisioned: false, cofted: [], coftSel: null,
     points: 0, awarded: {}, scratched: false, level: 0,
     startedAt: Date.now(), done: false,
   });
@@ -321,7 +321,7 @@
         </div>
         <p class="ask">You are…</p>
         <div class="seg">
-          ${[['salaried', 'Salaried'], ['self', 'Self-employed'], ['ntc', 'New to credit']].map(([v, l]) =>
+          ${[['salaried', 'Salaried'], ['self', 'Self-employed']].map(([v, l]) =>
             `<button class="seg__btn ${state.profile.employment === v ? 'is-on' : ''}" data-action="set-emp" data-emp="${v}">${l}</button>`).join('')}
         </div>
         <p class="ask">Card fees <span class="muted">— premium cards charge an annual fee for lounges, concierge &amp; richer rewards. What’s the most you’re happy to pay?</span></p>
@@ -377,7 +377,9 @@
       return { html: stageHead('kyc') + kycChooser() };
     }
     // documents fetched, but a live selfie (liveness + face match) is required first (RBI)
-    if (state.identity && !state.livenessDone) return { html: stageHead('kyc') + kycLiveness() };
+    if (state.identity && !state.livenessDone && !state.needsVcip) return { html: stageHead('kyc') + kycLiveness() };
+    // face match was below the auto-threshold → escalate to V-CIP, but ONLY when required
+    if (state.identity && state.needsVcip && !state.vcipDone) return { html: stageHead('kyc') + kycVcipEscalation() };
     // liveness done → Aria fills the application live, field by field, from the verified source
     if (state.identity && state.livenessDone && !state.autofillDone) return kycAutofill();
     // identity + liveness + autofill done → show WHAT was verified (audit), THEN the filled form
@@ -404,22 +406,37 @@
           </div>
           <span class="pill pill--ok">✓ Verified</span>
         </div>
-        <div class="sec-label">🗂️ Your application — filled from your verified KYC ${afBadge()}</div>
+        <div class="docs-fetched">📄 Documents fetched ${esc(viaLabel(state.kycVia))}: ${(C.digiLockerDocs || []).slice(0, 2).map((d) => `<strong>${esc(d.name)}</strong>`).join(' · ')} · <strong>Photograph</strong></div>
+        <div class="sec-label">🗂️ Your application — filled from your verified KYC ${afBadge()} <span class="edit-hint">✎ tap any field to edit</span></div>
         <div class="kyc-rows">
-          ${kvRow('Full name', id.name)}
-          ${kvRow('Date of birth', id.dob)}
-          ${kvRow('Gender', id.gender)}
-          ${kvRow('Father’s name', id.fatherName)}
-          ${kvRow('PAN', (state.pan || '').toUpperCase())}
-          ${kvRow('Email', id.email)}
-          ${kvRow('Aadhaar', (id.aadhaarMasked || '') + ' (masked)')}
-          ${kvRow('Current address', id.currentAddress || id.address)}
-          ${kvRow('Permanent address', id.permanentAddress || id.address)}
+          ${kycEditRow('Full name', 'name', id.name)}
+          ${kycEditRow('Date of birth', 'dob', id.dob)}
+          ${kycEditRow('Gender', 'gender', id.gender)}
+          ${kycEditRow('Father’s name', 'father', id.fatherName)}
+          ${kvRow('PAN', (state.pan || '').toUpperCase() + ' · verified ✓')}
+          ${kycEditRow('Email', 'email', id.email)}
+          ${kvRow('Aadhaar', (id.aadhaarMasked || '') + ' (masked) · verified ✓')}
+          ${kycEditRow('Current address', 'curaddr', id.currentAddress || id.address)}
+          ${kycEditRow('Permanent address', 'permaddr', id.permanentAddress || id.address)}
         </div>
-        <p class="muted edit-note">Please check it’s correct — you’re confirming this to Axis Bank. Something off? <a href="#" data-action="edit-kyc">Edit a detail</a></p>
+        <p class="muted edit-note">PAN &amp; Aadhaar are document-verified (locked). Tap any other field to correct it — you’re confirming this to Axis Bank.</p>
         <button class="btn btn--primary btn--block" data-action="confirm-kyc">This is correct — confirm &amp; continue →</button>
       </div>` };
   };
+  // an editable application field (the fetched value can be corrected before confirming)
+  function kycEditRow(label, key, value) {
+    const v = (state.kycEdits && state.kycEdits[key] != null) ? state.kycEdits[key] : (value || '');
+    return `<label class="kv kv--edit">
+      <span class="kv__k">${esc(label)}</span>
+      <input class="kv__editinput" data-kycfield="${key}" value="${esc(v)}" aria-label="${esc(label)}" />
+      <span class="kv__pen" aria-hidden="true">✎</span>
+    </label>`;
+  }
+  function applyKycEdits() {
+    if (!state.kycEdits || !state.identity) return;
+    const map = { name: 'name', dob: 'dob', gender: 'gender', father: 'fatherName', email: 'email', curaddr: 'currentAddress', permaddr: 'permanentAddress' };
+    Object.keys(state.kycEdits).forEach((k) => { const f = map[k]; if (f && state.kycEdits[k] != null) state.identity[f] = state.kycEdits[k]; });
+  }
 
   /* ---- Stage 4: assessment -------------------------------------------- */
   R.assessment = function () {
@@ -544,6 +561,7 @@
     if (state.issueScreen === 'pin') return { html: stageHead('issuance') + pinScreen() };
     if (state.issueScreen === 'wallet') return { html: stageHead('issuance') + walletScreen(card, v) };
     if (state.issueScreen === 'autopay') return { html: stageHead('issuance') + autopayScreen() };
+    if (state.issueScreen === 'coft') return { html: stageHead('issuance') + cardOnFileScreen() };
     return { html: stageHead('issuance') + `
       ${virtualCardVisual(card, v)}
       ${onlineUseBox()}
@@ -554,6 +572,7 @@
         ${actionTile('📲', 'Add to Google / Apple Pay (1-tap)', 'add-wallet', state._walletAdded ? 'Added ✓' : 'Add →')}
         ${actionTile('🔁', 'Autopay — never miss a due date', 'autopay', state.autopay ? 'On ✓' : 'Enable →')}
       </div>
+      ${cardOnFileTeaser()}
       ${topMerchants(card)}
       <p class="trust">📮 Physical card via ${esc(state.issued.physicalDispatch.courier)} in ~${state.issued.physicalDispatch.etaDays} days · trackable.</p>
       <button class="btn btn--primary btn--block" data-action="to-welcome">Continue →</button>` };
@@ -613,6 +632,50 @@
       <label class="consent"><input type="checkbox" id="autopayConsent" checked/><span>I authorise an e-NACH mandate on the selected account to auto-pay my Axis card dues.</span></label>
       <button class="btn btn--primary btn--block" data-action="autopay-save">${bank ? 'Confirm autopay →' : 'Pick a bank to continue'}</button>
     </div>`;
+  }
+
+  /* ---- card-on-file tokenization (RBI CoFT): save the card at the customer's
+   * own merchant accounts so it can be used for online payments without re-typing */
+  const COFT_MERCHANTS = [
+    { id: 'amazon', name: 'Amazon', i: '🛒', found: true }, { id: 'netflix', name: 'Netflix', i: '🎬', found: true },
+    { id: 'swiggy', name: 'Swiggy', i: '🍔', found: true }, { id: 'flipkart', name: 'Flipkart', i: '📦', found: true },
+    { id: 'uber', name: 'Uber', i: '🚕', found: true }, { id: 'spotify', name: 'Spotify', i: '🎵', found: false },
+  ];
+  function cardOnFileTeaser() {
+    const n = (state.cofted || []).length;
+    return `<div class="coft-teaser">
+      <div class="coft-teaser__h"><strong>💳 Save your card on the apps you use</strong><span class="coft-teaser__tag">${n ? n + ' saved ✓' : 'RBI tokenization'}</span></div>
+      <p class="muted">I can find where you already have accounts and securely save this card there — RBI <strong>card-on-file tokenization</strong>, so you pay without ever typing your number.</p>
+      <button class="btn btn--ghost btn--block" data-action="coft">${n ? 'Manage saved apps →' : 'Find my apps &amp; save card →'}</button>
+    </div>`;
+  }
+  function cardOnFileScreen() {
+    if (!state.coftSel) { state.coftSel = {}; COFT_MERCHANTS.forEach((m) => { if (m.found) state.coftSel[m.id] = true; }); }
+    const sel = state.coftSel;
+    const found = COFT_MERCHANTS.filter((m) => m.found);
+    return `<div class="panel">
+      <button class="linkback" data-action="issue-back">← Back</button>
+      <h3 class="sub-h">💳 Save your card on your apps</h3>
+      <p class="muted">Using your verified email &amp; mobile, I found accounts where you can save this card on file. With RBI <strong>tokenization</strong> the merchant stores a token — never your real card number. Choose where to save it:</p>
+      <div class="coft-list">
+        ${found.map((m) => `<label class="coft-item ${sel[m.id] ? 'is-on' : ''}"><span class="coft-item__i">${m.i}</span><span class="coft-item__n">${esc(m.name)}<small>account found · ${esc((state.identity && state.identity.email) || 'your email')}</small></span><input type="checkbox" data-coft="${m.id}" ${sel[m.id] ? 'checked' : ''}/></label>`).join('')}
+      </div>
+      <button class="btn btn--primary btn--block" data-action="coft-save">Securely save my card (tokenize) →</button>
+      <p class="trust">🔒 RBI card-on-file tokenization (CoFT) — you can view or delete these tokens anytime in the Axis app.</p>
+    </div>`;
+  }
+  async function cardOnFileSave() {
+    const chosen = $$('[data-coft]').filter((c) => c.checked).map((c) => c.getAttribute('data-coft'));
+    if (!chosen.length) { toast('Pick at least one app, or go back.', 'error'); return; }
+    const names = chosen.map((id) => (COFT_MERCHANTS.find((m) => m.id === id) || {}).name).filter(Boolean);
+    await runAgent('Tokenising your card', [
+      { id: 'find', icon: '🔎', label: 'Confirming your accounts at the selected merchants', fn: () => INT.delay(900), tag: () => names.length + ' found' },
+      { id: 'token', icon: '🔐', label: 'Requesting network tokens (Visa Token Service)', fn: () => INT.provisionWallet(), tag: () => 'tokens issued' },
+      { id: 'save', icon: '💳', label: 'Saving the token on file at each merchant (RBI CoFT)', fn: () => INT.delay(800), tag: () => 'saved' },
+    ]);
+    state.cofted = names; state.issueScreen = null; save();
+    renderStage();
+    toast('✓ Card securely saved at ' + names.length + ' app' + (names.length > 1 ? 's' : '') + ' — RBI tokenized.', 'success');
   }
 
   /* ---- Stage 8: welcome ----------------------------------------------- */
@@ -784,6 +847,22 @@
       <div class="ocr-grid">${tile('aadhaar', 'Aadhaar')}${tile('pan', 'PAN')}</div>
       <button class="btn btn--primary btn--block" data-action="ocr-extract" ${(o.aadhaar && o.pan) ? '' : 'disabled'}>Extract with AI (OCR) →</button>
       <p class="trust">In this demo, tapping a tile simulates a capture; real OCR reads the actual image.</p>
+    </div>`;
+  }
+  // shown ONLY when the auto face-match falls short — escalates to a human V-CIP officer
+  function kycVcipEscalation() {
+    const pct = state.face ? Math.round((state.face.faceMatchScore || 0.88) * 100) : 88;
+    return `<div class="panel liveness">
+      <h3 class="sub-h">🎥 A quick video-KYC will confirm it’s you</h3>
+      <p class="muted">Your selfie matched your Aadhaar photo at <strong>${pct}%</strong> — close, but just under our auto-approve threshold. So RBI lets us confirm it with a <strong>short video call</strong> with an Axis KYC officer. This only happens when a check needs it.</p>
+      <div class="vcip-card">
+        <div class="vcip-card__row"><span>⏱</span> About a minute</div>
+        <div class="vcip-card__row"><span>🔒</span> Recorded &amp; encrypted (RBI V-CIP)</div>
+        <div class="vcip-card__row"><span>📍</span> Geo-tagged · live in India</div>
+        <div class="vcip-card__row"><span>🪪</span> Keep your original PAN handy</div>
+      </div>
+      <button class="btn btn--primary btn--block" data-action="vcip-start">Start my video-KYC →</button>
+      <button class="btn btn--ghost btn--block" data-action="vcip-schedule">Schedule for later</button>
     </div>`;
   }
   function kycVcip() {
@@ -961,12 +1040,10 @@
         desc: 'Enter your Aadhaar, verify a UIDAI OTP, and I pull your e-KYC.' },
       { id: 'ocr', icon: '📄', title: 'Upload documents (OCR)', time: '~2 min', need: 'Photos of Aadhaar &amp; PAN',
         desc: 'Snap or upload your Aadhaar &amp; PAN — AI reads the details for you to confirm. No DigiLocker needed.' },
-      { id: 'vcip', icon: '🎥', title: 'Video KYC (V-CIP)', time: '~5 min', need: 'PAN + camera, mic, location',
-        desc: 'A live video call with an Axis KYC officer — RBI-approved full KYC, done from home.' },
     ];
     return `<div class="panel">
       ${relationshipBanner()}
-      <p class="ask">Choose how to verify <span class="muted">— all four are RBI-approved. ${esc(C.brand.agentName)} suggests DigiLocker for speed.</span></p>
+      <p class="ask">Choose how to verify <span class="muted">— all are RBI-approved e-KYC. ${esc(C.brand.agentName)} suggests DigiLocker for speed.</span></p>
       <div class="kyc-methods">
         ${methods.map((m) => `<button class="kyc-method ${m.reco ? 'kyc-method--reco' : ''}" data-action="kyc-method" data-method="${m.id}">
           <span class="kyc-method__ic">${m.icon}</span>
@@ -978,6 +1055,7 @@
           <span class="kyc-method__pick">${m.reco ? esc(C.brand.agentName) + '’s pick' : 'Choose →'}</span>
         </button>`).join('')}
       </div>
+      <div class="vcip-note">🎥 <strong>Video-KYC (V-CIP)</strong> isn’t needed up-front. If a check ever needs a human to confirm it, I’ll switch you to a quick video call with an Axis officer — <strong>only when required</strong>.</div>
       ${trustRow()}
       <p class="trust">🔒 Whichever you pick, I <strong>verify before I fill anything</strong>, your Aadhaar stays masked &amp; vaulted, and you confirm every detail.</p>
     </div>`;
@@ -1354,8 +1432,8 @@
     root.classList.remove('is-in'); void root.offsetWidth; root.classList.add('is-in'); // iOS-style stage transition
     pinPrimaryCta(root); // always-reachable CTA in a fixed bottom bar (phones)
     if (out.mount) out.mount();
-    // mirror the agent's lead into the co-pilot as a live transcript of her reasoning
-    if (lead.msg && lead.msg !== _lastLead) { _lastLead = lead.msg; appendMsg('agent', lead.msg); }
+    // the co-pilot is for SUPPORT, not a transcript — refresh its contextual FAQ chips
+    refreshCopilotFaqs();
     // gate the e-sign button on consent
     const ci = $('#consentIssue'); if (ci) ci.addEventListener('change', () => { $('#signCta').disabled = !ci.checked; });
   }
@@ -1397,15 +1475,14 @@
       case 'aadhaar-verify': await aadhaarVerify(); break;
       case 'ocr-upload': ocrUpload(el.dataset.doc); break;
       case 'ocr-extract': await ocrExtract(); break;
-      case 'vcip-start': await vcipStart(); break;
+      case 'vcip-start': await vcipEscalate(); break;
       case 'vcip-schedule': toast('We’ll text you a secure link to pick a V-CIP slot (simulated). Your progress is saved.', 'success'); break;
       case 'dl-allow': await dlAllow(); break;
       case 'dl-verify-otp': await dlVerifyOtp(); break;
       case 'liveness-snap': state.selfieTaken = true; save(); renderStage(); toast('📸 Selfie captured.', 'success'); break;
       case 'liveness-capture': await livenessCapture(); break;
       case 'dl-deny': dlDeny(); break;
-      case 'edit-kyc': toast('In production you could edit any pre-filled field here.'); break;
-      case 'confirm-kyc': state.kycComplete = true; save(); nextStage(); break;
+      case 'confirm-kyc': applyKycEdits(); state.kycComplete = true; save(); toast('✓ Details confirmed.', 'success'); nextStage(); break;
 
       /* stage 4 */
       case 'income-method': state.incomeMethod = el.dataset.m; save(); renderStage(); break;
@@ -1429,6 +1506,8 @@
       case 'add-wallet': state.issueScreen = 'wallet'; save(); renderStage(); break;
       case 'wallet-add': state._walletAdded = true; state.pushProvisioned = true; state.issueScreen = null; save(); renderStage(); toast('✓ Pushed to ' + (el.dataset.wallet === 'apay' ? 'Apple Pay' : 'Google Pay') + ' via Visa — your real number was never shared.', 'success'); break;
       case 'autopay': state.issueScreen = 'autopay'; save(); renderStage(); break;
+      case 'coft': state.issueScreen = 'coft'; save(); renderStage(); break;
+      case 'coft-save': await cardOnFileSave(); break;
       case 'autopay-bank': if ($('#napAcct')) state.napAcct = $('#napAcct').value; if ($('#napIfsc')) state.napIfsc = $('#napIfsc').value; state.autopayBank = el.dataset.bank; save(); renderStage(); break;
       case 'nach-mode': state.napMode = el.dataset.mode; if ($('#napAcct')) state.napAcct = $('#napAcct').value; if ($('#napIfsc')) state.napIfsc = $('#napIfsc').value; save(); renderStage(); break;
       case 'autopay-amt': $$('[data-action="autopay-amt"]').forEach((b) => b.classList.toggle('is-on', b === el)); state._autopayAmt = el.dataset.amt; save(); break;
@@ -1449,6 +1528,7 @@
       /* co-pilot */
       case 'copilot-open': openCopilot(); break;
       case 'copilot-close': $('#copilot').classList.remove('is-open'); break;
+      case 'faq-ask': openCopilot(); sendChat(el.dataset.q); break;
 
       /* customer tracker */
       case 'tracker-open': $('#tracker').classList.add('is-open'); renderTracker(); track('tracker_open', { stage: state.stage }); break;
@@ -1531,7 +1611,8 @@
     state._rec = { card: top.card, reason, source: 'budget-value' };
     save();
     renderStage();
-    aria(`I weighed every Axis card’s rewards <em>and</em> fees against your ${inr(budgetTotal())}/month spend. The <strong>${esc(top.card.name)}</strong> nets you the most — ≈ ${inr(top.net)}/year.`, true);
+    const topVal = state.okWithFees ? top.total : top.net;
+    aria(`I weighed every Axis card’s rewards <em>and</em> fees against your ${inr(budgetTotal())}/month spend. The <strong>${esc(top.card.name)}</strong> gives you the most value — ≈ ${inr(topVal)}/year${state.okWithFees && top.perk ? ' (incl. lounge &amp; travel perks)' : ''}.`, true);
     track('reco_made', { card: top.card.id, source: 'budget-value' });
   }
   function chooseCard(id) {
@@ -1613,9 +1694,28 @@
       { id: 'match', icon: '🤝', label: 'Matching your face to your verified ID', fn: () => INT.livenessFaceMatch(), tag: (r) => 'match ' + Math.round((r.faceMatchScore || 0.95) * 100) + '%' },
     ]);
     state.face = res.match;
-    state.livenessDone = true; save();
+    const score = (res.match && res.match.faceMatchScore) || 0.95;
+    if (score < 0.90) {
+      // close, but under our auto-match threshold → RBI lets us confirm via a quick V-CIP
+      state.needsVcip = true; save();
+      renderStage();
+      toast('Almost — your match was just under threshold. A 1-min video-KYC will confirm it.', '');
+    } else {
+      state.livenessDone = true; save();
+      renderStage();
+      toast('✓ Liveness confirmed — face matched your ID.', 'success');
+    }
+  }
+  /* V-CIP — triggered ONLY when an e-KYC check needs a human to confirm it */
+  async function vcipEscalate() {
+    await runAgent('Your live Video-KYC (V-CIP)', [
+      { id: 'connect', icon: '🔗', label: 'Connecting you to an Axis KYC officer', fn: () => INT.delay(1100), tag: () => 'connected' },
+      { id: 'verify', icon: '🎥', label: 'Officer confirming your identity & liveness on video', fn: () => INT.vcipSession(), tag: () => 'verified' },
+      { id: 'geo', icon: '📍', label: 'Geo-tagging & recording the session (RBI V-CIP)', fn: () => INT.delay(700), tag: () => 'India ✓' },
+    ]);
+    state.vcipDone = true; state.livenessDone = true; state.vcip = true; save();
     renderStage();
-    toast('✓ Liveness confirmed — face matched your ID.', 'success');
+    toast('✓ Video-KYC complete — identity confirmed.', 'success');
   }
   function dlDeny() {
     $('#dlModal').hidden = true;
@@ -1742,9 +1842,53 @@
   /* ===================================================================== *
    *  CO-PILOT (chat with Aria)
    * ===================================================================== */
+  // contextual support questions per stage — the co-pilot is a help desk, not a transcript
+  const STAGE_FAQS = {
+    landing: ['How does this work?', 'Is my data safe?', 'What documents do I need?'],
+    start: ['Why do you need my mobile number?', 'Is my data safe?', 'How long does this take?'],
+    kyc: ['What is DigiLocker?', 'Which documents do you fetch?', 'Is my Aadhaar safe?', 'Can I edit my details?'],
+    product: ['Which card suits me?', 'How are annual fees waived?', 'Can I change cards later?'],
+    assessment: ['Why check my credit score?', 'How is my income verified?', 'Will this hurt my score?'],
+    decision: ['How was my limit decided?', 'What are the charges?', 'Is there a cooling-off period?'],
+    agreement: ['What is the cooling-off period?', 'What are the key fees?'],
+    issuance: ['How do I use it online now?', 'What is push provisioning?', 'How does autopay work?'],
+    welcome: ['How do I earn the most rewards?', 'When will my card arrive?'],
+  };
+  // instant, accurate answers (work offline) for the common questions
+  const FAQ_ANSWERS = [
+    [/digilocker/i, 'DigiLocker is the Government of India’s secure document wallet. With your consent I fetch your <strong>e-Aadhaar (identity, address, photo)</strong> and your <strong>PAN verification record</strong> from it — issued copies, legally valid, and you can revoke access anytime.'],
+    [/which doc|what doc|documents do you/i, 'For a credit card I fetch just three: <strong>e-Aadhaar</strong> (identity, address, photo), your <strong>PAN verification record</strong> (name match with the Income-Tax dept), and a <strong>photograph</strong> for the face match. That’s all KYC needs.'],
+    [/aadhaar.*safe|safe.*aadhaar|data safe|my data/i, 'Your Aadhaar number is <strong>masked</strong> and stored in a secure Aadhaar Vault — never in plain text. Everything is encrypted, used only for this application, and shared strictly with your consent (DPDP Act). You can revoke access anytime.'],
+    [/edit|change my detail|correct/i, 'Yes — on the review screen tap <strong>Edit</strong> on any field to correct what was fetched before you confirm. Nothing is submitted until you’re happy with it.'],
+    [/mobile number|phone number/i, 'Your mobile verifies it’s really you (RBI/TRAI) and is where I’ll send your OTP and progress updates. It’s not shared for marketing without your consent.'],
+    [/how long|how much time|take/i, 'About <strong>6 minutes</strong> end-to-end — I do the heavy lifting (KYC, bureau, income) so you mostly confirm. Your progress saves automatically if you need to pause.'],
+    [/which card|best card|suits me|recommend/i, 'Tell me your monthly spends and the fee you’re happy to pay, and I compute the <strong>actual rupee value</strong> each Axis card earns you — then recommend the highest-value one. Not a generic “best card”.'],
+    [/fee.*waiv|waiv.*fee|annual fee/i, 'Most fees are <strong>waived</strong> when you cross a yearly spend (e.g. ₹2L on ACE). Premium cards charge a fee for lounges & concierge — I only show those if you tell me you’re happy to pay one.'],
+    [/credit score|bureau|cibil/i, 'With your explicit consent (CIC Act) I check your credit bureau record once, only to set a <strong>responsible limit</strong>. It’s a soft check for this application — it doesn’t hurt your score.'],
+    [/income|salary|verif/i, 'You choose how: via your <strong>PAN → ITR</strong> (Income-Tax records), or by picking a bank and sharing a statement through the RBI <strong>Account Aggregator</strong>. No bank shares anything without your consent.'],
+    [/limit|how was.*limit|credit limit/i, 'Your limit is a safe multiple of your verified income, kept within a comfortable FOIR so repayments stay easy. I show exactly how I arrived at it on the offer — and you can request a lower one.'],
+    [/cooling.?off|cancel/i, 'After issuance you have a <strong>cooling-off / look-up period</strong> to cancel at no cost (just pro-rata interest on anything spent). RBI requires it — I’ll tell you exactly how, in-app.'],
+    [/push provision|google pay|apple pay|wallet/i, 'Push provisioning means one tap adds your card to Google/Apple Pay via the <strong>Visa Token Service</strong> — your real card number is never shared with merchants, just a device token.'],
+    [/autopay|nach|e-?mandate/i, 'Autopay sets up an <strong>NPCI e-NACH / UPI-Autopay</strong> mandate from any bank account (not only Axis) so your bill is paid automatically. You authorise it, and can cancel anytime.'],
+    [/online|use.*card|merchant/i, 'Your virtual card has a full 16-digit number the moment it’s issued — use it on any site or app that accepts Visa (Amazon, Swiggy, Netflix…) while the physical card ships.'],
+    [/reward|earn|cashback/i, 'Put each spend on the card that rewards it most — I list the exact merchants and tips for your card on the welcome screen. Pay in full each month and the rewards are pure gain.'],
+    [/arrive|deliver|physical card/i, 'Your physical card is dispatched by courier and usually arrives in a few days — you can track it on the “Your application” screen. The virtual card works instantly meanwhile.'],
+    [/how does this work|what is this/i, 'I’m Aria, your AI onboarding agent. I recommend your card, do your KYC, check eligibility with your consent and issue an instant virtual card — about 6 minutes, fully RBI/DPDP-compliant.'],
+  ];
+  function refreshCopilotFaqs() {
+    const wrap = $('#copilotFaqs'); if (!wrap) return;
+    const faqs = STAGE_FAQS[state.stage] || STAGE_FAQS.landing;
+    wrap.innerHTML = `<span class="copilot__faqs-lb">Tap a question or ask your own</span>` +
+      faqs.map((q) => `<button class="faq-chip" data-action="faq-ask" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+  }
+  function localAnswer(text) {
+    for (const [re, ans] of FAQ_ANSWERS) if (re.test(text)) return ans;
+    return null;
+  }
   function openCopilot() {
     $('#copilot').classList.add('is-open');
     hideNudgeBubble();
+    refreshCopilotFaqs();
     $('#copilotInput').focus();
   }
   function aria(html, openIfClosed) {
@@ -1769,7 +1913,7 @@
     }
     if (!copilotSeeded._any) {
       copilotSeeded._any = true;
-      appendMsg('agent', `Hi, I’m <strong>${C.brand.agentName}</strong> — ${esc(C.brand.agentRole)}. I’ll guide you, do the heavy lifting, and answer anything. Ask me about KYC, fees, your data or which card suits you.`);
+      appendMsg('agent', `Hi, I’m <strong>${C.brand.agentName}</strong> 👋 I’m guiding your application — if you’re ever unsure, ask me anything here, any time. Tap a question below or type your own.`);
     }
   }
   async function sendChat(text) {
@@ -1779,10 +1923,13 @@
     typing.innerHTML = '<i></i><i></i><i></i>';
     $('#copilotLog').appendChild(typing);
     $('#copilotLog').scrollTop = $('#copilotLog').scrollHeight;
-    const r = await AGENT.ask(text, { stage: state.stage });
+    const local = localAnswer(text); // instant, accurate answer to common questions
+    let html;
+    if (local) { await INT.delay(450); html = local; }
+    else { const r = await AGENT.ask(text, { stage: state.stage }); html = esc(r.answer); track('copilot_ask', { stage: state.stage, source: r.source }); }
     typing.remove();
-    appendMsg('agent', esc(r.answer));
-    track('copilot_ask', { stage: state.stage, source: r.source });
+    appendMsg('agent', html);
+    if (local) track('copilot_ask', { stage: state.stage, source: 'kb' });
   }
 
   /* nudge speech-bubble near the launcher */
@@ -1911,7 +2058,15 @@
     const inProgress = state.stage && state.stage !== 'landing' && !state.done;
     if (inProgress) {
       const s = C.stageByKey[state.stage];
-      banner.innerHTML = `You have an application in progress (${esc(s ? s.label : '')}). <a href="#" data-action="resume">Resume →</a> · <a href="#" data-action="restart">start over</a>`;
+      const idx = wizStages.findIndex((x) => x.key === state.stage);
+      const total = wizStages.length, stepNo = idx >= 0 ? idx + 1 : 1;
+      const pct = Math.round(((stepNo - 1) / total) * 100);
+      const left = wizStages.slice(Math.max(idx, 0)).reduce((m, x) => m + (x.minutes || 1), 0);
+      banner.innerHTML = `
+        <div class="resume__top"><span class="resume__badge">⏸ Welcome back</span><span class="resume__step">Step ${stepNo} of ${total} · ${esc(s ? s.label : '')}</span></div>
+        <div class="resume__bar"><span style="width:${pct}%"></span></div>
+        <p class="resume__txt">Your progress is saved 🔒 — pick up exactly where you left off, about <strong>${left} min</strong> to go.</p>
+        <div class="resume__cta"><button class="btn btn--primary btn--block" data-action="resume">Resume my application →</button><a href="#" data-action="restart" class="resume__over">start over</a></div>`;
       banner.hidden = false;
     } else { banner.hidden = true; }
   }
@@ -1931,6 +2086,8 @@
 
     // live budget sliders — update the amount + running total without a re-render
     document.addEventListener('input', (e) => {
+      const kf = e.target.closest && e.target.closest('[data-kycfield]');
+      if (kf) { state.kycEdits = state.kycEdits || {}; state.kycEdits[kf.getAttribute('data-kycfield')] = kf.value; save(); return; }
       const fb = e.target.closest && e.target.closest('[data-feebudget]');
       if (fb) {
         state.feeBudget = Number(fb.value) || 0;

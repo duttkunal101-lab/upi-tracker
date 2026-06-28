@@ -1218,3 +1218,65 @@ body {
 .vcard--portrait { aspect-ratio: 0.63 / 1 !important; max-width: 232px; margin-left: auto; margin-right: auto; background: #0a0a0a; }
 .vcard--portrait .vcard__art { object-fit: cover; object-position: center; }
 .vcard--portrait .vcard__last4 { left: 12px; right: 12px; bottom: 12px; }
+
+/* =============================================================================
+ * GRAND v8 — conditional V-CIP · named docs · editable KYC · FAQ help desk ·
+ *  CoFT merchant tokenization · stronger resume
+ * ========================================================================== */
+.fld__eye { min-width: 40px; min-height: 40px; display: grid; place-items: center; }
+
+/* V-CIP: only-when-required note + escalation card */
+.vcip-note { background: var(--surface-2); border: 1px dashed var(--line-2); border-radius: 12px; padding: 0.6rem 0.8rem; font-size: 0.82rem; margin: 0.6rem 0; color: var(--muted); }
+.vcip-note strong { color: var(--ink); }
+.vcip-card { background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 14px; padding: 0.7rem 0.9rem; margin: 0.6rem 0 0.9rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.vcip-card__row { display: flex; align-items: center; gap: 0.55rem; font-size: 0.88rem; font-weight: 600; }
+.vcip-card__row span { font-size: 1rem; }
+
+/* documents fetched (named) */
+.docs-fetched { background: rgba(151,20,77,0.05); border: 1px solid var(--line-2); border-radius: 12px; padding: 0.55rem 0.8rem; font-size: 0.82rem; margin-bottom: 0.6rem; }
+.docs-fetched strong { color: var(--burgundy); }
+
+/* editable KYC fields */
+.edit-hint { font-size: 0.72rem; font-weight: 700; color: var(--burgundy); margin-left: 0.4rem; }
+.kv--edit { display: grid; grid-template-columns: 38% 1fr auto; align-items: center; gap: 0.5rem; cursor: text;
+  border: 1px solid var(--line); border-radius: 10px; padding: 0.35rem 0.6rem; margin-bottom: 0.35rem; background: var(--surface); transition: border-color 0.15s; }
+.kv--edit:focus-within { border-color: var(--burgundy); box-shadow: 0 0 0 3px rgba(151,20,77,0.08); }
+.kv__editinput { border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--ink); width: 100%; min-width: 0; padding: 0.15rem 0; }
+.kv__editinput:focus { outline: none; }
+.kv__pen { opacity: 0.4; font-size: 0.85rem; }
+.kv--edit:focus-within .kv__pen { opacity: 1; color: var(--burgundy); }
+
+/* co-pilot help desk: FAQ chips */
+.copilot__faqs { padding: 0.5rem 0.9rem; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 0.4rem; max-height: 132px; overflow-y: auto; }
+.copilot__faqs-lb { width: 100%; font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.faq-chip { font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--burgundy); background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: 999px; padding: 0.32rem 0.7rem; cursor: pointer; transition: all 0.15s var(--ease); text-align: left; }
+.faq-chip:hover { background: var(--burgundy); color: #fff; border-color: var(--burgundy); }
+
+/* CoFT — save card at merchant apps */
+.coft-teaser { background: linear-gradient(135deg, rgba(26,31,113,0.05), rgba(151,20,77,0.05)); border: 1px solid var(--line-2);
+  border-radius: 14px; padding: 0.75rem 0.9rem; margin: 0.6rem 0; }
+.coft-teaser__h { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.coft-teaser__h strong { font-size: 0.96rem; }
+.coft-teaser__tag { font-size: 0.74rem; font-weight: 800; color: var(--burgundy); background: var(--surface); border: 1px solid var(--line-2); border-radius: 999px; padding: 0.15rem 0.55rem; white-space: nowrap; }
+.coft-teaser p { font-size: 0.84rem; margin: 0.3rem 0 0.6rem; }
+.coft-list { display: flex; flex-direction: column; gap: 0.45rem; margin: 0.2rem 0 0.8rem; }
+.coft-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem; border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--surface); cursor: pointer; }
+.coft-item.is-on { border-color: var(--burgundy); box-shadow: 0 0 0 3px rgba(151,20,77,0.08); }
+.coft-item__i { font-size: 1.4rem; flex: none; }
+.coft-item__n { display: flex; flex-direction: column; flex: 1; font-weight: 700; font-size: 0.92rem; }
+.coft-item__n small { font-weight: 500; font-size: 0.72rem; color: var(--ok); }
+.coft-item input { width: 20px; height: 20px; accent-color: var(--burgundy); }
+
+/* stronger drop-off resume */
+.resume { background: linear-gradient(135deg, rgba(151,20,77,0.08), rgba(199,150,43,0.06)); border: 1px solid var(--line-2);
+  border-left: 4px solid var(--burgundy); border-radius: 16px; padding: 0.95rem 1.05rem; margin: 1.1rem 0; box-shadow: var(--shadow-sm); }
+.resume__top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.resume__badge { font-weight: 800; color: var(--burgundy); }
+.resume__step { font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+.resume__bar { height: 7px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; margin: 0.55rem 0; }
+.resume__bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--burgundy), var(--burgundy-2), var(--gold)); }
+.resume__txt { font-size: 0.88rem; margin: 0 0 0.7rem; }
+.resume__cta { display: flex; align-items: center; gap: 0.8rem; }
+.resume__cta .btn { flex: 1; }
+.resume__over { font-size: 0.82rem; font-weight: 700; color: var(--muted); white-space: nowrap; }

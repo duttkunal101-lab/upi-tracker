@@ -374,10 +374,9 @@
     c.shortName = cardShortName[c.id] || c.name;
     c.feeWaiverSpend = cardFeeWaiverSpend[c.id] || 0;
     c.perkValue = cardPerkValue[c.id] || 0;
-    // explicit uploaded art where we have it; else look for assets/cards/<id>.png
-    // (e.g. airtel.png, myzone.png, neo.png, insta-easy.png) — auto-appears on upload,
-    // falls back to the built-in design until then.
-    c.image = cardImage[c.id] || ('assets/cards/' + c.id + '.png');
+    // only use REAL uploaded art; cards without it (e.g. the secured Insta-Easy)
+    // keep the built-in CSS design — never a broken/blank image.
+    c.image = cardImage[c.id] || null;
   });
   // Active lineup = only cards we have REAL artwork for (+ the secured fallback),
   // so every recommendation shows a real card. Upload airtel.png / myzone.png /
