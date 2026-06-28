@@ -217,6 +217,48 @@
       premium: true,
     },
     {
+      id: 'vistara',
+      name: 'Axis Bank Vistara Infinite Credit Card',
+      segment: 'Premium travel · co-brand',
+      tagline: 'Turn everyday spends into Club Vistara Points and complimentary flight tickets.',
+      annualFee: 10000,
+      feeWaiver: '₹10,000 fee — a complimentary ticket & milestone benefits offset it for frequent flyers',
+      network: 'Visa Infinite',
+      rewardUnit: 'CV Points',
+      premium: true,
+      color: ['#0c0a06', '#1c1407'],
+      bestFor: ['Complimentary flight tickets', '6 CV Points/₹200', 'Lounge access'],
+      highlights: [
+        'Complimentary Club Vistara Silver membership & milestone flight tickets',
+        '6 CV Points per ₹200 spent — redeem for Vistara flights & upgrades',
+        'Domestic & international airport lounge access',
+        'Premium travel, dining and golf privileges',
+      ],
+      idealIf: ['travel', 'flights', 'premium', 'hotels'],
+      minIncomeHint: 'Salaried ₹9L+/yr — for frequent travellers',
+    },
+    {
+      id: 'samsung',
+      name: 'Axis Bank Samsung Infinite Credit Card',
+      segment: 'Co-brand · electronics',
+      tagline: 'Big rewards on Samsung, with Visa Infinite travel privileges.',
+      annualFee: 1500,
+      feeWaiver: '₹1,500 fee — offset by milestone spends',
+      network: 'Visa Infinite',
+      rewardUnit: 'EDGE Reward Points',
+      premium: true,
+      color: ['#0a0a0a', '#2a0a4a'],
+      bestFor: ['Up to 10% on Samsung', 'Lounge access', 'Milestone EDGE points'],
+      highlights: [
+        'Up to 10% cashback / EDGE Points on Samsung purchases & EMIs',
+        'Accelerated EDGE Reward Points on everyday spends',
+        'Complimentary domestic airport lounge access',
+        'Visa Infinite travel, concierge and purchase-protection privileges',
+      ],
+      idealIf: ['shopping', 'premium', 'everyday'],
+      minIncomeHint: 'Salaried — popular with Samsung buyers',
+    },
+    {
       id: 'lic',
       name: 'LIC Axis Bank Credit Card',
       segment: 'Insurance & everyday',
@@ -271,11 +313,13 @@
     neo:          { shopping: 0.02,  travel: 0.01,  bills: 0.01, food: 0.02, entertainment: 0.02, cabs: 0.01, other: 0.005 },
     reserve:      { shopping: 0.015, travel: 0.03,  bills: 0.015, food: 0.015, entertainment: 0.015, cabs: 0.015, other: 0.015 },
     burgundy:     { shopping: 0.02,  travel: 0.035, bills: 0.02, food: 0.02, entertainment: 0.02, cabs: 0.02, other: 0.02 },
+    vistara:      { shopping: 0.02,  travel: 0.04,  bills: 0.015, food: 0.02, entertainment: 0.015, cabs: 0.015, other: 0.015 },
+    samsung:      { shopping: 0.04,  travel: 0.02,  bills: 0.015, food: 0.02, entertainment: 0.02, cabs: 0.015, other: 0.015 },
     lic:          { shopping: 0.005, travel: 0.005, bills: 0.02, food: 0.005, entertainment: 0.005, cabs: 0.005, other: 0.005 },
     'insta-easy': { shopping: 0.01,  travel: 0.01,  bills: 0.01, food: 0.01, entertainment: 0.01, cabs: 0.01, other: 0.01 },
   };
   /* Clean, structured display name shown on the card face. */
-  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', reserve: 'Reserve', burgundy: 'Burgundy Private', lic: 'LIC', 'insta-easy': 'Insta Easy' };
+  const cardShortName = { ace: 'ACE', flipkart: 'Flipkart', atlas: 'Atlas', airtel: 'Airtel', myzone: 'MY Zone', neo: 'NEO', reserve: 'Reserve', burgundy: 'Burgundy Private', vistara: 'Vistara Infinite', samsung: 'Samsung Infinite', lic: 'LIC', 'insta-easy': 'Insta Easy' };
   /* Top merchants where each card saves the most — shown once the virtual card is live. */
   const cardMerchants = {
     ace:      [{ m: 'Google Pay bills', s: '5% cashback', i: '🧾' }, { m: 'Swiggy', s: '4% back', i: '🍔' }, { m: 'Zomato', s: '4% back', i: '🍕' }, { m: 'Ola', s: '4% back', i: '🚕' }],
@@ -284,6 +328,8 @@
     airtel:   [{ m: 'Airtel Thanks', s: '25% cashback', i: '📶' }, { m: 'Utility bills', s: '10% back', i: '💡' }, { m: 'Zomato', s: '10% back', i: '🍕' }, { m: 'Blinkit', s: '10% back', i: '🛍️' }],
     reserve:  [{ m: 'Airport lounges', s: 'Unlimited', i: '🛋️' }, { m: 'International spends', s: '30 pts/₹200', i: '🌍' }, { m: 'Golf & concierge', s: 'Complimentary', i: '⛳' }, { m: 'Fine dining', s: 'Privileges', i: '🍽️' }],
     burgundy: [{ m: 'Airport lounges', s: 'Unlimited +guest', i: '🛋️' }, { m: 'Luxury concierge', s: '24×7', i: '🎩' }, { m: 'Travel & hotels', s: '25 pts/₹200', i: '🏨' }, { m: 'Golf worldwide', s: 'Complimentary', i: '⛳' }],
+    vistara:  [{ m: 'Vistara flights', s: '6 CV pts/₹200', i: '✈️' }, { m: 'Free flight ticket', s: 'Milestone', i: '🎟️' }, { m: 'Airport lounges', s: 'Complimentary', i: '🛋️' }, { m: 'Hotels & dining', s: 'Privileges', i: '🏨' }],
+    samsung:  [{ m: 'Samsung Store', s: 'up to 10%', i: '📱' }, { m: 'Electronics & EMI', s: 'Accelerated', i: '💻' }, { m: 'Airport lounges', s: 'Complimentary', i: '🛋️' }, { m: 'Everyday spends', s: 'EDGE points', i: '💳' }],
     myzone:   [{ m: 'SonyLIV', s: 'Free Premium', i: '🎬' }, { m: 'Movies (BOGO)', s: 'Buy1Get1', i: '🎟️' }, { m: 'Partner dining', s: '15% off', i: '🍽️' }, { m: 'Everyday', s: '4 pts/₹200', i: '💳' }],
     neo:      [{ m: 'Zomato', s: 'up to 40% off', i: '🍕' }, { m: 'Blinkit', s: 'up to 40% off', i: '🛍️' }, { m: 'Tata Play', s: 'Discounts', i: '📺' }, { m: 'Myntra', s: 'Offers', i: '👗' }],
     lic:      [{ m: 'LIC premiums', s: 'Reward Points', i: '🛡️' }, { m: 'Everyday retail', s: '2 pts/₹100', i: '🛒' }, { m: 'Lounges', s: 'Quarterly', i: '🛋️' }, { m: 'Fuel', s: 'Surcharge waiver', i: '⛽' }],
@@ -297,6 +343,8 @@
     flipkart: 'assets/cards/flipkart-axis-credit-card.webp',
     reserve: 'assets/cards/Axis-Bank-Reserve-Credit-Card.png',
     burgundy: 'assets/cards/burgundy.png', // cropped from the uploaded "One Card" banner
+    vistara: 'assets/cards/vistara.png', // cropped from the uploaded six-card collage
+    samsung: 'assets/cards/samsung.png', // cropped from the uploaded six-card collage
     lic: 'assets/cards/lic.png',
     airtel: 'assets/cards/airtel.png', // cropped from the uploaded collage
   };
@@ -305,7 +353,7 @@
   // notional ₹ value of a premium card's PERKS (unlimited lounges, concierge, golf,
   // insurance) — premium cards earn their keep here, not on cashback rate. Used only
   // when the customer says they're happy to pay a fee for perks.
-  const cardPerkValue = { atlas: 18000, reserve: 60000, burgundy: 90000 };
+  const cardPerkValue = { atlas: 18000, reserve: 60000, burgundy: 90000, vistara: 25000, samsung: 9000 };
   cards.forEach((c) => {
     c.rewards = cardRewards[c.id] || {};
     c.shortName = cardShortName[c.id] || c.name;
