@@ -989,3 +989,111 @@ body {
 .kyc-method--reco { box-shadow: 0 8px 22px -14px rgba(151,20,77,0.55); }
 /* copilot launcher: floating premium */
 .copilot-launcher { box-shadow: 0 16px 34px -14px rgba(151,20,77,0.6); }
+
+/* =============================================================================
+ * GRAND v5 — North-Star agentic onboarding
+ *  • Aria: a real AI-agent CHARACTER (not an emoji) at every size
+ *  • live field-by-field autofill from the verified KYC source
+ *  • milestone "mission" gamification (meaningful, not arcade points)
+ *  • always-reachable sticky CTA + tighter, adaptive phone/laptop layout
+ * ========================================================================== */
+
+/* ---- Aria, the AI agent's face — full character on a soft halo ------------ */
+.aria-img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; -webkit-user-select: none; user-select: none; }
+.aria-orb { overflow: visible !important; display: grid !important; place-items: center;
+  background: radial-gradient(circle at 50% 44%, rgba(174,39,95,0.18), rgba(174,39,95,0) 70%) !important; }
+.aria-orb .aria-img { width: 90%; height: 90%; filter: drop-shadow(0 5px 11px rgba(122,14,62,0.42)); animation: aria-float 4.5s var(--ease) infinite; }
+@keyframes aria-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-2.5px) } }
+@media (prefers-reduced-motion: reduce) { .aria-orb .aria-img { animation: none; } }
+
+/* hero presence orb */
+.art-orb { background: radial-gradient(circle at 50% 44%, rgba(174,39,95,0.20), rgba(255,255,255,0.85) 72%) !important;
+  border: 1px solid var(--line-2); box-shadow: 0 20px 40px -18px rgba(151,20,77,0.5); overflow: visible; backdrop-filter: blur(6px); }
+.art-orb .aria-img { width: 78%; height: 78%; filter: drop-shadow(0 6px 12px rgba(122,14,62,0.45)); }
+.art-orb span { bottom: -24px; background: #fff; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid var(--line-2);
+  box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.art-orb span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(31,138,112,0.18); }
+
+/* agent-at-work overlay orb (keeps its scanning rings, now with the character) */
+.agent-orb { background: radial-gradient(circle at 50% 44%, rgba(174,39,95,0.18), rgba(255,255,255,0.6) 72%) !important; overflow: visible; }
+.agent-orb .aria-img { width: 74%; height: 74%; position: relative; z-index: 2; filter: drop-shadow(0 4px 9px rgba(122,14,62,0.4)); }
+.agent-orb__ring { border-color: rgba(174,39,95,0.45); }
+
+/* agent-lead spine avatar + copilot avatars + launcher face */
+.agent-lead__avatar.aria-orb { width: 40px; height: 40px; box-shadow: none; }
+.copilot__avatar.aria-orb { width: 40px; height: 40px; }
+.copilot-launcher__face.aria-orb { width: 40px; height: 40px; }
+.copilot-launcher__face.aria-orb .aria-img { width: 100%; height: 100%; }
+
+/* hero pill — tiny Aria mark */
+.pill { display: inline-flex; align-items: center; gap: 0.45rem; }
+.pill__aria { width: 20px; height: 20px; object-fit: contain; }
+
+/* ---- live autofill from the verified source (the agentic centrepiece) ----- */
+.autofill__head { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
+.autofill__avatar { width: 44px; height: 44px; flex: none; }
+.autofill__head-tx strong { display: block; font-size: 0.98rem; letter-spacing: -0.01em; }
+.autofill__head-tx small { color: var(--muted); font-size: 0.8rem; }
+.autofill__count { margin-left: auto; font-weight: 800; color: var(--burgundy); font-variant-numeric: tabular-nums;
+  background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 0.22rem 0.62rem; font-size: 0.82rem; white-space: nowrap; }
+.af-rows { display: flex; flex-direction: column; gap: 0.42rem; }
+.af-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "k src" "v v"; gap: 0.15rem 0.5rem;
+  padding: 0.5rem 0.72rem; border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  opacity: 0.5; transform: translateY(3px); transition: opacity 0.3s var(--ease), transform 0.3s var(--ease), border-color 0.3s, box-shadow 0.3s, background 0.3s; }
+.af-row__k { grid-area: k; font-size: 0.74rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.af-row__v { grid-area: v; display: flex; align-items: center; gap: 2px; min-height: 1.25em; min-width: 0; }
+.af-row__txt { font-weight: 700; font-size: 0.96rem; line-height: 1.3; word-break: break-word; }
+.af-row__cursor { width: 2px; height: 1.05em; background: var(--burgundy); border-radius: 1px; opacity: 0; flex: none; }
+.af-row__src { grid-area: src; align-self: center; font-size: 0.68rem; color: var(--ok); font-weight: 800; white-space: nowrap; opacity: 0; transition: opacity 0.3s; }
+.af-row.is-filling { opacity: 1; transform: none; border-color: var(--burgundy-2); box-shadow: 0 0 0 3px rgba(174,39,95,0.1); }
+.af-row.is-filling .af-row__cursor { opacity: 1; animation: af-blink 0.7s steps(1) infinite; }
+.af-row.is-filled { opacity: 1; transform: none; border-color: rgba(31,138,112,0.32); background: rgba(31,138,112,0.045); }
+.af-row.is-filled .af-row__src { opacity: 1; }
+@keyframes af-blink { 50% { opacity: 0 } }
+.af-foot { margin-top: 0.85rem; text-align: center; font-weight: 700; color: var(--ok); font-size: 0.9rem;
+  background: rgba(31,138,112,0.08); border: 1px solid rgba(31,138,112,0.25); border-radius: 12px; padding: 0.6rem 0.7rem; }
+
+/* ---- milestone "mission" gamification ------------------------------------- */
+.mrail { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: 0.4rem 0 0.6rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.mrail::-webkit-scrollbar { display: none; }
+.mrail__item { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; width: 54px; text-align: center; }
+.mrail__ic { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; font-size: 1.1rem;
+  background: var(--surface-2); border: 1px solid var(--line-2); filter: grayscale(0.55); opacity: 0.6; transition: all 0.35s var(--ease); }
+.mrail__nm { font-size: 0.64rem; font-weight: 700; color: var(--muted); line-height: 1.12; }
+.mrail__link { flex: 1 0 8px; min-width: 8px; height: 2px; margin-top: 19px; background: var(--line-2); border-radius: 2px; }
+.mrail__item--done .mrail__ic { background: linear-gradient(135deg, var(--burgundy), var(--burgundy-2)); color: #fff;
+  border-color: transparent; filter: none; opacity: 1; box-shadow: 0 6px 14px -7px rgba(151,20,77,0.6); }
+.mrail__item--done .mrail__nm { color: var(--ink); }
+.mrail__item--now .mrail__ic { background: #fff; border-color: var(--burgundy); color: var(--burgundy);
+  filter: none; opacity: 1; box-shadow: 0 0 0 4px rgba(151,20,77,0.12); animation: pulse 2s infinite; }
+.mrail__item--now .mrail__nm { color: var(--burgundy); }
+
+/* ---- fee transparency in the value comparison ----------------------------- */
+.vcomp { grid-template-columns: auto 1fr auto; }
+.vcomp__fee { grid-column: 1 / -1; justify-self: end; font-size: 0.7rem; font-weight: 700; color: var(--muted); margin-top: -2px; }
+.vcomp__fee--paid { color: var(--burgundy); }
+.vcomp__val small { font-weight: 600; color: var(--muted); font-size: 0.78em; }
+.seg--fees .seg__btn { font-size: 0.82rem; }
+
+/* ---- always-reachable primary CTA: a fixed bottom action bar (phones) ------ */
+.actionbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: none;
+  padding: 0.65rem 1rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(0deg, var(--bg) 58%, rgba(250,246,243,0.86) 88%, rgba(250,246,243,0));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.actionbar__inner { max-width: var(--app-w); margin: 0 auto; }
+.actionbar .btn { width: 100%; box-shadow: 0 16px 30px -10px rgba(151,20,77,0.55), 0 2px 8px rgba(0,0,0,0.08); }
+@media (max-width: 760px) {
+  .actionbar.is-on { display: block; }
+  body.has-actionbar .wiz { padding-bottom: 92px; }
+}
+
+/* ---- tighter rhythm (less scrolling) + adaptive phone/laptop --------------- */
+.stage-head { margin-bottom: 0.95rem; }
+.agent-lead { margin-bottom: 0.85rem; padding: 0.8rem 0.95rem; }
+.panel { padding: 1.2rem 1.15rem; }
+.sec-label { margin-top: 0.7rem; }
+.kyc-card { padding: 1.1rem 1.05rem; }
+@media (min-width: 980px) {
+  .wiz { max-width: 620px; padding-top: 2.2rem; }
+  .panel { padding: 1.5rem 1.6rem; }
+}

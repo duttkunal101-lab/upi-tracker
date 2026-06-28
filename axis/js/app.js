@@ -14,23 +14,36 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v13'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v14'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Aria — the AI agent's face (a real character, reused at every size)
+  const ariaImg = (cls) => `<img class="aria-img" src="assets/aria.svg" alt="${esc(C.brand.agentName)}" width="120" height="120" draggable="false" />`;
   const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
   const synthPan = () => 'AXISP' + Math.floor(1000 + Math.random() * 9000) + 'K';
   const wizStages = C.stages.slice().sort((a, b) => a.num - b.num); // ordered by stage number
+  // gamification done properly: named MILESTONES tied to real verified progress (no arcade points)
+  const MISSION = [
+    { key: 'start', icon: '📱', name: 'Verified' },
+    { key: 'kyc', icon: '🛡️', name: 'Identity' },
+    { key: 'product', icon: '🎯', name: 'Card matched' },
+    { key: 'assessment', icon: '📊', name: 'Eligible' },
+    { key: 'decision', icon: '⭐', name: 'Approved' },
+    { key: 'agreement', icon: '✍️', name: 'Signed' },
+    { key: 'issuance', icon: '💳', name: 'Card live' },
+  ];
 
   /* --------------------------------------------------------------- state */
   const fresh = () => ({
     stage: 'landing',
-    mobile: '', otpVerified: false, preApproved: null, relationship: null,
+    mobile: '', otpSent: false, otpVerified: false, preApproved: null, relationship: null,
     profile: { tags: [], employment: 'salaried' },
     budget: { shopping: 0, travel: 0, bills: 0, food: 0, entertainment: 0, cabs: 0, other: 5000 },
-    cardId: null, valueRank: null,
+    okWithFees: false, cardId: null, valueRank: null,
+    autofillDone: false,
     dlMobile: '', dlLinked: false, dlOtpSent: false,
     pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, livenessDone: false,
     bureau: null, income: null, account: null, assessmentDone: false,
@@ -239,32 +252,33 @@
 
   /* ---- Stage 1: start (mobile + OTP + consent) ------------------------- */
   R.start = function () {
-    const pa = state.preApproved;
+    // state-driven: render EITHER the number+consent OR the OTP entry — never both.
+    const body = state.otpSent ? `
+        <div class="sent-to">📲 OTP sent to <strong>+91 •••••${esc(state.mobile.slice(-5))}</strong> · <a href="#" data-action="otp-change">change number</a></div>
+        <label class="fld">
+          <span class="fld__label">Enter OTP <span class="muted">(demo — any 6 digits)</span></span>
+          <input id="otp" class="fld__input fld__input--mono" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" />
+        </label>
+        <button class="btn btn--primary btn--block" id="startCta" data-action="verify-otp">Verify &amp; continue →</button>
+      ` : `
+        <label class="fld">
+          <span class="fld__label">Mobile number</span>
+          <div class="fld__inrow">
+            <span class="fld__prefix">+91</span>
+            <input id="mobile" class="fld__input" inputmode="numeric" maxlength="10"
+              placeholder="10-digit mobile number" value="${esc(state.mobile)}" autocomplete="tel-national" />
+          </div>
+        </label>
+        <label class="consent">
+          <input type="checkbox" id="consentStart" ${state.mobile ? 'checked' : ''}/>
+          <span>${esc(C.legal.consents.start)} <a href="#" data-action="why" data-why="start">Why?</a></span>
+        </label>
+        <button class="btn btn--primary btn--block" id="startCta" data-action="send-otp">Send OTP →</button>
+      `;
     return { html: `
       ${stageHead('start')}
       <div class="panel">
-        <div id="preOtp">
-          <label class="fld">
-            <span class="fld__label">Mobile number</span>
-            <div class="fld__inrow">
-              <span class="fld__prefix">+91</span>
-              <input id="mobile" class="fld__input" inputmode="numeric" maxlength="10"
-                placeholder="10-digit mobile number" value="${esc(state.mobile)}" autocomplete="tel-national" />
-            </div>
-          </label>
-          <label class="consent">
-            <input type="checkbox" id="consentStart" ${state.mobile ? 'checked' : ''}/>
-            <span>${esc(C.legal.consents.start)} <a href="#" data-action="why" data-why="start">Why?</a></span>
-          </label>
-        </div>
-        <div id="otpRow" hidden>
-          <div class="sent-to">📲 OTP sent to <strong>+91 <span id="sentNum"></span></strong> · <a href="#" data-action="otp-change">change</a></div>
-          <label class="fld">
-            <span class="fld__label">Enter OTP <span class="muted">(demo — any 6 digits)</span></span>
-            <input id="otp" class="fld__input fld__input--mono" inputmode="numeric" maxlength="6" placeholder="••••••" />
-          </label>
-        </div>
-        <button class="btn btn--primary btn--block" id="startCta" data-action="send-otp">Send OTP →</button>
+        ${body}
         <p class="trust">🔒 Bank-grade security · RBI-regulated · We’ll only ask for what we truly need.</p>
       </div>` };
   };
@@ -300,7 +314,12 @@
           ${[['salaried', 'Salaried'], ['self', 'Self-employed'], ['ntc', 'New to credit']].map(([v, l]) =>
             `<button class="seg__btn ${state.profile.employment === v ? 'is-on' : ''}" data-action="set-emp" data-emp="${v}">${l}</button>`).join('')}
         </div>
-        <button class="btn btn--primary btn--block" data-action="recommend">✨ Find my best-value card →</button>
+        <p class="ask">Annual fee <span class="muted">— premium cards charge one for richer rewards &amp; lounges.</span></p>
+        <div class="seg seg--fees">
+          <button class="seg__btn ${!state.okWithFees ? 'is-on' : ''}" data-action="set-fees" data-fees="0">💸 Keep it low / free</button>
+          <button class="seg__btn ${state.okWithFees ? 'is-on' : ''}" data-action="set-fees" data-fees="1">✨ I’ll pay for better perks</button>
+        </div>
+        <button class="btn btn--primary btn--block" data-action="recommend">Find my best-value card →</button>
         <button class="btn btn--ghost btn--block" data-action="browse">Browse all cards myself</button>
       </div>`;
     } else {
@@ -313,17 +332,20 @@
 
   /* the agent's value comparison — shows WHY this card wins for the budget */
   function valueCompare() {
-    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], net: v.net, fee: v.fee, waived: v.waived })).filter((r) => r.card);
+    const ranked = (state.valueRank || []).map((v) => ({ card: C.cardById[v.id], gross: v.gross, net: v.net, fee: v.fee, annualFee: v.annualFee, waived: v.waived })).filter((r) => r.card);
     if (!ranked.length) return '';
-    const max = Math.max.apply(null, ranked.map((r) => r.net).concat([1]));
+    const key = state.okWithFees ? 'gross' : 'net';
+    const max = Math.max.apply(null, ranked.map((r) => r[key]).concat([1]));
+    const feeTag = (r) => r.annualFee ? (r.waived ? `fee ${inr(r.annualFee)} · waived` : `${inr(r.annualFee)} fee`) : 'lifetime free';
     return `<div class="vcompare">
-      <div class="sec-label">💡 Net value to you (rewards − fee), compared</div>
+      <div class="sec-label">💡 ${state.okWithFees ? 'Yearly rewards value — fees shown' : 'Net value to you (rewards − fee)'}</div>
       ${ranked.map((r, i) => `<div class="vcomp ${i === 0 ? 'is-top' : ''}">
         <span class="vcomp__nm">${esc(r.card.shortName)}${i === 0 ? ' · best' : ''}</span>
-        <span class="vcomp__bar"><i style="width:${Math.max(6, Math.round((r.net / max) * 100))}%"></i></span>
-        <span class="vcomp__val">${inr(r.net)}/yr${r.waived ? ' <em>fee waived</em>' : ''}</span>
+        <span class="vcomp__bar"><i style="width:${Math.max(6, Math.round((r[key] / max) * 100))}%"></i></span>
+        <span class="vcomp__val">${inr(r[key])}<small>/yr</small></span>
+        <span class="vcomp__fee ${r.annualFee && !r.waived ? 'vcomp__fee--paid' : ''}">${feeTag(r)}</span>
       </div>`).join('')}
-      <p class="muted vcompare__note">Annual rewards on your ${inr(budgetTotal())}/month spend, <strong>minus each card’s fee</strong> (waived where your spend qualifies). Indicative — actual value depends on each card’s caps &amp; terms.</p>
+      <p class="muted vcompare__note">On your ${inr(budgetTotal())}/month spend. ${state.okWithFees ? 'Ranked by rewards &amp; perks — each card’s annual fee is shown so the choice is yours.' : 'Ranked by <strong>net</strong> value after each card’s fee (waived where your spend qualifies).'} Indicative — actual value depends on caps &amp; terms.</p>
     </div>`;
   }
 
@@ -346,7 +368,9 @@
     }
     // documents fetched, but a live selfie (liveness + face match) is required first (RBI)
     if (state.identity && !state.livenessDone) return { html: stageHead('kyc') + kycLiveness() };
-    // identity + liveness verified → show WHAT was verified (audit), THEN the filled form
+    // liveness done → Aria fills the application live, field by field, from the verified source
+    if (state.identity && state.livenessDone && !state.autofillDone) return kycAutofill();
+    // identity + liveness + autofill done → show WHAT was verified (audit), THEN the filled form
     const id = state.identity || {};
     const fromDoc = state.kycVia === 'ocr';
     const ver = [
@@ -561,6 +585,8 @@
         <div class="welcome__benefits">
           ${card.highlights.slice(0, 3).map((h) => `<div class="benefit">✦ ${esc(h)}</div>`).join('')}
         </div>
+        <div class="sec-label">🏅 Every milestone you unlocked</div>
+        ${missionRail()}
         <div class="sec-label">🎁 Your welcome reward</div>
         <button class="scratch ${state.scratched ? 'is-revealed' : ''}" data-action="scratch" aria-label="Scratch to reveal your welcome reward">
           <span class="scratch__prize">🎉 ₹500 welcome cashback unlocked on your ${esc(card.name.replace('Axis Bank ', '').replace(' Credit Card', ''))}!</span>
@@ -670,8 +696,9 @@
         <div class="trk-hero__ref">Application <strong>${esc(state.appRef || '')}</strong></div>
         <div class="trk-hero__status"><span class="appbar__live"></span> ${esc(status)}</div>
         <div class="trk-prog"><span style="width:${Math.round((done / rows.length) * 100)}%"></span></div>
-        <div class="trk-hero__meta">${done}/${rows.length} checks complete · ✨ ${state.points || 0} pts · ${esc(levelName())}</div>
+        <div class="trk-hero__meta">${done}/${rows.length} checks complete · 🏅 ${missionDone()}/${MISSION.length} milestones</div>
       </div>
+      <div class="trk-sec"><h4>🏅 Your milestones</h4>${missionRail()}</div>
       <div class="trk-sec"><h4>✅ What I’ve verified for you</h4>
         <div class="trk-list">${rows.map(trackerRow).join('')}</div>
       </div>
@@ -769,6 +796,58 @@
       <button class="btn btn--primary btn--block" data-action="liveness-capture">Take my selfie →</button>
       <p class="trust">🔒 Good light, face in frame. Used only to match your ID — encrypted, never shared.</p>
     </div>`;
+  }
+  /* THE agentic moment: Aria fills the whole application herself, field by field,
+   * each one tagged with the verified source it came from. The customer types nothing. */
+  const VIA_SRC = { digilocker: 'DigiLocker', aadhaar: 'UIDAI e-KYC', ocr: 'Document OCR', vcip: 'V-CIP' };
+  function kycAutofill() {
+    const id = state.identity || {};
+    const src = VIA_SRC[state.kycVia] || 'DigiLocker';
+    const rows = [
+      ['Full name', id.name, src],
+      ['Date of birth', id.dob, src],
+      ['Gender', id.gender, src],
+      ['Father’s name', id.fatherName, src],
+      ['PAN', (state.pan || '').toUpperCase(), 'Protean (NSDL)'],
+      ['Email', id.email, src],
+      ['Aadhaar (masked)', id.aadhaarMasked || '', src],
+      ['Current address', id.currentAddress || id.address, src],
+      ['Permanent address', id.permanentAddress || id.address, src],
+    ];
+    const html = stageHead('kyc') + `
+      <div class="kyc-card autofill">
+        <div class="autofill__head">
+          <span class="autofill__avatar aria-orb">${ariaImg()}</span>
+          <div class="autofill__head-tx"><strong>${esc(C.brand.agentName)} is filling your application</strong>
+            <small>Reading your verified ${esc(src)} records — you won’t type a thing.</small></div>
+          <span class="autofill__count"><b id="afCount">0</b>/${rows.length}</span>
+        </div>
+        <div class="af-rows" id="afRows">
+          ${rows.map((r, i) => `<div class="af-row" data-i="${i}">
+            <span class="af-row__k">${esc(r[0])}</span>
+            <span class="af-row__v"><span class="af-row__cursor"></span><span class="af-row__txt"></span></span>
+            <span class="af-row__src" hidden>↳ ${esc(r[2])}</span>
+          </div>`).join('')}
+        </div>
+        <div class="af-foot" id="afFoot" hidden>✓ Every field filled from your verified KYC — nothing typed, nothing assumed.</div>
+      </div>`;
+    const mount = async () => {
+      for (let i = 0; i < rows.length; i++) {
+        const row = $(`.af-row[data-i="${i}"]`); if (!row) return; // navigated away
+        row.classList.add('is-filling');
+        await INT.delay(300);
+        const t = $('.af-row__txt', row); if (t) t.textContent = rows[i][1] || '—';
+        const s = $('.af-row__src', row); if (s) s.hidden = false;
+        row.classList.remove('is-filling'); row.classList.add('is-filled');
+        const c = $('#afCount'); if (c) c.textContent = String(i + 1);
+        await INT.delay(180);
+      }
+      const foot = $('#afFoot'); if (foot) foot.hidden = false;
+      await INT.delay(1100);
+      state.autofillDone = true; save();
+      if (state.stage === 'kyc') renderStage(); // → review + confirm screen
+    };
+    return { html, mount };
   }
   function kycDigiLocker() {
     const docs = C.digiLockerDocs || [];
@@ -1001,15 +1080,38 @@
   }
   function rankByValue(budget) {
     const annualSpend = SPEND_CATS.reduce((s, k) => s + (Number(budget[k]) || 0), 0) * 12;
-    return C.cards.filter((c) => !c.secured).map((c) => {
+    // fee-averse customers only see low/no-fee cards; "OK paying a fee" unlocks the premium ones
+    let pool = C.cards.filter((c) => !c.secured);
+    if (!state.okWithFees) pool = pool.filter((c) => (c.annualFee || 0) <= 1000);
+    const ranked = pool.map((c) => {
       const gross = estimateAnnualValue(c, budget);
       const fee = effectiveFee(c, annualSpend);
-      return { card: c, gross, fee, net: gross - fee, waived: (c.annualFee || 0) > 0 && fee === 0 };
-    }).sort((a, b) => b.net - a.net);
+      return { card: c, gross, fee, net: gross - fee, annualFee: c.annualFee || 0, waived: (c.annualFee || 0) > 0 && fee === 0 };
+    });
+    // happy to pay a fee → rank by rewards/perks (gross); otherwise by honest net value
+    const key = state.okWithFees ? 'gross' : 'net';
+    return ranked.sort((a, b) => b[key] - a[key]);
   }
   const budgetTotal = () => SPEND_CATS.reduce((s, k) => s + (Number(state.budget[k]) || 0), 0);
 
-  /* ---- gamification: level math + the "download the Axis app" finisher ------ */
+  /* ---- gamification (proper): milestone progress tied to verified steps ------ */
+  function missionState(key) {
+    const cur = stageIndex(state.stage);
+    const mi = stageIndex(key);
+    if (state.done || (mi >= 0 && cur > mi)) return 'done';
+    if (cur === mi) return 'now';
+    return 'todo';
+  }
+  const missionDone = () => MISSION.filter((m) => missionState(m.key) === 'done').length;
+  function missionRail() {
+    return `<div class="mrail">${MISSION.map((m, i) => {
+      const st = missionState(m.key);
+      return `${i ? '<span class="mrail__link"></span>' : ''}<div class="mrail__item mrail__item--${st}" title="${esc(m.name)}">
+        <span class="mrail__ic">${st === 'todo' ? '🔒' : m.icon}</span>
+        <span class="mrail__nm">${esc(m.name)}</span>
+      </div>`;
+    }).join('')}</div>`;
+  }
   function levelInfo() {
     const size = (C.gamify && C.gamify.levelSize) || 60;
     const pts = state.points || 0;
@@ -1039,10 +1141,14 @@
     let msg = '', plan = '';
     if (s === 'start') {
       const pa = state.preApproved;
-      msg = (pa && pa.preApproved)
-        ? `I recognised your existing Axis relationship and a <strong>pre-approved offer up to ${inr(pa.indicativeLimit)}</strong> — I’ve fast-tracked you. Let’s verify it’s you and pick your card.`
-        : `I’m <strong>${esc(C.brand.agentName)}</strong> — I’ll do this application <em>for</em> you. Just your mobile number to start; I’ll handle the rest and explain each step as I go.`;
-      plan = `<div class="agent-lead__plan"><span>My plan for you</span><ol>${C.agentPlan.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
+      if (state.otpSent) {
+        msg = `I’ve sent a 6-digit code to your phone. Pop it in and I’ll confirm it’s you — then I’ll take it from here.`;
+      } else {
+        msg = (pa && pa.preApproved)
+          ? `I recognised your existing Axis relationship and a <strong>pre-approved offer up to ${inr(pa.indicativeLimit)}</strong> — I’ve fast-tracked you. Let’s verify it’s you and pick your card.`
+          : `I’m <strong>${esc(C.brand.agentName)}</strong> — I’ll do this application <em>for</em> you. Just your mobile number to start; I’ll handle the rest and explain each step as I go.`;
+        plan = `<div class="agent-lead__plan"><span>My plan for you</span><ol>${C.agentPlan.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
+      }
     } else if (s === 'product') {
       msg = state._rec
         ? `I ran your monthly spend through <strong>every</strong> Axis card’s reward structure and ranked them by real rupee value. Here’s the winner for your budget — and the maths behind it.`
@@ -1056,7 +1162,11 @@
         else if (m === 'aadhaar') msg = `Enter your Aadhaar number; UIDAI sends an OTP to your Aadhaar-linked mobile. I verify that first, then fetch your e-KYC — nothing is filled until it’s verified.`;
         else if (m === 'ocr') msg = `Upload or snap your Aadhaar and PAN and I’ll read them with OCR for you to check — handy if you don’t use DigiLocker. I validate them before anything is saved.`;
         else if (m === 'vcip') msg = `A short, secure video call with an Axis KYC officer completes your full KYC from home — RBI-approved, no branch visit. I’ll get you connected and guide you through it.`;
-      } else { const ck = state.ckyc && state.ckyc.found; msg = `Verified ✓ — I checked your Aadhaar, validated your PAN${ck ? ', matched your CKYC record' : ''} and your face, <em>then</em> filled your application from those verified sources. Please confirm it’s correct before we continue.`; }
+      } else if (!state.livenessDone) {
+        msg = `Documents verified ✓. One quick RBI step before I fill anything — a live selfie matched to your Aadhaar photo, to confirm it’s really you.`;
+      } else if (!state.autofillDone) {
+        msg = `That’s you ✓. Now watch — I’m filling your entire Axis application <strong>for you</strong>, straight from your verified ${esc(VIA_SRC[state.kycVia] || 'DigiLocker')} records. You won’t type a thing.`;
+      } else { const ck = state.ckyc && state.ckyc.found; msg = `Done — I verified your Aadhaar, validated your PAN${ck ? ', matched your CKYC record' : ''} and your face <em>first</em>, then filled everything from those verified sources. Have a quick look and confirm.`; }
     } else if (s === 'assessment') {
       msg = state.assessmentDone
         ? `Eligibility checked — I’m putting your personalised offer together now.`
@@ -1075,7 +1185,7 @@
     }
     if (!msg) return { html: '', msg: '' };
     const html = `<div class="agent-lead">
-      <span class="agent-lead__avatar">✨</span>
+      <span class="agent-lead__avatar aria-orb">${ariaImg()}</span>
       <div class="agent-lead__body">
         <div class="agent-lead__name">${esc(C.brand.agentName)} · ${esc(C.brand.agentRole)} <span class="agent-lead__live"></span></div>
         <p class="agent-lead__msg">${msg}</p>
@@ -1083,6 +1193,21 @@
       </div>
     </div>`;
     return { html, msg };
+  }
+
+  /* best-in-class: move the stage's main CTA into a fixed bottom action bar on
+   * phones, so the primary action is always one thumb-tap away — no scroll-hunting.
+   * (Moves, not clones, so there are never duplicate ids or handlers.) */
+  function pinPrimaryCta(root) {
+    const bar = $('#actionbar'); if (!bar) return;
+    bar.innerHTML = ''; bar.classList.remove('is-on'); document.body.classList.remove('has-actionbar');
+    if (!window.matchMedia || !window.matchMedia('(max-width: 760px)').matches) return;
+    const primaries = $$('.btn--primary.btn--block', root);
+    if (!primaries.length) return;
+    const inner = document.createElement('div'); inner.className = 'actionbar__inner';
+    inner.appendChild(primaries[primaries.length - 1]);
+    bar.appendChild(inner);
+    bar.classList.add('is-on'); document.body.classList.add('has-actionbar');
   }
 
   /* render the active stage into #stageRoot */
@@ -1094,6 +1219,7 @@
     const lead = agentLead();
     root.innerHTML = lead.html + out.html;
     root.classList.remove('is-in'); void root.offsetWidth; root.classList.add('is-in'); // iOS-style stage transition
+    pinPrimaryCta(root); // always-reachable CTA in a fixed bottom bar (phones)
     if (out.mount) out.mount();
     // mirror the agent's lead into the co-pilot as a live transcript of her reasoning
     if (lead.msg && lead.msg !== _lastLead) { _lastLead = lead.msg; appendMsg('agent', lead.msg); }
@@ -1117,11 +1243,12 @@
       /* stage 1 */
       case 'send-otp': await sendOtp(); break;
       case 'verify-otp': await verifyOtp(); break;
-      case 'otp-change': { if ($('#preOtp')) $('#preOtp').hidden = false; if ($('#otpRow')) $('#otpRow').hidden = true; const b = $('#startCta'); if (b) { b.textContent = 'Send OTP →'; b.dataset.action = 'send-otp'; } } break;
+      case 'otp-change': state.otpSent = false; save(); renderStage(); break;
 
       /* stage 2 */
       case 'toggle-tag': toggleTag(el.dataset.tag); break;
       case 'set-emp': state.profile.employment = el.dataset.emp; save(); renderStage(); break;
+      case 'set-fees': state.okWithFees = el.dataset.fees === '1'; state._rec = null; state.valueRank = null; save(); renderStage(); break;
       case 'recommend': await doRecommend(); break;
       case 'browse': state._browsing = true; renderStage(); break;
       case 'back-rec': state._browsing = false; renderStage(); break;
@@ -1197,15 +1324,12 @@
     const m = ($('#mobile').value || '').replace(/\D/g, '');
     if (m.length !== 10) { toast('Please enter a valid 10-digit mobile number.', 'error'); return; }
     if (!$('#consentStart').checked) { toast('Please give consent to continue.', 'error'); return; }
-    state.mobile = m; save();
-    const btn = $('#startCta'); btn.disabled = true; btn.textContent = 'Sending OTP…';
+    state.mobile = m;
+    const btn = $('#startCta'); if (btn) { btn.disabled = true; btn.textContent = 'Sending OTP…'; }
     await INT.sendOtp(m);
-    if ($('#preOtp')) $('#preOtp').hidden = true;       // hide the number entry once OTP is sent
-    if ($('#sentNum')) $('#sentNum').textContent = '•••••' + m.slice(-5);
-    $('#otpRow').hidden = false;
-    $('#otp').focus();
-    btn.disabled = false; btn.textContent = 'Verify & continue →';
-    btn.dataset.action = 'verify-otp';
+    state.otpSent = true; save();
+    renderStage();                 // re-render → number+consent block is gone, OTP entry shown
+    const o = $('#otp'); if (o) o.focus();
     track('otp_sent', { mobile: '••••' + m.slice(-4) });
   }
   async function verifyOtp() {
@@ -1246,12 +1370,15 @@
       await INT.delay(800);
       return rankByValue(state.budget);
     });
-    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net, fee: x.fee, waived: x.waived }));
+    state.valueRank = ranked.slice(0, 4).map((x) => ({ id: x.card.id, gross: x.gross, net: x.net, fee: x.fee, annualFee: x.annualFee, waived: x.waived }));
     const top = ranked[0];
-    const feeBit = top.fee === 0
-      ? (top.card.annualFee ? ` Its ${inr(top.card.annualFee)} fee is waived at your spend level.` : ' And it’s lifetime-free.')
-      : ` That’s already net of its ${inr(top.card.annualFee)} annual fee.`;
-    const reason = `For how you spend (~${inr(budgetTotal())}/month), the ${top.card.shortName} gives you the most net value — about ${inr(top.net)} a year.${feeBit} That’s why I recommend it.`;
+    const feeBit = top.annualFee === 0 ? ' And it’s lifetime-free.'
+      : top.fee === 0 ? ` Its ${inr(top.annualFee)} fee is waived at your spend level.`
+      : ` That’s after its ${inr(top.annualFee)} annual fee — which you said you’re happy to pay for the perks.`;
+    const headline = state.okWithFees
+      ? `earns you the most rewards &amp; perks — about ${inr(top.gross)} a year`
+      : `gives you the most net value — about ${inr(top.net)} a year`;
+    const reason = `For how you spend (~${inr(budgetTotal())}/month), the ${top.card.shortName} ${headline}.${feeBit} That’s why I recommend it.`;
     state._rec = { card: top.card, reason, source: 'budget-value' };
     save();
     renderStage();
