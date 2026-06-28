@@ -1,59 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Aria, your AI onboarding agent">
   <defs>
-    <radialGradient id="ariaHead" cx="38%" cy="30%" r="80%">
-      <stop offset="0%" stop-color="#C84B86"/>
-      <stop offset="46%" stop-color="#AE275F"/>
+    <linearGradient id="aSkin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F6D2B0"/>
+      <stop offset="100%" stop-color="#E9B98E"/>
+    </linearGradient>
+    <linearGradient id="aHair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3A2030"/>
+      <stop offset="100%" stop-color="#241019"/>
+    </linearGradient>
+    <linearGradient id="aBlazer" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#AE275F"/>
       <stop offset="100%" stop-color="#7A0E3E"/>
-    </radialGradient>
-    <linearGradient id="ariaVisor" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1b0712"/>
-      <stop offset="100%" stop-color="#3a0f24"/>
     </linearGradient>
-    <radialGradient id="ariaEye" cx="50%" cy="40%" r="70%">
-      <stop offset="0%" stop-color="#eafcff"/>
-      <stop offset="55%" stop-color="#7fe9ff"/>
-      <stop offset="100%" stop-color="#34c6ef"/>
+    <radialGradient id="aSpark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF6DA"/><stop offset="55%" stop-color="#F2C94C"/><stop offset="100%" stop-color="#C7962B"/>
     </radialGradient>
-    <radialGradient id="ariaSpark" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFF6DA"/>
-      <stop offset="55%" stop-color="#F2C94C"/>
-      <stop offset="100%" stop-color="#C7962B"/>
-    </radialGradient>
-    <linearGradient id="ariaShine" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
-      <stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
   </defs>
 
-  <!-- antenna + spark -->
-  <line x1="60" y1="20" x2="60" y2="9" stroke="#C7962B" stroke-width="2.4" stroke-linecap="round"/>
-  <path d="M60 0.5 60 9 M55.7 4.7 64.3 4.7" stroke="#F2C94C" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="60" cy="4.7" r="4.6" fill="url(#ariaSpark)"/>
+  <!-- hair mass (back + frame) -->
+  <path d="M26 56 C24 26 96 26 94 56 C94 74 86 86 78 92 L42 92 C34 86 26 74 26 56 Z" fill="url(#aHair)"/>
 
-  <!-- side concierge pods (headset) -->
-  <rect x="10.5" y="50" width="13" height="26" rx="6.5" fill="url(#ariaHead)"/>
-  <rect x="96.5" y="50" width="13" height="26" rx="6.5" fill="url(#ariaHead)"/>
-  <circle cx="17" cy="63" r="3.1" fill="#FFC3DD" opacity="0.8"/>
-  <circle cx="103" cy="63" r="3.1" fill="#FFC3DD" opacity="0.8"/>
+  <!-- shoulders / blazer -->
+  <path d="M24 120 C24 100 40 90 60 90 C80 90 96 100 96 120 Z" fill="url(#aBlazer)"/>
+  <!-- blouse V + collar -->
+  <path d="M52 92 L60 108 L68 92 Z" fill="#F7EAF0"/>
+  <path d="M51 91 L60 104 M69 91 L60 104" stroke="#7A0E3E" stroke-width="2.4" stroke-linecap="round"/>
 
-  <!-- head -->
-  <rect x="20" y="20" width="80" height="80" rx="30" fill="url(#ariaHead)"/>
-  <rect x="20" y="20" width="80" height="44" rx="30" fill="url(#ariaShine)" opacity="0.5"/>
+  <!-- neck -->
+  <path d="M52 80 C52 90 68 90 68 80 L68 72 L52 72 Z" fill="url(#aSkin)"/>
+  <path d="M52 80 C52 86 68 86 68 80 L68 76 L52 76 Z" fill="#E0AC82" opacity="0.5"/>
 
-  <!-- visor -->
-  <rect x="30" y="40" width="60" height="40" rx="20" fill="url(#ariaVisor)"/>
-  <rect x="30" y="40" width="60" height="16" rx="8" fill="#ffffff" opacity="0.06"/>
+  <!-- ears -->
+  <circle cx="35.5" cy="57" r="5.5" fill="url(#aSkin)"/><circle cx="84.5" cy="57" r="5.5" fill="url(#aSkin)"/>
+  <circle cx="35.5" cy="61" r="1.8" fill="#C7962B"/><circle cx="84.5" cy="61" r="1.8" fill="#C7962B"/>
+
+  <!-- face -->
+  <path d="M37 50 C37 32 83 32 83 50 L83 58 C83 74 72 84 60 84 C48 84 37 74 37 58 Z" fill="url(#aSkin)"/>
+
+  <!-- fringe / hairline framing the forehead -->
+  <path d="M36 51 C36 30 84 30 84 51 C80 41 72 37 60 37 C48 37 40 41 36 51 Z" fill="url(#aHair)"/>
+  <path d="M36 50 C40 44 46 47 47 56 C44 52 39 52 36 56 Z" fill="url(#aHair)"/>
+  <path d="M84 50 C80 44 74 47 73 56 C76 52 81 52 84 56 Z" fill="url(#aHair)"/>
+
+  <!-- brows -->
+  <path d="M45 52 Q51 49 56 52" stroke="#3A2030" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M64 52 Q69 49 75 52" stroke="#3A2030" stroke-width="2" stroke-linecap="round" fill="none"/>
 
   <!-- eyes -->
-  <circle cx="47" cy="60" r="8.4" fill="url(#ariaEye)"/>
-  <circle cx="73" cy="60" r="8.4" fill="url(#ariaEye)"/>
-  <circle cx="44.4" cy="57" r="2.6" fill="#ffffff"/>
-  <circle cx="70.4" cy="57" r="2.6" fill="#ffffff"/>
+  <ellipse cx="50.5" cy="58" rx="4.4" ry="4.8" fill="#fff"/><ellipse cx="69.5" cy="58" rx="4.4" ry="4.8" fill="#fff"/>
+  <circle cx="51" cy="58.5" r="2.7" fill="#3A2030"/><circle cx="70" cy="58.5" r="2.7" fill="#3A2030"/>
+  <circle cx="49.9" cy="57.2" r="0.95" fill="#fff"/><circle cx="68.9" cy="57.2" r="0.95" fill="#fff"/>
 
-  <!-- smile -->
-  <path d="M50 73 Q60 79 70 73" stroke="#7fe9ff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.92"/>
+  <!-- nose hint + smile -->
+  <path d="M60 60 L58.5 65 Q60 66.2 61.5 65" stroke="#D9A079" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  <path d="M52 70 Q60 76 68 70" stroke="#B65C6E" stroke-width="2.6" stroke-linecap="round" fill="none"/>
 
-  <!-- cheeks -->
-  <circle cx="35.5" cy="72" r="3.4" fill="#FF6FA5" opacity="0.5"/>
-  <circle cx="84.5" cy="72" r="3.4" fill="#FF6FA5" opacity="0.5"/>
+  <!-- blush -->
+  <circle cx="44.5" cy="67" r="3.2" fill="#F2899F" opacity="0.45"/><circle cx="75.5" cy="67" r="3.2" fill="#F2899F" opacity="0.45"/>
+
+  <!-- concierge headset: band + earpiece + mic boom -->
+  <path d="M33 52 Q33 30 60 28" stroke="#2A2730" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <rect x="30.5" y="54" width="6.5" height="10" rx="3.2" fill="#2A2730"/>
+  <path d="M33 64 Q33 74 45 74" stroke="#2A2730" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <circle cx="46" cy="74" r="2.3" fill="#AE275F"/>
+
+  <!-- AI spark (signals the AI agent, tastefully) -->
+  <g transform="translate(90 30)">
+    <circle r="4.4" fill="url(#aSpark)"/>
+    <path d="M0 -7 L0 7 M-7 0 L7 0" stroke="#F2C94C" stroke-width="1.6" stroke-linecap="round" opacity="0.9"/>
+  </g>
+  <circle cx="98" cy="42" r="1.8" fill="#F2C94C" opacity="0.85"/>
 </svg>

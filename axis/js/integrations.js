@@ -175,9 +175,26 @@
       inferredFrom: salaried ? 'regular salary credits' : 'business inflows',
     };
   }
-  async function pennyDrop() {
+  /* Income via PAN → filed ITR / Form 26AS (Income-Tax records). REAL API:
+   * Income-Tax e-filing / DigiLocker ITR-V / Protean — returns declared income.
+   * No bank statement needed; works well for NTB customers who file returns. */
+  async function incomeFromPan(pan, profile) {
+    await delay(1500);
+    const salaried = !profile || profile.employment !== 'self';
+    const annual = (salaried ? rand(6, 24) : rand(7, 30)) * 100000;
+    return {
+      simulated: true,
+      via: 'ITR / Form 26AS (via PAN)',
+      monthlyIncome: Math.round(annual / 12 / 1000) * 1000,
+      annualIncome: annual,
+      assessmentYear: '2025-26',
+      employmentType: salaried ? 'Salaried' : 'Self-employed',
+      inferredFrom: 'latest filed income-tax return',
+    };
+  }
+  async function pennyDrop(bankName) {
     await delay(900);
-    return { simulated: true, accountValid: true, nameMatch: 'EXACT', bank: 'Demo Bank · A/C ••••' + rand(1000, 9999) };
+    return { simulated: true, accountValid: true, nameMatch: 'EXACT', bank: (bankName || 'your bank') + ' · A/C ••••' + rand(1000, 9999) };
   }
   async function amlScreen() {
     await delay(700);
@@ -267,7 +284,7 @@
     sendOtp, verifyOtp, checkPreApproved,
     digiLockerConsent, verifyPan, digiLockerFetch, aadhaarOtpEkyc, ckycPull, livenessFaceMatch, vcipSession,
     aadhaarSendOtp, aadhaarVerifyOtp, ocrFetch,
-    bureauPull, accountAggregator, pennyDrop, amlScreen, fraudCheck,
+    bureauPull, accountAggregator, incomeFromPan, pennyDrop, amlScreen, fraudCheck,
     underwrite, eSign, issueCard, enachSetup, provisionWallet, sendResumeLink,
   };
 })();
