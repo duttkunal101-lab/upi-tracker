@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v16'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v17'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -28,9 +28,9 @@
   // gamification done properly: named MILESTONES tied to real verified progress (no arcade points)
   // banks the customer can pick from for an Account-Aggregator income pull (they choose + consent)
   const AA_BANKS = [
-    { id: 'hdfc', name: 'HDFC Bank', mk: 'H' }, { id: 'sbi', name: 'SBI', mk: 'S' },
-    { id: 'icici', name: 'ICICI Bank', mk: 'I' }, { id: 'kotak', name: 'Kotak', mk: 'K' },
-    { id: 'pnb', name: 'PNB', mk: 'P' }, { id: 'bob', name: 'Bank of Baroda', mk: 'B' },
+    { id: 'hdfc', name: 'HDFC Bank', mk: 'H', ifsc: 'HDFC0001234' }, { id: 'sbi', name: 'SBI', mk: 'S', ifsc: 'SBIN0001234' },
+    { id: 'icici', name: 'ICICI Bank', mk: 'I', ifsc: 'ICIC0001234' }, { id: 'kotak', name: 'Kotak', mk: 'K', ifsc: 'KKBK0001234' },
+    { id: 'pnb', name: 'PNB', mk: 'P', ifsc: 'PUNB0001234' }, { id: 'bob', name: 'Bank of Baroda', mk: 'B', ifsc: 'BARB0001234' },
   ];
   const MISSION = [
     { key: 'start', icon: '📱', name: 'Verified' },
@@ -48,13 +48,13 @@
     mobile: '', otpSent: false, otpVerified: false, preApproved: null, relationship: null,
     profile: { tags: [], employment: 'salaried' },
     budget: { shopping: 0, travel: 0, bills: 0, food: 0, entertainment: 0, cabs: 0, other: 5000 },
-    okWithFees: false, cardId: null, valueRank: null,
+    okWithFees: false, feeBudget: 0, cardId: null, valueRank: null,
     autofillDone: false,
     dlMobile: '', dlLinked: false, dlOtpSent: false,
     pan: '', kycMethod: null, ocr: null, identity: null, ckyc: null, kycComplete: false, vcip: false, kycVia: null, selfieTaken: false, livenessDone: false,
     incomeMethod: 'pan', aaBank: null, bureau: null, income: null, account: null, assessmentDone: false,
     decision: null, signed: false, issued: null, autopay: false, autopayBank: null,
-    pushProvisioned: false,
+    napAcct: '', napIfsc: '', napMode: 'enach', pushProvisioned: false,
     points: 0, awarded: {}, scratched: false, level: 0,
     startedAt: Date.now(), done: false,
   });
@@ -264,7 +264,10 @@
         <div class="sent-to">📲 OTP sent to <strong>+91 •••••${esc(state.mobile.slice(-5))}</strong> · <a href="#" data-action="otp-change">change number</a></div>
         <label class="fld">
           <span class="fld__label">Enter OTP <span class="muted">(demo — any 6 digits)</span></span>
-          <input id="otp" class="fld__input fld__input--mono" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" />
+          <div class="fld__eyewrap">
+            <input id="otp" class="fld__input fld__input--mono" type="password" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" />
+            <button type="button" class="fld__eye" data-action="otp-eye" aria-label="Show OTP" title="Show / hide OTP">👁️</button>
+          </div>
         </label>
         <button class="btn btn--primary btn--block" id="startCta" data-action="verify-otp">Verify &amp; continue →</button>
       ` : `
@@ -321,10 +324,10 @@
           ${[['salaried', 'Salaried'], ['self', 'Self-employed'], ['ntc', 'New to credit']].map(([v, l]) =>
             `<button class="seg__btn ${state.profile.employment === v ? 'is-on' : ''}" data-action="set-emp" data-emp="${v}">${l}</button>`).join('')}
         </div>
-        <p class="ask">Annual fee <span class="muted">— premium cards charge one for richer rewards &amp; lounges.</span></p>
-        <div class="seg seg--fees">
-          <button class="seg__btn ${!state.okWithFees ? 'is-on' : ''}" data-action="set-fees" data-fees="0">💸 Keep it low / free</button>
-          <button class="seg__btn ${state.okWithFees ? 'is-on' : ''}" data-action="set-fees" data-fees="1">✨ I’ll pay for better perks</button>
+        <p class="ask">Card fees <span class="muted">— premium cards charge an annual fee for lounges, concierge &amp; richer rewards. What’s the most you’re happy to pay?</span></p>
+        <div class="feebudget">
+          <input type="range" class="bgt-row__slider" data-feebudget min="0" max="60000" step="5000" value="${Number(state.feeBudget) || 0}" aria-label="Maximum annual fee you'll pay" />
+          <div class="feebudget__val"><strong id="feeBudgetVal">${state.feeBudget ? 'up to ' + inr(state.feeBudget) : 'Lifetime-free / low fee'}</strong><span class="muted"> · max annual fee</span></div>
         </div>
         <button class="btn btn--primary btn--block" data-action="recommend">Find my best-value card →</button>
         <button class="btn btn--ghost btn--block" data-action="browse">Browse all cards myself</button>
@@ -476,6 +479,7 @@
         ${limitExplainer(d, state.bureau, state.income)}
         ${kfs(d, card)}
         ${spendOptimizer(card)}
+        ${cardTipsBox(card)}
         ${cardDetails(card)}
         ${mitcAccordion()}
         <button class="btn btn--primary btn--block" data-action="accept-offer">Accept &amp; continue →</button>
@@ -542,11 +546,12 @@
     if (state.issueScreen === 'autopay') return { html: stageHead('issuance') + autopayScreen() };
     return { html: stageHead('issuance') + `
       ${virtualCardVisual(card, v)}
-      <p class="muted center" style="margin:-0.3rem 0 0.7rem">Use it online right away. Let’s finish setting it up:</p>
+      ${onlineUseBox()}
+      <p class="muted center" style="margin:0.2rem 0 0.7rem">Let’s finish setting it up — do all three:</p>
       ${setupProgress()}
       <div class="issue-actions">
         ${actionTile('🔢', 'Set your card PIN', 'set-pin', state._pinSet ? 'Done ✓' : 'Set →')}
-        ${actionTile('📲', 'Add to Google / Apple Pay', 'add-wallet', state._walletAdded ? 'Added ✓' : 'Add →')}
+        ${actionTile('📲', 'Add to Google / Apple Pay (1-tap)', 'add-wallet', state._walletAdded ? 'Added ✓' : 'Add →')}
         ${actionTile('🔁', 'Autopay — never miss a due date', 'autopay', state.autopay ? 'On ✓' : 'Enable →')}
       </div>
       ${topMerchants(card)}
@@ -587,6 +592,15 @@
       <div class="bank-grid">
         ${AA_BANKS.map((b) => `<button class="bank-chip ${state.autopayBank === b.id ? 'is-on' : ''}" data-action="autopay-bank" data-bank="${b.id}"><span class="bank-chip__mk">${esc(b.mk)}</span>${esc(b.name)}</button>`).join('')}
       </div>
+      ${bank ? `
+      <p class="ask">Your ${esc(bank.name)} account <span class="muted">— required to register the mandate.</span></p>
+      <label class="fld"><span class="fld__label">Account number</span><input id="napAcct" class="fld__input fld__input--mono" inputmode="numeric" maxlength="18" placeholder="Bank account number" value="${esc(state.napAcct || '')}" /></label>
+      <label class="fld"><span class="fld__label">IFSC code</span><input id="napIfsc" class="fld__input fld__input--mono" maxlength="11" placeholder="e.g. ${esc(bank.ifsc)}" value="${esc(state.napIfsc || '')}" style="text-transform:uppercase" /></label>
+      <p class="ask">Mandate type</p>
+      <div class="seg seg--nach">
+        <button class="seg__btn ${state.napMode !== 'upi' ? 'is-on' : ''}" data-action="nach-mode" data-mode="enach">e-NACH (net-banking)</button>
+        <button class="seg__btn ${state.napMode === 'upi' ? 'is-on' : ''}" data-action="nach-mode" data-mode="upi">UPI Autopay</button>
+      </div>` : ''}
       <p class="ask">How much each month?</p>
       <div class="seg">
         <button class="seg__btn ${amt === 'full' ? 'is-on' : ''}" data-action="autopay-amt" data-amt="full">Total amount due</button>
@@ -614,6 +628,7 @@
         <div class="welcome__benefits">
           ${card.highlights.slice(0, 3).map((h) => `<div class="benefit">✦ ${esc(h)}</div>`).join('')}
         </div>
+        ${cardTipsBox(card)}
         <div class="sec-label">🏅 Every milestone you unlocked</div>
         ${missionRail()}
         <div class="sec-label">🎁 Your welcome reward</div>
@@ -1020,9 +1035,11 @@
     </div>`;
   }
   function virtualCardVisual(card, v) {
-    // show the REAL card photo with a live badge + masked last-4 overlaid
+    // show the REAL card photo with a live badge + masked last-4 overlaid.
+    // Portrait cards (Burgundy/Reserve) get a portrait frame so the whole card shows.
     if (card.image) {
-      return `<div class="vcard vcard--real">
+      const port = card.portrait ? ' vcard--portrait' : '';
+      return `<div class="vcard vcard--real${port}">
         <img class="vcard__art" src="${esc(card.image)}" alt="${esc(card.name)}" onerror="this.closest('.vcard').classList.remove('vcard--real'); this.remove();"/>
         <span class="vcard__badge">● VIRTUAL · LIVE</span>
         <span class="vcard__last4">•••• ${esc(v.last4 || '0000')} · exp ${esc(v.expiry || '••/••')}</span>
@@ -1145,6 +1162,24 @@
       <div class="merch-grid">${ms.map((x) => `<div class="merch"><span class="merch__i">${x.i}</span><div class="merch__b"><strong>${esc(x.m)}</strong><span>${esc(x.s)}</span></div></div>`).join('')}</div>
     </div>`;
   }
+  // educational "get the most from your card" tips — builds trust & savvy
+  function cardTipsBox(card) {
+    const tips = (C.cardTips && C.cardTips[card.id]) || [];
+    if (!tips.length) return '';
+    return `<div class="tips">
+      <div class="sec-label">💡 Get the most from your ${esc(card.shortName)}</div>
+      <ul class="tips__list">${tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+    </div>`;
+  }
+  // the virtual card is usable online immediately, everywhere Visa is accepted
+  function onlineUseBox() {
+    const ms = ['Amazon', 'Flipkart', 'Swiggy', 'Netflix', 'Myntra', 'Uber', 'BookMyShow', 'MakeMyTrip'];
+    return `<div class="onlineuse">
+      <div class="sec-label">🛒 Use your virtual card online — right now</div>
+      <p class="muted onlineuse__p">Your full 16-digit virtual card works on every site &amp; app that accepts Visa — shop instantly while your physical card ships.</p>
+      <div class="onlineuse__row">${ms.map((m) => `<span class="onlineuse__chip">${esc(m)}</span>`).join('')}</div>
+    </div>`;
+  }
   // motivation to finish PIN / wallet / autopay set-up (progress, not arcade points)
   function setupProgress() {
     const items = [state._pinSet, state._walletAdded, state.autopay];
@@ -1176,9 +1211,10 @@
   }
   function rankByValue(budget) {
     const annualSpend = SPEND_CATS.reduce((s, k) => s + (Number(budget[k]) || 0), 0) * 12;
-    // fee-averse customers only see low/no-fee cards; "OK paying a fee" unlocks the premium ones
+    // only recommend cards within the fee the customer said they're happy to pay
     let pool = C.cards.filter((c) => !c.secured);
-    if (!state.okWithFees) pool = pool.filter((c) => (c.annualFee || 0) <= 1000);
+    const feeCap = Math.max(1000, Number(state.feeBudget) || 0); // near-free cards always considered
+    pool = pool.filter((c) => (c.annualFee || 0) <= feeCap);
     const ranked = pool.map((c) => {
       const gross = estimateAnnualValue(c, budget);
       const fee = effectiveFee(c, annualSpend);
@@ -1341,6 +1377,7 @@
       case 'send-otp': await sendOtp(); break;
       case 'verify-otp': await verifyOtp(); break;
       case 'otp-change': state.otpSent = false; save(); renderStage(); break;
+      case 'otp-eye': { const o = $('#otp'); if (o) { const show = o.type === 'password'; o.type = show ? 'text' : 'password'; el.textContent = show ? '🙈' : '👁️'; el.setAttribute('aria-label', show ? 'Hide OTP' : 'Show OTP'); o.focus(); } } break;
 
       /* stage 2 */
       case 'toggle-tag': toggleTag(el.dataset.tag); break;
@@ -1392,9 +1429,19 @@
       case 'add-wallet': state.issueScreen = 'wallet'; save(); renderStage(); break;
       case 'wallet-add': state._walletAdded = true; state.pushProvisioned = true; state.issueScreen = null; save(); renderStage(); toast('✓ Pushed to ' + (el.dataset.wallet === 'apay' ? 'Apple Pay' : 'Google Pay') + ' via Visa — your real number was never shared.', 'success'); break;
       case 'autopay': state.issueScreen = 'autopay'; save(); renderStage(); break;
-      case 'autopay-bank': state.autopayBank = el.dataset.bank; save(); renderStage(); break;
+      case 'autopay-bank': if ($('#napAcct')) state.napAcct = $('#napAcct').value; if ($('#napIfsc')) state.napIfsc = $('#napIfsc').value; state.autopayBank = el.dataset.bank; save(); renderStage(); break;
+      case 'nach-mode': state.napMode = el.dataset.mode; if ($('#napAcct')) state.napAcct = $('#napAcct').value; if ($('#napIfsc')) state.napIfsc = $('#napIfsc').value; save(); renderStage(); break;
       case 'autopay-amt': $$('[data-action="autopay-amt"]').forEach((b) => b.classList.toggle('is-on', b === el)); state._autopayAmt = el.dataset.amt; save(); break;
-      case 'autopay-save': if (!state.autopayBank) { toast('Pick the bank to pay from.', 'error'); return; } if ($('#autopayConsent') && !$('#autopayConsent').checked) { toast('Please authorise the e-NACH mandate.', 'error'); return; } await setupAutopay(); state.issueScreen = null; renderStage(); break;
+      case 'autopay-save': {
+        if (!state.autopayBank) { toast('Pick the bank to pay from.', 'error'); return; }
+        const acct = ($('#napAcct') ? $('#napAcct').value : '').replace(/\s/g, '');
+        const ifsc = ($('#napIfsc') ? $('#napIfsc').value : '').toUpperCase().trim();
+        if (!/^\d{8,18}$/.test(acct)) { toast('Enter a valid bank account number (8–18 digits).', 'error'); return; }
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) { toast('Enter a valid 11-character IFSC (e.g. HDFC0001234).', 'error'); return; }
+        if ($('#autopayConsent') && !$('#autopayConsent').checked) { toast('Please authorise the mandate to continue.', 'error'); return; }
+        state.napAcct = acct; state.napIfsc = ifsc; save();
+        await setupAutopay(); state.issueScreen = null; renderStage();
+      } break;
       case 'issue-back': state.issueScreen = null; save(); renderStage(); break;
       case 'to-welcome': nextStage(); break;
       case 'scratch': if (!state.scratched) { state.scratched = true; save(); renderStage(); confettiBurst(); } break;
@@ -1663,13 +1710,15 @@
   /* ---- stage 7 logic ---- */
   async function setupAutopay() {
     const bank = AA_BANKS.find((b) => b.id === state.autopayBank);
-    const res = await runAgent('Setting up autopay', [
-      { id: 'penny', icon: '💸', label: `Verifying your ${bank ? bank.name : 'bank'} account (penny-drop)`, fn: () => INT.pennyDrop(bank ? bank.name : ''), tag: (r) => r.nameMatch + ' match' },
-      { id: 'enach', icon: '🔁', label: 'Registering your NPCI e-NACH mandate (cross-bank)', fn: () => INT.enachSetup(), tag: () => 'mandate active' },
+    const mode = state.napMode === 'upi' ? 'UPI Autopay' : 'e-NACH';
+    const last4 = (state.napAcct || '').slice(-4);
+    await runAgent('Setting up autopay', [
+      { id: 'penny', icon: '💸', label: `Verifying your ${bank ? bank.name : 'bank'} account ••••${last4} (penny-drop)`, fn: () => INT.pennyDrop(bank ? bank.name : ''), tag: (r) => r.nameMatch + ' match' },
+      { id: 'mandate', icon: '🔁', label: `Registering your NPCI ${mode} mandate (works cross-bank)`, fn: () => INT.enachSetup(), tag: () => 'mandate active' },
     ]);
-    state.account = res.penny; // the verified account the mandate debits
+    state.account = { bank: (bank ? bank.name : 'your bank') + ' · A/C ••••' + last4, mode, ifsc: state.napIfsc }; // verified debit account
     state.autopay = true; save();
-    toast('✓ Autopay set up — e-NACH mandate active on your ' + (bank ? bank.name : 'bank') + '.', 'success');
+    toast('✓ Autopay active — ' + mode + ' mandate on your ' + (bank ? bank.name : 'bank') + ' ••••' + last4 + '.', 'success');
     renderStage();
   }
 
@@ -1882,6 +1931,13 @@
 
     // live budget sliders — update the amount + running total without a re-render
     document.addEventListener('input', (e) => {
+      const fb = e.target.closest && e.target.closest('[data-feebudget]');
+      if (fb) {
+        state.feeBudget = Number(fb.value) || 0;
+        state.okWithFees = state.feeBudget > 0; // paying a fee unlocks the perk-ranked premium cards
+        const fv = $('#feeBudgetVal'); if (fv) fv.textContent = state.feeBudget ? 'up to ' + inr(state.feeBudget) : 'Lifetime-free / low fee';
+        save(); return;
+      }
       const sl = e.target.closest && e.target.closest('[data-budget]');
       if (!sl) return;
       const cat = sl.getAttribute('data-budget');

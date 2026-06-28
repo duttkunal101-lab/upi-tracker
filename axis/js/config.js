@@ -348,6 +348,21 @@
     lic: 'assets/cards/lic.png',
     airtel: 'assets/cards/airtel.png', // cropped from the uploaded collage
   };
+  /* Actionable "get the most from your card" tips — shown so onboarding educates. */
+  const cardTips = {
+    ace:      ['Pay every bill & recharge via Google Pay for 5% cashback', 'Order Swiggy, Zomato & Ola on this card for 4%', 'Spend ₹2L in a year and the ₹499 fee is waived'],
+    flipkart: ['Do all your Flipkart & Cleartrip buys here for 5%', 'Shop Myntra on this card for 7.5% back', 'Pay Swiggy, Uber & PVR — they’re 4% partners'],
+    atlas:    ['Book flights & hotels here to earn 5 EDGE Miles per ₹100', 'Cross ₹7.5L spend for Gold tier — more miles & lounges', 'Transfer Miles to partner airlines for the best value'],
+    airtel:   ['Pay your Airtel bills here for 25% cashback', 'Clear every utility bill on this card for 10%', 'Order Zomato & Blinkit for 10% (up to ₹200/partner/mo)'],
+    reserve:  ['Use it abroad — 30 EDGE pts/₹200 and a low 1.5% forex', 'Tap unlimited lounges for you and a guest', 'Let the 24×7 concierge handle bookings & gifting'],
+    burgundy: ['Put travel & hotels on it for up to 25 pts/₹200', 'Bring a guest free into unlimited lounges', 'Use the luxury concierge for reservations & gifting'],
+    vistara:  ['Spend to the milestone for a complimentary flight ticket', 'Book Vistara flights to earn 6 CV Points per ₹200', 'Use a lounge before every flight — it’s complimentary'],
+    samsung:  ['Buy Samsung devices & EMIs here for up to 10% back', 'Put everyday spends on it to pile up EDGE Points', 'Use complimentary lounges whenever you travel'],
+    myzone:   ['Stream free with the included SonyLIV Premium', 'Book movies for Buy-1-Get-1 tickets', 'Dine at partners for up to 15% off'],
+    neo:      ['Order Zomato, Blinkit & Tata Play for up to 40% off', 'Keep it for low-fee everyday online spends', 'Pay in full each month to build your score'],
+    lic:      ['Pay your LIC premiums here to earn reward points', 'Use it for everyday retail at 2 points per ₹100', 'It’s lifetime-free — small monthly spends keep it active'],
+    'insta-easy': ['Spend a little each month and pay in full to build CIBIL', 'Keep usage under 30% of your limit', 'Set autopay so you never miss a due date'],
+  };
   // annual spend (₹) that waives the joining/annual fee — used to weigh fees vs budget
   const cardFeeWaiverSpend = { ace: 200000, flipkart: 350000, airtel: 200000 };
   // notional ₹ value of a premium card's PERKS (unlimited lounges, concierge, golf,
@@ -852,7 +867,7 @@
   /* ---------------------------------------------------------------- exports */
   window.AX_CONFIG = {
     brand, cards: liveCards, profileTags, integrations, regulations,
-    dataPoints, stages, legal, nudges, facts, cardMerchants,
+    dataPoints, stages, legal, nudges, facts, cardMerchants, cardTips,
     appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust, relationship,
     // convenience lookups (cardById spans the full catalogue for safe id lookups)
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
