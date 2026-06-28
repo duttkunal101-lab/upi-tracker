@@ -14,7 +14,7 @@
   const INT = window.AX_INT;
   const AGENT = window.AX_AGENT;
   const STORE = 'axis.onboarding.v2';
-  const BUILD = 'v15'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
+  const BUILD = 'v16'; // bump on each deploy → old saved journeys auto-reset so testers start fresh
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
