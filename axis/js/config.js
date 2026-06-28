@@ -363,6 +363,23 @@
     lic:      ['Pay your LIC premiums here to earn reward points', 'Use it for everyday retail at 2 points per ₹100', 'It’s lifetime-free — small monthly spends keep it active'],
     'insta-easy': ['Spend a little each month and pay in full to build CIBIL', 'Keep usage under 30% of your limit', 'Set autopay so you never miss a due date'],
   };
+  /* CVP "benefits unlocking" — milestone annual spends that unlock each card's
+   * marquee benefits (lounges, tiers, fee waivers). Grounds the "get the most"
+   * guidance in each card's real value proposition. */
+  const cardUnlocks = {
+    ace:      [{ at: 50000, b: '4 complimentary airport-lounge visits/year' }, { at: 200000, b: '₹499 annual fee waived' }],
+    flipkart: [{ at: 350000, b: '₹500 annual fee waived' }],
+    atlas:    [{ at: 250000, b: 'Silver tier · 8 domestic + 4 international lounges' }, { at: 750000, b: 'Gold tier · 12+6 lounges & +2,500 EDGE Miles' }, { at: 1500000, b: 'Platinum tier · 18+12 lounges & +5,000 EDGE Miles' }],
+    airtel:   [{ at: 200000, b: '₹500 annual fee waived' }],
+    reserve:  [{ at: 0, b: 'Unlimited domestic & international lounges from day one' }, { at: 1500000, b: 'Milestone EDGE Reward Points bonanza' }],
+    burgundy: [{ at: 0, b: 'Unlimited lounges for you + a guest, day one' }, { at: 2000000, b: 'Top-tier milestone reward boost' }],
+    vistara:  [{ at: 250000, b: 'Complimentary economy flight ticket' }, { at: 500000, b: 'A second ticket + tier upgrade' }, { at: 900000, b: 'Premium-economy ticket milestone' }],
+    samsung:  [{ at: 100000, b: 'Milestone EDGE Reward Points' }, { at: 200000, b: 'Annual fee reversed' }],
+    myzone:   [{ at: 50000, b: 'Movie & dining benefits active' }],
+    neo:      [{ at: 50000, b: 'Partner offers unlocked' }],
+    lic:      [{ at: 50000, b: 'Quarterly airport-lounge access' }],
+    'insta-easy': [{ at: 0, b: 'Builds your CIBIL score from month one' }, { at: 60000, b: 'Eligible to graduate to an unsecured card' }],
+  };
   // annual spend (₹) that waives the joining/annual fee — used to weigh fees vs budget
   const cardFeeWaiverSpend = { ace: 200000, flipkart: 350000, airtel: 200000 };
   // notional ₹ value of a premium card's PERKS (unlimited lounges, concierge, golf,
@@ -866,7 +883,7 @@
   /* ---------------------------------------------------------------- exports */
   window.AX_CONFIG = {
     brand, cards: liveCards, profileTags, integrations, regulations,
-    dataPoints, stages, legal, nudges, facts, cardMerchants, cardTips,
+    dataPoints, stages, legal, nudges, facts, cardMerchants, cardTips, cardUnlocks,
     appStatus, delivery, digiLockerDocs, agentPlan, gamify, trust, relationship,
     // convenience lookups (cardById spans the full catalogue for safe id lookups)
     stageByKey: stages.reduce((m, s) => (m[s.key] = s, m), {}),
